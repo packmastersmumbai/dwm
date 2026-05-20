@@ -242,29 +242,12 @@ function getUsersStatic() {
   });
 }
 
-// Internal worker — no auth. Called by updateUser, removeUser, getTeamStatus,
-// getTeamBoard, getTeamTimeline, getKpiData, getTeamStats, getTeamProductivity,
-// getTimeReport, addComment, _createTask (shared-pool notifications), expandTask.
-function _getUsers() {
-  try {
-    var users = getUsersStatic().map(function(u) { return Object.assign({}, u); });
-    var tl = getSheet('time_log');
-    var tlData = tl ? tl.getDataRange().getValues() : [[]];
-    var byUid = {};
-    for (var j = 1; j < tlData.length; j++) {
-      if (!tlData[j][4]) byUid[tlData[j][2]] = { logId: tlData[j][0], taskId: tlData[j][1], startedAt: tlData[j][3] };
-    }
-    users.forEach(function(u) { u.activeTimer = byUid[u.id] || null; });
-    return users;
-  } catch(e) {
-    throw new Error('_getUsers: ' + e.message);
-  }
-}
+// _getUsers removed — use Internal.getUsers()
 
 // Full user list — adds live activeTimer per user (NOT cached, since timer changes constantly)
 function getUsers(token) {
   requireSession(token);
-  return _getUsers();
+  return Internal.getUsers();
 }
 
 function loginUser(name, pin) {
@@ -427,7 +410,7 @@ function updateUser(userId, fields, token) {
     if (fields.role !== undefined && fields.role !== 'admin') {
       var target = getUserById(userId);
       if (target && target.role === 'admin') {
-        var admins = _getUsers().filter(function(u) { return u.role === 'admin'; });
+        var admins = Internal.getUsers().filter(function(u) { return u.role === 'admin'; });
         if (admins.length <= 1) {
           throw new Error('Cannot remove the last admin');
         }
@@ -467,7 +450,7 @@ function removeUser(userId, token) {
   try {
     requireAdmin(token);
     // Prevent removing last admin
-    var admins = _getUsers().filter(function(u) { return u.role === 'admin'; });
+    var admins = Internal.getUsers().filter(function(u) { return u.role === 'admin'; });
     var target = getUserById(userId);
     if (target && target.role === 'admin' && admins.length <= 1) {
       throw new Error('Cannot remove the last admin');
@@ -617,33 +600,546 @@ function logout(token) {
   return { ok: true };
 }
 
-// Internal worker — no auth. Called by expandTask, getShiftHandover, getTimeReport,
-// getHoursByClient, searchTasks, and the client-facing getClients.
-function _getClients() {
-  return cachedRead('clients', 600, function() {
-    try {
-      var s = getSheet('clients');
-      if (!s) return [];
-      var data = s.getDataRange().getValues();
-      var result = [];
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][3] === false || data[i][3] === 'FALSE') continue;
-        result.push({ id: data[i][0], name: data[i][1], colorHex: data[i][2], isActive: data[i][3] });
+// ============================================================
+//  INTERNAL MODULE — not callable via google.script.run
+//  All underscore-prefixed workers live here so they are NOT
+//  top-level and thus unreachable from the client.
+// ============================================================
+
+var Internal = (function() {
+
+  // ── getClients ──────────────────────────────────────────────
+  function getClients() {
+    return cachedRead('clients', 600, function() {
+      try {
+        var s = getSheet('clients');
+        if (!s) return [];
+        var data = s.getDataRange().getValues();
+        var result = [];
+        for (var i = 1; i < data.length; i++) {
+          if (data[i][3] === false || data[i][3] === 'FALSE') continue;
+          result.push({ id: data[i][0], name: data[i][1], colorHex: data[i][2], isActive: data[i][3] });
+        }
+        return result;
+      } catch(e) {
+        throw new Error('Internal.getClients: ' + e.message);
       }
-      return result;
+    });
+  }
+
+  // ── getCategories ────────────────────────────────────────────
+  function getCategories() {
+    return cachedRead('categories', 600, function() {
+      try {
+        var s = getSheet('categories');
+        if (!s) return [];
+        var data = s.getDataRange().getValues();
+        var result = [];
+        for (var i = 1; i < data.length; i++) {
+          if (data[i][3] === false || data[i][3] === 'FALSE') continue;
+          result.push({ id: data[i][0], name: data[i][1], iconEmoji: data[i][2], isActive: data[i][3] });
+        }
+        return result;
+      } catch(e) {
+        throw new Error('Internal.getCategories: ' + e.message);
+      }
+    });
+  }
+
+  // ── getUsers ─────────────────────────────────────────────────
+  function getUsers() {
+    try {
+      var users = getUsersStatic().map(function(u) { return Object.assign({}, u); });
+      var tl = getSheet('time_log');
+      var tlData = tl ? tl.getDataRange().getValues() : [[]];
+      var byUid = {};
+      for (var j = 1; j < tlData.length; j++) {
+        if (!tlData[j][4]) byUid[tlData[j][2]] = { logId: tlData[j][0], taskId: tlData[j][1], startedAt: tlData[j][3] };
+      }
+      users.forEach(function(u) { u.activeTimer = byUid[u.id] || null; });
+      return users;
     } catch(e) {
-      throw new Error('_getClients: ' + e.message);
+      throw new Error('Internal.getUsers: ' + e.message);
     }
-  });
-}
+  }
+
+  // ── getTasks ─────────────────────────────────────────────────
+  function getTasks(filters) {
+    try {
+      filters = filters || {};
+      var s = getSheet('tasks');
+      var data = s.getDataRange().getValues();
+      var tasks = [];
+
+      var clients = getClients();
+      var cats = getCategories();
+      var allUsers = getUsersStatic();
+
+      function expandFast(task) {
+        task.client = clients.find(function(c){ return c.id === task.clientId; }) || null;
+        task.category = cats.find(function(c){ return c.id === task.categoryId; }) || null;
+        task.assignees = (task.assigneeIds || []).map(function(uid){
+          var u = allUsers.find(function(x){ return x.id === uid; });
+          return u ? {
+            id: u.id, name: u.name, avatar: u.avatar || null,
+            avatarColor: u.avatarColor || u.color || null, status: u.status || 'offline'
+          } : null;
+        }).filter(Boolean);
+        return task;
+      }
+
+      for (var i = 1; i < data.length; i++) {
+        var row = data[i];
+        if (!row[0]) continue;
+        var status = row[6];
+        if (status === 'deleted') continue;
+        if (status === 'archived' && !filters.includeArchived) continue;
+
+        var task = rowToTask(row);
+
+        if (filters.teamView) { tasks.push(expandFast(task)); continue; }
+
+        if (filters.userId || filters.assignedTo) {
+          var uid = filters.userId || filters.assignedTo;
+          var assigneeIds = task.assigneeIds || [];
+          if (assigneeIds.indexOf(uid) === -1 && task.createdBy !== uid) continue;
+        }
+
+        if (filters.status && filters.status.length > 0) {
+          if (filters.status.indexOf(status) === -1) continue;
+        }
+        if (filters.clientId && task.clientId !== filters.clientId) continue;
+        if (filters.isShared !== undefined && task.isShared !== filters.isShared) continue;
+        if (filters.dateFrom && task.dueDate && task.dueDate < filters.dateFrom) continue;
+        if (filters.dateTo && task.dueDate && task.dueDate > filters.dateTo) continue;
+
+        tasks.push(expandFast(task));
+      }
+
+      tasks.sort(function(a, b) {
+        var pa = priorityRank(a.priority), pb = priorityRank(b.priority);
+        if (pa !== pb) return pa - pb;
+        if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return a.createdAt > b.createdAt ? -1 : 1;
+      });
+
+      return tasks;
+    } catch(e) {
+      throw new Error('Internal.getTasks: ' + e.message);
+    }
+  }
+
+  // ── getTask ──────────────────────────────────────────────────
+  function getTask(taskId) {
+    try {
+      var s = getSheet('tasks');
+      var data = s.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][0] === taskId) {
+          var task = expandTask(rowToTask(data[i]));
+
+          var tl = getSheet('time_log');
+          var tlData = tl ? tl.getDataRange().getValues() : [[]];
+          task.timeLogs = [];
+          for (var j = 1; j < tlData.length; j++) {
+            if (tlData[j][1] === taskId) {
+              task.timeLogs.push({
+                id: tlData[j][0], taskId: tlData[j][1], userId: tlData[j][2],
+                startedAt: tlData[j][3] ? tlData[j][3].toString() : '',
+                stoppedAt: tlData[j][4] ? tlData[j][4].toString() : '',
+                durationSeconds: tlData[j][5],
+                lastHeartbeat: tlData[j][6] ? tlData[j][6].toString() : ''
+              });
+            }
+          }
+
+          var act = getSheet('activity');
+          var actData = act ? act.getDataRange().getValues() : [[]];
+          task.activity = [];
+          for (var k = 1; k < actData.length; k++) {
+            if (actData[k][1] === taskId) {
+              task.activity.push({
+                id: actData[k][0], userId: actData[k][2], action: actData[k][3],
+                detail: actData[k][4], createdAt: actData[k][5] ? actData[k][5].toString() : ''
+              });
+            }
+          }
+          task.activity = task.activity.slice(-20).reverse();
+
+          return task;
+        }
+      }
+      throw new Error('Task not found');
+    } catch(e) {
+      throw new Error('Internal.getTask: ' + e.message);
+    }
+  }
+
+  // ── createTask ───────────────────────────────────────────────
+  function createTask(payload) {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+      var taskStatus = payload.status || 'todo';
+      if (VALID_STATUSES.indexOf(taskStatus) === -1) {
+        throw new Error('Invalid status: ' + taskStatus);
+      }
+      var id = newId();
+      var ts = now();
+      var s = getSheet('tasks');
+      s.appendRow([
+        id, payload.title, payload.description || '',
+        payload.clientId || '', payload.categoryId || '',
+        payload.priority || 'medium', taskStatus,
+        (payload.assigneeIds || []).join(','), payload.createdBy || '',
+        ts, payload.dueDate || '', payload.scheduledTime || '',
+        payload.isShared ? true : false, '', '',
+        payload.estimatedMinutes || '',
+        payload.checklist ? JSON.stringify(payload.checklist) : '',
+        payload.recurrence ? JSON.stringify(payload.recurrence) : '',
+        ts, '', payload.requiresPhoto ? true : false
+      ]);
+
+      logActivity(id, payload.createdBy, 'created', payload.title);
+
+      (payload.assigneeIds || []).forEach(function(uid) {
+        if (uid !== payload.createdBy) {
+          var creator = getUserById(payload.createdBy);
+          createNotification(uid, 'assigned', id,
+            (creator ? creator.name : 'Someone') + ' assigned you: ' + payload.title);
+        }
+      });
+
+      if (payload.isShared) {
+        getUsers().forEach(function(u) {
+          createNotification(u.id, 'assigned', id, 'New shared task: ' + payload.title);
+        });
+      }
+
+      return expandTask(rowToTask([
+        id, payload.title, payload.description || '',
+        payload.clientId || '', payload.categoryId || '',
+        payload.priority || 'medium', taskStatus,
+        (payload.assigneeIds || []).join(','), payload.createdBy || '',
+        ts, payload.dueDate || '', payload.scheduledTime || '',
+        payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
+        payload.checklist ? JSON.stringify(payload.checklist) : '',
+        payload.recurrence ? JSON.stringify(payload.recurrence) : '',
+        ts, '', payload.requiresPhoto ? true : false
+      ]));
+    } catch(e) {
+      throw new Error('Internal.createTask: ' + e.message);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  // ── updateTaskFields ─────────────────────────────────────────
+  function updateTaskFields(taskId, fields) {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      var s = getSheet('tasks');
+      var data = s.getDataRange().getValues();
+      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][0] !== taskId) continue;
+        var oldRow = data[i];
+        var oldStatus = oldRow[6];
+
+        if (fields.status !== undefined && VALID_STATUSES.indexOf(fields.status) === -1) {
+          throw new Error('Invalid status: ' + fields.status);
+        }
+
+        if (fields.status === 'done' && oldStatus !== 'done') {
+          var requiresPhoto = oldRow[20] === true || oldRow[20] === 'TRUE';
+          if (requiresPhoto) {
+            var attSheet = getSheet('attachments');
+            var attData = attSheet ? attSheet.getDataRange().getValues() : [[]];
+            var hasImage = false;
+            for (var ai = 1; ai < attData.length; ai++) {
+              if (attData[ai][1] === taskId) {
+                var kind = String(attData[ai][5] || '').toLowerCase();
+                if (kind === 'photo' || kind === 'image') { hasImage = true; break; }
+              }
+            }
+            if (!hasImage) {
+              throw new Error('A completion photo is required before marking this task done');
+            }
+          }
+        }
+
+        if (fields.title !== undefined) s.getRange(i + 1, 2).setValue(fields.title);
+        if (fields.description !== undefined) s.getRange(i + 1, 3).setValue(fields.description);
+        if (fields.clientId !== undefined) s.getRange(i + 1, 4).setValue(fields.clientId);
+        if (fields.categoryId !== undefined) s.getRange(i + 1, 5).setValue(fields.categoryId);
+        if (fields.priority !== undefined) s.getRange(i + 1, 6).setValue(fields.priority);
+        if (fields.status !== undefined) {
+          s.getRange(i + 1, 7).setValue(fields.status);
+          if (fields.status !== oldStatus) {
+            logActivity(taskId, '', 'status_changed', oldStatus + '→' + fields.status);
+            if (fields.status === 'done' && oldRow[17]) {
+              scheduleNextRecurrence(taskId);
+            }
+          }
+        }
+        if (fields.assigneeIds !== undefined) s.getRange(i + 1, 8).setValue(fields.assigneeIds.join(','));
+        if (fields.dueDate !== undefined) s.getRange(i + 1, 11).setValue(fields.dueDate);
+        if (fields.scheduledTime !== undefined) s.getRange(i + 1, 12).setValue(fields.scheduledTime);
+        if (fields.isShared !== undefined) s.getRange(i + 1, 13).setValue(fields.isShared);
+        if (fields.claimedBy !== undefined) s.getRange(i + 1, 14).setValue(fields.claimedBy);
+        if (fields.claimedAt !== undefined) s.getRange(i + 1, 15).setValue(fields.claimedAt);
+        if (fields.estimatedMinutes !== undefined) s.getRange(i + 1, 16).setValue(fields.estimatedMinutes);
+        if (fields.checklist !== undefined) s.getRange(i + 1, 17).setValue(JSON.stringify(fields.checklist));
+        if (fields.recurrence !== undefined) s.getRange(i + 1, 18).setValue(fields.recurrence ? JSON.stringify(fields.recurrence) : '');
+        if (fields.requiresPhoto !== undefined) s.getRange(i + 1, 21).setValue(fields.requiresPhoto ? true : false);
+
+        s.getRange(i + 1, 19).setValue(now());
+
+        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 21).getValues()[0]));
+      }
+      throw new Error('Task not found: ' + taskId);
+    } catch(e) {
+      throw new Error('Internal.updateTaskFields: ' + e.message);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  // ── getMyDayTasks ────────────────────────────────────────────
+  function getMyDayTasks(userIdOrName) {
+    try {
+      var today = todayStr();
+      var resolvedUser = getUserById(userIdOrName);
+      if (!resolvedUser) {
+        var allUsers = getUsersStatic();
+        resolvedUser = allUsers.filter(function(u) { return u.name === userIdOrName; })[0] || null;
+      }
+      var resolvedId = resolvedUser ? resolvedUser.id : null;
+      var allTasks = getTasks({});
+      return allTasks.filter(function(t) {
+        if (t.status === 'done' || t.status === 'deleted' || t.status === 'archived') return false;
+        var ids = t.assigneeIds || [];
+        var isAssigned = resolvedId ? ids.indexOf(resolvedId) !== -1 : false;
+        if (!isAssigned) return false;
+        return !t.dueDate || t.dueDate <= today;
+      });
+    } catch(e) {
+      throw new Error('Internal.getMyDayTasks: ' + e.message);
+    }
+  }
+
+  // ── getSharedPoolTasks ───────────────────────────────────────
+  function getSharedPoolTasks() {
+    try {
+      return getTasks({ isShared: true }).filter(function(t) {
+        return t.status !== 'done' && t.status !== 'deleted' && t.status !== 'archived' && !t.claimedBy;
+      });
+    } catch(e) {
+      throw new Error('Internal.getSharedPoolTasks: ' + e.message);
+    }
+  }
+
+  // ── getDailyPlan ─────────────────────────────────────────────
+  function getDailyPlan(userId, date) {
+    try {
+      var planDate = date || todayStr();
+      var allTasks = getTasks({ userId: userId });
+      return allTasks.filter(function(t) {
+        if (t.status === 'deleted' || t.status === 'archived') return false;
+        return !t.dueDate || t.dueDate <= planDate;
+      });
+    } catch(e) {
+      throw new Error('Internal.getDailyPlan: ' + e.message);
+    }
+  }
+
+  // ── startTimerForUser ────────────────────────────────────────
+  function startTimerForUser(taskId, uid) {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(15000);
+    try {
+      var tl = getSheet('time_log');
+      var tlData = tl.getDataRange().getValues();
+      var nowStr = now();
+
+      for (var i = 1; i < tlData.length; i++) {
+        if (tlData[i][1] === taskId && tlData[i][2] === uid && !tlData[i][4]) {
+          return { logId: tlData[i][0], startedAt: tlData[i][3] ? tlData[i][3].toString() : nowStr, taskId: taskId, alreadyRunning: true };
+        }
+      }
+
+      var ts = getSheet('tasks');
+      var tData = ts.getDataRange().getValues();
+      var isShared = false, claimedBy = '';
+      for (var j = 1; j < tData.length; j++) {
+        if (tData[j][0] === taskId) {
+          isShared = tData[j][12] === true || tData[j][12] === 'TRUE';
+          claimedBy = tData[j][13];
+          break;
+        }
+      }
+      if (isShared && claimedBy && claimedBy !== uid) {
+        return { error: 'not_claimed' };
+      }
+
+      var logId = newId();
+      tl.appendRow([logId, taskId, uid, nowStr, '', '', nowStr]);
+      try { updateTaskFields(taskId, { status: 'in-progress' }); } catch(e) {}
+      try { logActivity(taskId, uid, 'timer_started', ''); } catch(e) {}
+
+      return { logId: logId, startedAt: nowStr, taskId: taskId };
+    } catch(e) {
+      throw new Error('Internal.startTimerForUser: ' + e.message);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  // ── getOrCreateAttachmentFolder ──────────────────────────────
+  function getOrCreateAttachmentFolder() {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      var folderId = getSettingValue('attachment_folder_id', '');
+      if (folderId) {
+        try { return DriveApp.getFolderById(folderId); } catch(e) {
+          console.error('Internal.getOrCreateAttachmentFolder: stored folder ' + folderId + ' is inaccessible (' + e + '); creating replacement');
+        }
+      }
+      var folder = DriveApp.createFolder('TaskFlow Attachments');
+      var s = getSheet('settings');
+      var sData = s.getDataRange().getValues();
+      var found = false;
+      for (var si = 1; si < sData.length; si++) {
+        if (sData[si][0] === 'attachment_folder_id') {
+          s.getRange(si + 1, 2).setValue(folder.getId());
+          found = true;
+          break;
+        }
+      }
+      if (!found) s.appendRow(['attachment_folder_id', folder.getId()]);
+      return folder;
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  // ── getKpiData ───────────────────────────────────────────────
+  function getKpiData(options) {
+    options = options || {};
+    var tasks = getTasks({ teamView: true });
+    var filtered = tasks;
+    if (options.from) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate >= options.from; });
+    if (options.to)   filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate <= options.to; });
+    var today = todayStr();
+    var total = filtered.length;
+    var done = filtered.filter(function(t) { return t.status === 'done' || t.status === 'archived'; }).length;
+    var overdue = filtered.filter(function(t) {
+      return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
+    }).length;
+    var byAssignee = {};
+    var byPriority = { urgent: 0, high: 0, medium: 0, low: 0 };
+    filtered.forEach(function(t) {
+      (t.assigneeIds || []).forEach(function(uid) {
+        if (!byAssignee[uid]) byAssignee[uid] = { total: 0, done: 0 };
+        byAssignee[uid].total++;
+        if (t.status === 'done') byAssignee[uid].done++;
+      });
+      if (byPriority[t.priority] !== undefined) byPriority[t.priority]++;
+    });
+    var users = getUsers();
+    var byAssigneeArr = Object.keys(byAssignee).map(function(uid) {
+      var u = users.find(function(x) { return x.id === uid; });
+      return { userId: uid, name: u ? u.name : uid, total: byAssignee[uid].total, done: byAssignee[uid].done };
+    });
+    return {
+      totalTasks: total, doneTasks: done, overdueTasks: overdue,
+      byAssignee: byAssigneeArr, byPriority: byPriority,
+      completionRate: total > 0 ? Math.round((done / total) * 100) : 0
+    };
+  }
+
+  // ── scheduleNextRecurrence ───────────────────────────────────
+  function scheduleNextRecurrence(taskId) {
+    try {
+      var task = getTask(taskId);
+      if (!task.recurrence) return;
+      var rec = task.recurrence;
+      var currentDue = task.dueDate ? new Date(task.dueDate) : new Date();
+      var nextDue = new Date(currentDue);
+
+      if (rec.type === 'daily')        nextDue.setDate(nextDue.getDate() + 1);
+      else if (rec.type === 'weekly')  nextDue.setDate(nextDue.getDate() + 7);
+      else if (rec.type === 'monthly') nextDue.setMonth(nextDue.getMonth() + 1);
+      else return;
+
+      var nextDueStr = Utilities.formatDate(nextDue, getTimezone(), 'yyyy-MM-dd');
+      if (rec.ends && nextDueStr > rec.ends) return;
+
+      createTask({
+        title: task.title, description: task.description,
+        clientId: task.clientId, categoryId: task.categoryId,
+        priority: task.priority, status: 'todo',
+        assigneeIds: task.assigneeIds, createdBy: task.createdBy,
+        dueDate: nextDueStr, scheduledTime: task.scheduledTime,
+        isShared: task.isShared, estimatedMinutes: task.estimatedMinutes,
+        checklist: (task.checklist || []).map(function(item) {
+          return { id: newId(), text: item.text, done: false };
+        }),
+        recurrence: task.recurrence
+      });
+    } catch(e) {
+      // Silent — called from updateTaskFields internally
+    }
+  }
+
+  // ── quickSaveTask ────────────────────────────────────────────
+  function quickSaveTask(title, clientId, priority, scheduledTime, isShared) {
+    return createTask({
+      title: title, clientId: clientId, priority: priority || 'medium',
+      scheduledTime: scheduledTime, isShared: isShared || false,
+      createdBy: Session.getActiveUser().getEmail() || 'system',
+      status: 'todo', assigneeIds: []
+    });
+  }
+
+  return {
+    getClients:                getClients,
+    getCategories:             getCategories,
+    getUsers:                  getUsers,
+    getTasks:                  getTasks,
+    getTask:                   getTask,
+    createTask:                createTask,
+    updateTaskFields:          updateTaskFields,
+    getMyDayTasks:             getMyDayTasks,
+    getSharedPoolTasks:        getSharedPoolTasks,
+    getDailyPlan:              getDailyPlan,
+    startTimerForUser:         startTimerForUser,
+    getOrCreateAttachmentFolder: getOrCreateAttachmentFolder,
+    getKpiData:                getKpiData,
+    scheduleNextRecurrence:    scheduleNextRecurrence,
+    quickSaveTask:             quickSaveTask
+  };
+})();
+
+// ── Old top-level stubs removed; callers now use Internal.* ──
+
+// _getClients removed — use Internal.getClients()
 
 function getClients(token) {
   requireSession(token);
-  return _getClients();
+  return Internal.getClients();
 }
 
-function createClient(payload) {
+// FIX 2 — admin-only gate added
+function createClient(payload, token) {
   try {
+    requireAdmin(token);
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -659,8 +1155,10 @@ function createClient(payload) {
   }
 }
 
-function updateClient(id, fields) {
+// FIX 2 — admin-only gate added
+function updateClient(id, fields, token) {
   try {
+    requireAdmin(token);
     var s = getSheet('clients');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -678,32 +1176,17 @@ function updateClient(id, fields) {
   }
 }
 
-// Internal worker — no auth. Called by expandTask and searchTasks.
-function _getCategories() {
-  return cachedRead('categories', 600, function() {
-    try {
-      var s = getSheet('categories');
-      if (!s) return [];
-      var data = s.getDataRange().getValues();
-      var result = [];
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][3] === false || data[i][3] === 'FALSE') continue;
-        result.push({ id: data[i][0], name: data[i][1], iconEmoji: data[i][2], isActive: data[i][3] });
-      }
-      return result;
-    } catch(e) {
-      throw new Error('_getCategories: ' + e.message);
-    }
-  });
-}
+// _getCategories removed — use Internal.getCategories()
 
 function getCategories(token) {
   requireSession(token);
-  return _getCategories();
+  return Internal.getCategories();
 }
 
-function createCategory(payload) {
+// FIX 2 — admin-only gate added
+function createCategory(payload, token) {
   try {
+    requireAdmin(token);
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -719,8 +1202,10 @@ function createCategory(payload) {
   }
 }
 
-function updateCategory(id, fields) {
+// FIX 2 — admin-only gate added
+function updateCategory(id, fields, token) {
   try {
+    requireAdmin(token);
     var s = getSheet('categories');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -796,15 +1281,15 @@ function parseAssigneeIds(val) {
 
 function expandTask(task) {
   // Expand client
-  var clients = _getClients();
+  var clients = Internal.getClients();
   task.client = clients.find(function(c) { return c.id === task.clientId; }) || null;
 
   // Expand category
-  var cats = _getCategories();
+  var cats = Internal.getCategories();
   task.category = cats.find(function(c) { return c.id === task.categoryId; }) || null;
 
   // Expand assignees (id+name+avatar+avatarColor+status — needed for presence dot)
-  var allUsers = _getUsers();
+  var allUsers = Internal.getUsers();
   task.assignees = (task.assigneeIds || []).map(function(uid) {
     var u = allUsers.find(function(x) { return x.id === uid; });
     return u ? {
@@ -826,147 +1311,18 @@ function priorityRank(p) {
 
 // ── Read functions ──────────────────────────────────────────
 
-// Internal worker — no auth. Called by getMyDayTasks, getSharedPoolTasks, getDailyPlan,
-// getTeamStatus, getTeamTasks, filterTeamTasks, getTeamBoard, getTeamTimeline, getKpiData,
-// getTeamStats, getAdminStats, getWorkloadByUser, getHoursByClient, getTeamProductivity,
-// getTimeReport, searchTasks, sendDueSoonNotifications, checkTimerWarnings (via _getTask),
-// scheduleNextRecurrence (via _getTask).
-function _getTasks(filters) {
-  try {
-    filters = filters || {};
-    var s = getSheet('tasks');
-    var data = s.getDataRange().getValues();
-    var tasks = [];
-
-    // Pre-load lookup tables ONCE — cached via CacheService for 600s
-    var clients = _getClients();
-    var cats = _getCategories();
-    var allUsers = getUsersStatic();
-
-    function expandFast(task) {
-      task.client = clients.find(function(c){ return c.id === task.clientId; }) || null;
-      task.category = cats.find(function(c){ return c.id === task.categoryId; }) || null;
-      task.assignees = (task.assigneeIds || []).map(function(uid){
-        var u = allUsers.find(function(x){ return x.id === uid; });
-        return u ? {
-          id: u.id,
-          name: u.name,
-          avatar: u.avatar || null,
-          avatarColor: u.avatarColor || u.color || null,
-          status: u.status || 'offline'
-        } : null;
-      }).filter(Boolean);
-      return task;
-    }
-
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (!row[0]) continue;
-      var status = row[6];
-      if (status === 'deleted') continue;
-      if (status === 'archived' && !filters.includeArchived) continue;
-
-      var task = rowToTask(row);
-
-      // Team view: all tasks
-      if (filters.teamView) {
-        tasks.push(expandFast(task));
-        continue;
-      }
-
-      // User-specific
-      if (filters.userId || filters.assignedTo) {
-        var uid = filters.userId || filters.assignedTo;
-        var assigneeIds = task.assigneeIds || [];
-        if (assigneeIds.indexOf(uid) === -1 && task.createdBy !== uid) continue;
-      }
-
-      // Filters
-      if (filters.status && filters.status.length > 0) {
-        if (filters.status.indexOf(status) === -1) continue;
-      }
-      if (filters.clientId && task.clientId !== filters.clientId) continue;
-      if (filters.isShared !== undefined && task.isShared !== filters.isShared) continue;
-      if (filters.dateFrom && task.dueDate && task.dueDate < filters.dateFrom) continue;
-      if (filters.dateTo && task.dueDate && task.dueDate > filters.dateTo) continue;
-
-      tasks.push(expandFast(task));
-    }
-
-    // Sort: priority rank asc, then dueDate asc, then createdAt desc
-    tasks.sort(function(a, b) {
-      var pa = priorityRank(a.priority), pb = priorityRank(b.priority);
-      if (pa !== pb) return pa - pb;
-      if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
-      return a.createdAt > b.createdAt ? -1 : 1;
-    });
-
-    return tasks;
-  } catch(e) {
-    throw new Error('_getTasks: ' + e.message);
-  }
-}
+// _getTasks removed as top-level — now Internal.getTasks()
 
 function getTasks(filters, token) {
   requireSession(token);
-  return _getTasks(filters);
+  return Internal.getTasks(filters);
 }
 
-// Internal worker — no auth. Called by getActiveTimer, checkTimerWarnings,
-// scheduleNextRecurrence, toggleChecklistItem, addChecklistItem, deleteChecklistItem,
-// uploadTaskPhoto, getTaskAttachments, shareToWhatsApp.
-function _getTask(taskId) {
-  try {
-    var s = getSheet('tasks');
-    var data = s.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0] === taskId) {
-        var task = expandTask(rowToTask(data[i]));
-
-        // Full time_log
-        var tl = getSheet('time_log');
-        var tlData = tl ? tl.getDataRange().getValues() : [[]];
-        task.timeLogs = [];
-        for (var j = 1; j < tlData.length; j++) {
-          if (tlData[j][1] === taskId) {
-            task.timeLogs.push({
-              id: tlData[j][0], taskId: tlData[j][1], userId: tlData[j][2],
-              startedAt: tlData[j][3] ? tlData[j][3].toString() : '',
-              stoppedAt: tlData[j][4] ? tlData[j][4].toString() : '',
-              durationSeconds: tlData[j][5],
-              lastHeartbeat: tlData[j][6] ? tlData[j][6].toString() : ''
-            });
-          }
-        }
-
-        // Last 20 activity
-        var act = getSheet('activity');
-        var actData = act ? act.getDataRange().getValues() : [[]];
-        task.activity = [];
-        for (var k = 1; k < actData.length; k++) {
-          if (actData[k][1] === taskId) {
-            task.activity.push({
-              id: actData[k][0], userId: actData[k][2], action: actData[k][3],
-              detail: actData[k][4], createdAt: actData[k][5] ? actData[k][5].toString() : ''
-            });
-          }
-        }
-        task.activity = task.activity.slice(-20).reverse();
-
-        return task;
-      }
-    }
-    throw new Error('Task not found');
-  } catch(e) {
-    throw new Error('_getTask: ' + e.message);
-  }
-}
+// _getTask removed as top-level — now Internal.getTask()
 
 function getTask(taskId, token) {
   requireSession(token);
-  return _getTask(taskId);
+  return Internal.getTask(taskId);
 }
 
 // Aliases used in manifest and screens
@@ -976,86 +1332,14 @@ function addUser(payload, token) { return createUser(payload, token); }
 
 // ── Write functions ─────────────────────────────────────────
 
-// Internal worker — creates a task from a fully-resolved payload (no token).
-// Used by scheduleNextRecurrence, seedDemoData, addPlanItem (which supply userId directly).
-function _createTask(payload) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
-  try {
-    var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
-    var taskStatus = payload.status || 'todo';
-    if (VALID_STATUSES.indexOf(taskStatus) === -1) {
-      throw new Error('Invalid status: ' + taskStatus);
-    }
-    var id = newId();
-    var ts = now();
-    var s = getSheet('tasks');
-    s.appendRow([
-      id,
-      payload.title,
-      payload.description || '',
-      payload.clientId || '',
-      payload.categoryId || '',
-      payload.priority || 'medium',
-      taskStatus,
-      (payload.assigneeIds || []).join(','),
-      payload.createdBy || '',
-      ts,
-      payload.dueDate || '',
-      payload.scheduledTime || '',
-      payload.isShared ? true : false,
-      '',  // claimed_by
-      '',  // claimed_at
-      payload.estimatedMinutes || '',
-      payload.checklist ? JSON.stringify(payload.checklist) : '',
-      payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-      ts,  // updated_at
-      '',  // archived_at
-      payload.requiresPhoto ? true : false  // requires_photo
-    ]);
-
-    logActivity(id, payload.createdBy, 'created', payload.title);
-
-    // Notify assignees
-    (payload.assigneeIds || []).forEach(function(uid) {
-      if (uid !== payload.createdBy) {
-        var creator = getUserById(payload.createdBy);
-        createNotification(uid, 'assigned', id,
-          (creator ? creator.name : 'Someone') + ' assigned you: ' + payload.title);
-      }
-    });
-
-    // Notify all active users if shared
-    if (payload.isShared) {
-      _getUsers().forEach(function(u) {
-        createNotification(u.id, 'assigned', id, 'New shared task: ' + payload.title);
-      });
-    }
-
-    return expandTask(rowToTask([
-      id, payload.title, payload.description || '',
-      payload.clientId || '', payload.categoryId || '',
-      payload.priority || 'medium', taskStatus,
-      (payload.assigneeIds || []).join(','), payload.createdBy || '',
-      ts, payload.dueDate || '', payload.scheduledTime || '',
-      payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
-      payload.checklist ? JSON.stringify(payload.checklist) : '',
-      payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-      ts, '', payload.requiresPhoto ? true : false
-    ]));
-  } catch(e) {
-    throw new Error('_createTask: ' + e.message);
-  } finally {
-    lock.releaseLock();
-  }
-}
+// _createTask removed as top-level — now Internal.createTask()
 
 // Client-facing createTask: resolves createdBy from token.
 function createTask(payload, token) {
   var sess = requireSession(token);
   payload = Object.assign({}, payload);
   payload.createdBy = sess.userId;
-  return _createTask(payload);
+  return Internal.createTask(payload);
 }
 
 function saveTask(taskData, token) {
@@ -1070,20 +1354,13 @@ function saveTask(taskData, token) {
   }
 }
 
-// Server-side/admin helper — bypasses token auth intentionally
-function quickSaveTask(title, clientId, priority, scheduledTime, isShared) {
-  return _createTask({
-    title: title, clientId: clientId, priority: priority || 'medium',
-    scheduledTime: scheduledTime, isShared: isShared || false,
-    createdBy: Session.getActiveUser().getEmail() || 'system',
-    status: 'todo', assigneeIds: []
-  });
-}
+// quickSaveTask removed as top-level — now lives only in Internal.quickSaveTask
+// (not callable via google.script.run)
 
 function quickAddTask(payload, token) {
   try {
     var sess = requireSession(token);
-    return _createTask({
+    return Internal.createTask({
       title: payload.title,
       clientId: payload.clientId || '',
       priority: payload.priority || 'medium',
@@ -1102,87 +1379,7 @@ function quickAddTask(payload, token) {
 // Alias
 function quickCreateTask(payload, token) { return quickAddTask(payload, token); }
 
-// FIX A — internal worker: performs the actual sheet write with NO authz check.
-// Use this for backend-to-backend calls (startTimer, claimTask, unclaimTask,
-// scheduleNextRecurrence, archiveOldDoneTasks, deferTask) that must not be blocked.
-function _updateTaskFields(taskId, fields) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
-  try {
-    var s = getSheet('tasks');
-    var data = s.getDataRange().getValues();
-    var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
-
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0] !== taskId) continue;
-      var oldRow = data[i];
-      var oldStatus = oldRow[6];
-
-      if (fields.status !== undefined && VALID_STATUSES.indexOf(fields.status) === -1) {
-        throw new Error('Invalid status: ' + fields.status);
-      }
-
-      // tasks columns (1-indexed in sheet):
-      // id=1, title=2, description=3, client_id=4, category_id=5, priority=6, status=7,
-      // assignee_ids=8, created_by=9, created_at=10, due_date=11, scheduled_time=12,
-      // is_shared=13, claimed_by=14, claimed_at=15, estimated_minutes=16, checklist=17,
-      // recurrence=18, updated_at=19, archived_at=20, requires_photo=21
-
-      // requiresPhoto enforcement chokepoint: all done-transitions pass through here.
-      if (fields.status === 'done' && oldStatus !== 'done') {
-        var requiresPhoto = oldRow[20] === true || oldRow[20] === 'TRUE';
-        if (requiresPhoto) {
-          var attSheet = getSheet('attachments');
-          var attData = attSheet ? attSheet.getDataRange().getValues() : [[]];
-          var hasImage = false;
-          for (var ai = 1; ai < attData.length; ai++) {
-            if (attData[ai][1] === taskId) {
-              var kind = String(attData[ai][5] || '').toLowerCase();
-              if (kind === 'photo' || kind === 'image') { hasImage = true; break; }
-            }
-          }
-          if (!hasImage) {
-            throw new Error('A completion photo is required before marking this task done');
-          }
-        }
-      }
-
-      if (fields.title !== undefined) s.getRange(i + 1, 2).setValue(fields.title);
-      if (fields.description !== undefined) s.getRange(i + 1, 3).setValue(fields.description);
-      if (fields.clientId !== undefined) s.getRange(i + 1, 4).setValue(fields.clientId);
-      if (fields.categoryId !== undefined) s.getRange(i + 1, 5).setValue(fields.categoryId);
-      if (fields.priority !== undefined) s.getRange(i + 1, 6).setValue(fields.priority);
-      if (fields.status !== undefined) {
-        s.getRange(i + 1, 7).setValue(fields.status);
-        if (fields.status !== oldStatus) {
-          logActivity(taskId, '', 'status_changed', oldStatus + '→' + fields.status);
-          if (fields.status === 'done' && oldRow[17]) {
-            scheduleNextRecurrence(taskId);
-          }
-        }
-      }
-      if (fields.assigneeIds !== undefined) s.getRange(i + 1, 8).setValue(fields.assigneeIds.join(','));
-      if (fields.dueDate !== undefined) s.getRange(i + 1, 11).setValue(fields.dueDate);
-      if (fields.scheduledTime !== undefined) s.getRange(i + 1, 12).setValue(fields.scheduledTime);
-      if (fields.isShared !== undefined) s.getRange(i + 1, 13).setValue(fields.isShared);
-      if (fields.claimedBy !== undefined) s.getRange(i + 1, 14).setValue(fields.claimedBy);
-      if (fields.claimedAt !== undefined) s.getRange(i + 1, 15).setValue(fields.claimedAt);
-      if (fields.estimatedMinutes !== undefined) s.getRange(i + 1, 16).setValue(fields.estimatedMinutes);
-      if (fields.checklist !== undefined) s.getRange(i + 1, 17).setValue(JSON.stringify(fields.checklist));
-      if (fields.recurrence !== undefined) s.getRange(i + 1, 18).setValue(fields.recurrence ? JSON.stringify(fields.recurrence) : '');
-      if (fields.requiresPhoto !== undefined) s.getRange(i + 1, 21).setValue(fields.requiresPhoto ? true : false);
-
-      s.getRange(i + 1, 19).setValue(now()); // updated_at
-
-      return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 21).getValues()[0]));
-    }
-    throw new Error('Task not found: ' + taskId);
-  } catch(e) {
-    throw new Error('_updateTaskFields: ' + e.message);
-  } finally {
-    lock.releaseLock();
-  }
-}
+// _updateTaskFields removed as top-level — now Internal.updateTaskFields()
 
 // Client-facing updateTask: resolves identity from token.
 function updateTask(taskId, fields, token) {
@@ -1205,7 +1402,7 @@ function updateTask(taskId, fields, token) {
         throw new Error('Not authorized to update this task');
       }
 
-      return _updateTaskFields(taskId, fields);
+      return Internal.updateTaskFields(taskId, fields);
     }
     throw new Error('Task not found: ' + taskId);
   } catch(e) {
@@ -1239,8 +1436,10 @@ function deleteTask(taskId, token) {
   }
 }
 
-function deferTask(taskId) {
+// FIX 2 — session gate added
+function deferTask(taskId, token) {
   try {
+    requireSession(token);
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -1258,7 +1457,27 @@ function deferTask(taskId) {
   }
 }
 
+// ── FIX 3: Trigger rate-limit guard ─────────────────────────
+// Returns true if the named trigger ran less than minGapMs ago (client spam).
+// Uses Script Properties for persistence across executions.
+function _triggerRateLimited(fnName, minGapMs) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var key = fnName + '_last_run';
+    var last = props.getProperty(key);
+    var nowMs = Date.now();
+    if (last && (nowMs - parseInt(last)) < minGapMs) return true;
+    props.setProperty(key, String(nowMs));
+    return false;
+  } catch(e) {
+    return false; // fail-open: let the trigger run if properties unavailable
+  }
+}
+
+var TRIGGER_MIN_GAP_MS = 5 * 60 * 1000; // 5 minutes
+
 function archiveOldDoneTasks() {
+  if (_triggerRateLimited('archiveOldDoneTasks', TRIGGER_MIN_GAP_MS)) return;
   try {
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
@@ -1286,77 +1505,31 @@ function archiveOldDoneTasks() {
 
 // ── My Day ──────────────────────────────────────────────────
 
-function _getMyDayTasks(userIdOrName) {
-  try {
-    var today = todayStr();
-    // Resolve to a user: try by ID first, then by name
-    var resolvedUser = getUserById(userIdOrName);
-    if (!resolvedUser) {
-      var allUsers = getUsersStatic();
-      resolvedUser = allUsers.filter(function(u) {
-        return u.name === userIdOrName;
-      })[0] || null;
-    }
-    var resolvedId = resolvedUser ? resolvedUser.id : null;
-    var allTasks = _getTasks({});
-    return allTasks.filter(function(t) {
-      if (t.status === 'done' || t.status === 'deleted' || t.status === 'archived') return false;
-      var ids = t.assigneeIds || []; // FIX F — already a parsed array from rowToTask; no re-serialization needed
-      var isAssigned = resolvedId
-        ? ids.indexOf(resolvedId) !== -1
-        : false;
-      if (!isAssigned) return false;
-      return !t.dueDate || t.dueDate <= today;
-    });
-  } catch(e) {
-    throw new Error('_getMyDayTasks: ' + e.message);
-  }
-}
+// _getMyDayTasks / _getSharedPoolTasks removed — use Internal.*
 
 function getMyDayTasks(userIdOrName, token) {
   requireSession(token);
-  return _getMyDayTasks(userIdOrName);
-}
-
-function _getSharedPoolTasks() {
-  try {
-    return _getTasks({ isShared: true }).filter(function(t) {
-      return t.status !== 'done' && t.status !== 'deleted' && t.status !== 'archived' && !t.claimedBy;
-    });
-  } catch(e) {
-    throw new Error('_getSharedPoolTasks: ' + e.message);
-  }
+  return Internal.getMyDayTasks(userIdOrName);
 }
 
 function getSharedPoolTasks(token) {
   requireSession(token);
-  return _getSharedPoolTasks();
+  return Internal.getSharedPoolTasks();
 }
 
 // ── Daily Plan ───────────────────────────────────────────────
 
-function _getDailyPlan(userId, date) {
-  try {
-    var planDate = date || todayStr();
-    var allTasks = _getTasks({ userId: userId });
-    var today = todayStr();
-    return allTasks.filter(function(t) {
-      if (t.status === 'deleted' || t.status === 'archived') return false;
-      return !t.dueDate || t.dueDate <= planDate;
-    });
-  } catch(e) {
-    throw new Error('_getDailyPlan: ' + e.message);
-  }
-}
+// _getDailyPlan removed — use Internal.getDailyPlan()
 
 function getDailyPlan(userId, date, token) {
   requireSession(token);
-  return _getDailyPlan(userId, date);
+  return Internal.getDailyPlan(userId, date);
 }
 
-// Alias for manifest
-function getDailyPlanForScreen() {
-  return _getDailyPlan(Session.getActiveUser().getEmail(), todayStr());
+// getDailyPlanForScreen — gated with session via token parameter (FIX 2)
+function getDailyPlanForScreen(token) {
+  var sess = requireSession(token);
+  return Internal.getDailyPlan(sess.userId, todayStr());
 }
 
 function beginMyDay(token) {
@@ -1375,7 +1548,7 @@ function addPlanItem(payload, token) {
   try {
     var sess = requireSession(token);
     var userId = sess.userId;
-    return _createTask({
+    return Internal.createTask({
       title: payload.text,
       assigneeIds: [userId],
       createdBy: userId,
@@ -1404,56 +1577,12 @@ function updatePlanItem(itemId, fields, token) {
 //  TIMER
 // ============================================================
 
-// Internal timer starter — takes a resolved userId directly.
-// Used by claimTask (which already has uid from session) to avoid double-token resolution.
-function _startTimerForUser(taskId, uid) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(15000);
-  try {
-    var tl = getSheet('time_log');
-    var tlData = tl.getDataRange().getValues();
-    var nowStr = now();
-
-    // MULTI-TIMER MODE: do NOT auto-close other timers.
-    // Only refuse if THIS task already has an open timer for THIS user.
-    for (var i = 1; i < tlData.length; i++) {
-      if (tlData[i][1] === taskId && tlData[i][2] === uid && !tlData[i][4]) {
-        return { logId: tlData[i][0], startedAt: tlData[i][3] ? tlData[i][3].toString() : nowStr, taskId: taskId, alreadyRunning: true };
-      }
-    }
-
-    // Shared-task claim check (direct row scan)
-    var ts = getSheet('tasks');
-    var tData = ts.getDataRange().getValues();
-    var isShared = false, claimedBy = '';
-    for (var j = 1; j < tData.length; j++) {
-      if (tData[j][0] === taskId) {
-        isShared = tData[j][12] === true || tData[j][12] === 'TRUE';
-        claimedBy = tData[j][13];
-        break;
-      }
-    }
-    if (isShared && claimedBy && claimedBy !== uid) {
-      return { error: 'not_claimed' };
-    }
-
-    var logId = newId();
-    tl.appendRow([logId, taskId, uid, nowStr, '', '', nowStr]);
-    try { _updateTaskFields(taskId, { status: 'in-progress' }); } catch(e) {}
-    try { logActivity(taskId, uid, 'timer_started', ''); } catch(e) {}
-
-    return { logId: logId, startedAt: nowStr, taskId: taskId };
-  } catch(e) {
-    throw new Error('_startTimerForUser: ' + e.message);
-  } finally {
-    lock.releaseLock();
-  }
-}
+// _startTimerForUser removed as top-level — now Internal.startTimerForUser()
 
 // Client-facing startTimer: token in place of userId.
 function startTimer(taskId, token) {
   var sess = requireSession(token);
-  return _startTimerForUser(taskId, sess.userId);
+  return Internal.startTimerForUser(taskId, sess.userId);
 }
 
 // Return ALL open timers for the user — supports multi-timer rendering
@@ -1512,7 +1641,7 @@ function stopTimer(logId, token, markDone) {
       var taskId = tlData[i][1];
       var task = null;
       if (markDone) {
-        task = _updateTaskFields(taskId, { status: 'done', claimedBy: '', claimedAt: '' }); // FIX A — internal call
+        task = Internal.updateTaskFields(taskId, { status: 'done', claimedBy: '', claimedAt: '' }); // FIX A — internal call
       }
       logActivity(taskId, uid, 'timer_stopped', duration + 's');
 
@@ -1555,7 +1684,7 @@ function getActiveTimer(userId, token) {
       // Get task title
       var title = '';
       try {
-        var t = _getTask(taskId);
+        var t = Internal.getTask(taskId);
         title = t.title;
       } catch(ex) {}
 
@@ -1593,6 +1722,7 @@ function heartbeatTimer(logId, token) {
 }
 
 function checkTimerWarnings() {
+  if (_triggerRateLimited('checkTimerWarnings', TRIGGER_MIN_GAP_MS)) return;
   try {
     var tl = getSheet('time_log');
     if (!tl) return;
@@ -1610,7 +1740,7 @@ function checkTimerWarnings() {
       var userId = tlData[i][2];
       var taskId = tlData[i][1];
       var title = '';
-      try { title = _getTask(taskId).title; } catch(e) {}
+      try { title = Internal.getTask(taskId).title; } catch(e) {}
 
       createNotification(userId, 'timer_warning', taskId,
         'Timer running >' + warnHours + 'h on: ' + title);
@@ -1657,7 +1787,7 @@ function claimTask(taskId, token) {
       lock.releaseLock();
 
       // Start timer — use internal worker (uid already resolved from session)
-      var timerResult = _startTimerForUser(taskId, uid);
+      var timerResult = Internal.startTimerForUser(taskId, uid);
       return { success: true, logId: timerResult.logId, startedAt: timerResult.startedAt };
     }
     throw new Error('Task not found');
@@ -1713,7 +1843,7 @@ function unclaimTask(taskId, token) {
 function getTeamStatus(token) {
   requireSession(token);
   try {
-    var users = _getUsers();
+    var users = Internal.getUsers();
     var nowDate = new Date();
     var twoMin = 2 * 60 * 1000;
     var tenMin = 10 * 60 * 1000;
@@ -1721,7 +1851,7 @@ function getTeamStatus(token) {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
-    var tasks = _getTasks({ teamView: true });
+    var tasks = Internal.getTasks({ teamView: true });
 
     return users.map(function(u) {
       var lastSeen = u.lastSeenAt ? new Date(u.lastSeenAt) : null;
@@ -1773,7 +1903,7 @@ function getTeamTasks(options, token) {
   requireSession(token);
   try {
     options = options || {};
-    var tasks = _getTasks({ teamView: true });
+    var tasks = Internal.getTasks({ teamView: true });
 
     if (options.weekOffset !== undefined) {
       var base = new Date();
@@ -1798,7 +1928,7 @@ function getTeamTasks(options, token) {
 function filterTeamTasks(filter, token) {
   requireSession(token);
   try {
-    var all = _getTasks({ teamView: true });
+    var all = Internal.getTasks({ teamView: true });
     if (!filter || filter === 'all') return all;
     return all.filter(function(t) {
       if (filter === 'shared') return t.isShared;
@@ -1815,8 +1945,8 @@ function filterTeamTasks(filter, token) {
 function getTeamBoard(token) {
   requireSession(token);
   try {
-    var users = _getUsers();
-    var tasks = _getTasks({ teamView: true });
+    var users = Internal.getUsers();
+    var tasks = Internal.getTasks({ teamView: true });
 
     var members = users.map(function(u) {
       var myTasks = tasks.filter(function(t) {
@@ -1841,8 +1971,8 @@ function getTeamTimeline(date, token) {
   requireSession(token);
   try {
     var targetDate = date || todayStr();
-    var tasks = _getTasks({ teamView: true });
-    var users = _getUsers();
+    var tasks = Internal.getTasks({ teamView: true });
+    var users = Internal.getUsers();
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
@@ -1901,54 +2031,11 @@ function getTeamTimeline(date, token) {
 //  KPI & REPORTS
 // ============================================================
 
+// FIX 4 — single implementation; delegates to Internal.getKpiData
 function getKpiData(options, token) {
   requireSession(token);
   try {
-    options = options || {};
-    var tasks = _getTasks({ teamView: true });
-
-    var filtered = tasks;
-    if (options.from) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate >= options.from; });
-    if (options.to) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate <= options.to; });
-
-    var today = todayStr();
-    var total = filtered.length;
-    var done = filtered.filter(function(t) { return t.status === 'done' || t.status === 'archived'; }).length;
-    var overdue = filtered.filter(function(t) {
-      return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
-    }).length;
-
-    var byAssignee = {};
-    var byPriority = { urgent: 0, high: 0, medium: 0, low: 0 };
-
-    filtered.forEach(function(t) {
-      (t.assigneeIds || []).forEach(function(uid) {
-        if (!byAssignee[uid]) byAssignee[uid] = { total: 0, done: 0, name: '' };
-        byAssignee[uid].total++;
-        if (t.status === 'done') byAssignee[uid].done++;
-      });
-      if (byPriority[t.priority] !== undefined) byPriority[t.priority]++;
-    });
-
-    var users = _getUsers();
-    var byAssigneeArr = Object.keys(byAssignee).map(function(uid) {
-      var u = users.find(function(x) { return x.id === uid; });
-      return {
-        userId: uid,
-        name: u ? u.name : uid,
-        total: byAssignee[uid].total,
-        done: byAssignee[uid].done
-      };
-    });
-
-    return {
-      totalTasks: total,
-      doneTasks: done,
-      overdueTasks: overdue,
-      byAssignee: byAssigneeArr,
-      byPriority: byPriority,
-      completionRate: total > 0 ? Math.round((done / total) * 100) : 0
-    };
+    return Internal.getKpiData(options);
   } catch(e) {
     throw new Error('getKpiData: ' + e.message);
   }
@@ -1972,44 +2059,16 @@ function getKpiByFilter(period, token) {
     from = null;
   }
 
-  return _getKpiDataInternal({ from: from, to: to });
+  return Internal.getKpiData({ from: from, to: to });
 }
 
-function _getKpiDataInternal(options) {
-  options = options || {};
-  var tasks = _getTasks({ teamView: true });
-  var filtered = tasks;
-  if (options.from) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate >= options.from; });
-  if (options.to) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate <= options.to; });
-  var today = todayStr();
-  var total = filtered.length;
-  var done = filtered.filter(function(t) { return t.status === 'done' || t.status === 'archived'; }).length;
-  var overdue = filtered.filter(function(t) {
-    return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
-  }).length;
-  var byAssignee = {};
-  var byPriority = { urgent: 0, high: 0, medium: 0, low: 0 };
-  filtered.forEach(function(t) {
-    (t.assigneeIds || []).forEach(function(uid) {
-      if (!byAssignee[uid]) byAssignee[uid] = { total: 0, done: 0 };
-      byAssignee[uid].total++;
-      if (t.status === 'done') byAssignee[uid].done++;
-    });
-    if (byPriority[t.priority] !== undefined) byPriority[t.priority]++;
-  });
-  var users = _getUsers();
-  var byAssigneeArr = Object.keys(byAssignee).map(function(uid) {
-    var u = users.find(function(x) { return x.id === uid; });
-    return { userId: uid, name: u ? u.name : uid, total: byAssignee[uid].total, done: byAssignee[uid].done };
-  });
-  return { totalTasks: total, doneTasks: done, overdueTasks: overdue, byAssignee: byAssigneeArr, byPriority: byPriority, completionRate: total > 0 ? Math.round((done / total) * 100) : 0 };
-}
+// _getKpiDataInternal removed — use Internal.getKpiData() (FIX 4: deduplication)
 
 function getTeamStats(token) {
   requireSession(token);
   try {
-    var users = _getUsers();
-    var tasks = _getTasks({ teamView: true });
+    var users = Internal.getUsers();
+    var tasks = Internal.getTasks({ teamView: true });
     var today = todayStr();
 
     var byStatus = { todo: 0, 'in-progress': 0, done: 0 };
@@ -2035,7 +2094,7 @@ function getTeamStats(token) {
 function getAdminStats(token) {
   requireSession(token);
   try {
-    var tasks = _getTasks({ teamView: true });
+    var tasks = Internal.getTasks({ teamView: true });
     var today = todayStr();
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
@@ -2059,8 +2118,8 @@ function getAdminStats(token) {
 function getWorkloadByUser(token) {
   requireSession(token);
   try {
-    var users = _getUsers();
-    var tasks = _getTasks({ teamView: true });
+    var users = Internal.getUsers();
+    var tasks = Internal.getTasks({ teamView: true });
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
@@ -2099,8 +2158,8 @@ function getHoursByClient(token) {
   try {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
-    var tasks = _getTasks({ teamView: true });
-    var clients = _getClients();
+    var tasks = Internal.getTasks({ teamView: true });
+    var clients = Internal.getClients();
 
     var byClient = {};
     for (var j = 1; j < tlData.length; j++) {
@@ -2127,8 +2186,8 @@ function getHoursByClient(token) {
 function getTeamProductivity(token) {
   requireSession(token);
   try {
-    var users = _getUsers();
-    var tasks = _getTasks({ teamView: true });
+    var users = Internal.getUsers();
+    var tasks = Internal.getTasks({ teamView: true });
     var today = todayStr();
 
     return users.map(function(u) {
@@ -2154,9 +2213,9 @@ function getTimeReport(filters, token) {
     filters = filters || {};
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
-    var tasks = _getTasks({ teamView: true, includeArchived: true });
-    var clients = _getClients();
-    var users = _getUsers();
+    var tasks = Internal.getTasks({ teamView: true, includeArchived: true });
+    var clients = Internal.getClients();
+    var users = Internal.getUsers();
 
     var logs = [];
     for (var j = 1; j < tlData.length; j++) {
@@ -2215,9 +2274,9 @@ function searchTasks(query, token) {
   requireSession(token);
   try {
     var q = (query || '').toLowerCase();
-    var tasks = _getTasks({ teamView: true });
-    var clients = _getClients();
-    var cats = _getCategories();
+    var tasks = Internal.getTasks({ teamView: true });
+    var clients = Internal.getClients();
+    var cats = Internal.getCategories();
 
     return tasks.filter(function(t) {
       if (t.title && t.title.toLowerCase().indexOf(q) !== -1) return true;
@@ -2339,9 +2398,10 @@ function createNotification(userId, type, taskId, message) {
 }
 
 function sendDueSoonNotifications() {
+  if (_triggerRateLimited('sendDueSoonNotifications', TRIGGER_MIN_GAP_MS)) return;
   try {
     var today = todayStr();
-    var tasks = _getTasks({ teamView: true });
+    var tasks = Internal.getTasks({ teamView: true });
 
     tasks.forEach(function(t) {
       if (t.status === 'done' || t.status === 'archived' || t.status === 'deleted') return;
@@ -2384,7 +2444,7 @@ function addComment(taskId, commentText, token) {
     }
 
     if (mentions.length > 0) {
-      var users = _getUsers();
+      var users = Internal.getUsers();
       mentions.forEach(function(name) {
         var mentioned = users.find(function(u) { return u.name.toLowerCase() === name.toLowerCase(); });
         if (mentioned) {
@@ -2403,7 +2463,7 @@ function addComment(taskId, commentText, token) {
 function toggleChecklistItem(taskId, itemId, checked, token) {
   try {
     requireSession(token);
-    var task = _getTask(taskId);
+    var task = Internal.getTask(taskId);
     var checklist = task.checklist || [];
     checklist = checklist.map(function(item) {
       if (item.id === itemId) item.done = checked;
@@ -2418,7 +2478,7 @@ function toggleChecklistItem(taskId, itemId, checked, token) {
 function addChecklistItem(taskId, text, token) {
   try {
     requireSession(token);
-    var task = _getTask(taskId);
+    var task = Internal.getTask(taskId);
     var checklist = Array.isArray(task.checklist) ? task.checklist.slice() : [];
     var item = { id: newId(), text: String(text || '').trim(), done: false };
     if (!item.text) return { error: 'empty' };
@@ -2433,7 +2493,7 @@ function addChecklistItem(taskId, text, token) {
 function deleteChecklistItem(taskId, itemId, token) {
   try {
     requireSession(token);
-    var task = _getTask(taskId);
+    var task = Internal.getTask(taskId);
     var checklist = (task.checklist || []).filter(function(i) { return i.id !== itemId; });
     return updateTask(taskId, { checklist: checklist }, token);
   } catch(e) {
@@ -2441,61 +2501,17 @@ function deleteChecklistItem(taskId, itemId, token) {
   }
 }
 
-// ============================================================
-//  RECURRING TASKS
-// ============================================================
-
-function scheduleNextRecurrence(taskId) {
-  try {
-    var task = _getTask(taskId);
-    if (!task.recurrence) return;
-    var rec = task.recurrence;
-    var currentDue = task.dueDate ? new Date(task.dueDate) : new Date();
-    var nextDue = new Date(currentDue);
-
-    if (rec.type === 'daily') {
-      nextDue.setDate(nextDue.getDate() + 1);
-    } else if (rec.type === 'weekly') {
-      nextDue.setDate(nextDue.getDate() + 7);
-    } else if (rec.type === 'monthly') {
-      nextDue.setMonth(nextDue.getMonth() + 1);
-    } else {
-      return; // Unknown type
-    }
-
-    var nextDueStr = Utilities.formatDate(nextDue, getTimezone(), 'yyyy-MM-dd');
-    if (rec.ends && nextDueStr > rec.ends) return; // Past end date
-
-    _createTask({
-      title: task.title,
-      description: task.description,
-      clientId: task.clientId,
-      categoryId: task.categoryId,
-      priority: task.priority,
-      status: 'todo',
-      assigneeIds: task.assigneeIds,
-      createdBy: task.createdBy,
-      dueDate: nextDueStr,
-      scheduledTime: task.scheduledTime,
-      isShared: task.isShared,
-      estimatedMinutes: task.estimatedMinutes,
-      checklist: (task.checklist || []).map(function(item) {
-        return { id: newId(), text: item.text, done: false };
-      }),
-      recurrence: task.recurrence
-    });
-  } catch(e) {
-    // Silent — called from _updateTaskFields internally
-  }
-}
+// scheduleNextRecurrence removed as top-level — now Internal.scheduleNextRecurrence()
 
 // ============================================================
 //  WHATSAPP SHARE (client-side redirect — server just builds URL)
 // ============================================================
 
-function shareToWhatsApp(taskId) {
+// FIX 2 — session gate added
+function shareToWhatsApp(taskId, token) {
   try {
-    var task = _getTask(taskId);
+    requireSession(token);
+    var task = Internal.getTask(taskId);
     var text = '📋 *' + task.title + '*\n';
     if (task.dueDate) text += '📅 Due: ' + task.dueDate + '\n';
     if (task.priority) text += '🚨 Priority: ' + task.priority + '\n';
@@ -2514,37 +2530,7 @@ var ALLOWED_PHOTO_MIME_TYPES = ['image/jpeg','image/png','image/gif','image/webp
 // Guard: base64-encoded payload must not exceed ~10 MB (base64 ≈ 4/3 raw)
 var MAX_ATTACHMENT_B64_CHARS = 14000000; // ~10 MB raw
 
-// FIX 5 — wrap read-then-create in ScriptLock to prevent concurrent duplicate folders;
-// log a warning when a stored folder ID is no longer accessible.
-function _getOrCreateAttachmentFolder() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
-  try {
-    var folderId = getSettingValue('attachment_folder_id', '');
-    if (folderId) {
-      try { return DriveApp.getFolderById(folderId); } catch(e) {
-        console.error('_getOrCreateAttachmentFolder: stored folder ' + folderId + ' is inaccessible (' + e + '); creating replacement');
-      }
-    }
-    // Create folder
-    var folder = DriveApp.createFolder('TaskFlow Attachments');
-    // Persist folder id to settings
-    var s = getSheet('settings');
-    var sData = s.getDataRange().getValues();
-    var found = false;
-    for (var si = 1; si < sData.length; si++) {
-      if (sData[si][0] === 'attachment_folder_id') {
-        s.getRange(si + 1, 2).setValue(folder.getId());
-        found = true;
-        break;
-      }
-    }
-    if (!found) s.appendRow(['attachment_folder_id', folder.getId()]);
-    return folder;
-  } finally {
-    lock.releaseLock();
-  }
-}
+// _getOrCreateAttachmentFolder removed as top-level — now Internal.getOrCreateAttachmentFolder()
 
 function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
   try {
@@ -2558,7 +2544,7 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
     }
 
     // FIX 4 — verify caller relationship to the task (throws if task not found)
-    var task = _getTask(taskId);
+    var task = Internal.getTask(taskId);
     var isAdmin = sess.role === 'admin';
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
@@ -2574,7 +2560,7 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
     var bytes = Utilities.base64Decode(base64Data);
     var blob = Utilities.newBlob(bytes, mimeType, fileName);
 
-    var folder = _getOrCreateAttachmentFolder();
+    var folder = Internal.getOrCreateAttachmentFolder();
     var file = folder.createFile(blob);
 
     // Deliberate: ANYONE_WITH_LINK is required so photos are viewable in-app without re-auth.
@@ -2600,7 +2586,7 @@ function getTaskAttachments(taskId, token) {
   try {
     var sess = requireSession(token);
     // Load the task — throws 'Task not found' if missing
-    var task = _getTask(taskId);
+    var task = Internal.getTask(taskId);
     var isAdmin = sess.role === 'admin';
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
@@ -2636,6 +2622,7 @@ function getTaskAttachments(taskId, token) {
  * typical task volumes. The value is updated atomically under ScriptLock.
  */
 function checkEscalations() {
+  if (_triggerRateLimited('checkEscalations', TRIGGER_MIN_GAP_MS)) return;
   try {
     var enabled = getSettingValue('escalation_enabled', 'true');
     if (enabled === false || String(enabled).toLowerCase() === 'false') return;
@@ -2767,9 +2754,9 @@ function getShiftHandover(token) {
     var userMap = {};
     allUsers.forEach(function(u) { userMap[u.id] = u.name; });
 
-    // Build client name map once (avoid calling _getClients() per task)
+    // Build client name map once (avoid calling Internal.getClients() per task)
     var clientMap = {};
-    _getClients().forEach(function(c) { clientMap[c.id] = c.name; });
+    Internal.getClients().forEach(function(c) { clientMap[c.id] = c.name; });
 
     function resolveAssigneeNames(assigneeIds) {
       return (assigneeIds || []).map(function(uid) { return userMap[uid] || uid; });
@@ -2840,7 +2827,7 @@ function getShiftHandover(token) {
 // Removed myFunction() and testPing() — debug scaffolding.
 
 // FIX 1 — Restore aliases called by frontend screens and manifest.json
-function getTeamMembers(token) { requireSession(token); return _getUsers(); }
+function getTeamMembers(token) { requireSession(token); return Internal.getUsers(); }
 function getTeamPresence(token) { return getTeamStatus(token); }
 
 // ============================================================
