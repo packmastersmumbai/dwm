@@ -266,7 +266,15 @@ function loginUser(name, pin) {
       s.getRange(i + 1, 10).setValue(now()); // last_seen_at
       s.getRange(i + 1, 11, 1, 2).setValues([[0, '']]); // reset attempts + lock
 
+      var token = Utilities.getUuid();
+      CacheService.getScriptCache().put(
+        'sess_' + token,
+        JSON.stringify({ userId: row[0], role: row[4], name: row[1] }),
+        21600
+      );
+
       return {
+        token: token,
         userId: row[0],
         name: row[1],
         role: row[4],
@@ -312,7 +320,15 @@ function validatePin(userId, pin) {
       s.getRange(i + 1, 10).setValue(now());
       s.getRange(i + 1, 11, 1, 2).setValues([[0, '']]);
 
+      var token = Utilities.getUuid();
+      CacheService.getScriptCache().put(
+        'sess_' + token,
+        JSON.stringify({ userId: row[0], role: row[4], name: row[1] }),
+        21600
+      );
+
       return {
+        token: token,
         userId: row[0],
         name: row[1],
         role: row[4],
@@ -327,13 +343,9 @@ function validatePin(userId, pin) {
   }
 }
 
-function createUser(payload, requestingUserId) {
+function createUser(payload, token) {
   try {
-    // Require an existing active admin to create users
-    var requester = requestingUserId ? getUserById(requestingUserId) : null;
-    if (!requester || requester.role !== 'admin') {
-      throw new Error('Only an admin can create users');
-    }
+    requireAdmin(token);
     // FIX D — removed dead privilege-escalation block (unreachable: non-admins already threw above)
     var assignedRole = payload.role || 'member';
     var lock = LockService.getScriptLock();
@@ -359,11 +371,9 @@ function createUser(payload, requestingUserId) {
   }
 }
 
-function updateUser(userId, fields, requestingUserId) {
+function updateUser(userId, fields, token) {
   try {
-    // Verify requester is admin
-    var requester = getUserById(requestingUserId);
-    if (!requester || requester.role !== 'admin') throw new Error('Unauthorized');
+    requireAdmin(token);
 
     // FIX C — prevent removing the last admin's admin role
     if (fields.role !== undefined && fields.role !== 'admin') {
@@ -405,12 +415,9 @@ function updateUser(userId, fields, requestingUserId) {
   }
 }
 
-function removeUser(userId, requestingUserId) {
+function removeUser(userId, token) {
   try {
-    var requester = requestingUserId ? getUserById(requestingUserId) : null;
-    if (!requester || requester.role !== 'admin') {
-      throw new Error('Only an admin can remove users');
-    }
+    requireAdmin(token);
     // Prevent removing last admin
     var admins = getUsers().filter(function(u) { return u.role === 'admin'; });
     var target = getUserById(userId);
@@ -453,8 +460,10 @@ function getUserById(userId) {
   return null;
 }
 
-function pingPresence(userId) {
+function pingPresence(token) {
   try {
+    var sess = requireSession(token);
+    var userId = sess.userId;
     var s = getSheet('users');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -498,6 +507,64 @@ function cacheBust(key) {
 
 function cacheBustAll() {
   try { CacheService.getScriptCache().removeAll(['clients', 'categories', 'users']); } catch(_) {}
+}
+
+// ============================================================
+//  SESSION INFRASTRUCTURE
+// ============================================================
+
+/**
+ * Resolve a session token to {userId, role, name} or null.
+ * Re-verifies the user is still active; refreshes the sliding 6-hour expiry.
+ */
+function getSession(token) {
+  if (!token) return null;
+  var cache = CacheService.getScriptCache();
+  var key = 'sess_' + token;
+  try {
+    var hit = cache.get(key);
+    if (!hit) return null;
+    var sess = JSON.parse(hit);
+    // Verify user still exists and is active
+    var user = getUserById(sess.userId);
+    if (!user) {
+      cache.remove(key);
+      return null;
+    }
+    // Refresh sliding expiry
+    cache.put(key, JSON.stringify(sess), 21600);
+    return sess;
+  } catch(e) {
+    return null;
+  }
+}
+
+/**
+ * Returns the session object or throws if the token is invalid/expired.
+ */
+function requireSession(token) {
+  var sess = getSession(token);
+  if (!sess) throw new Error('Session expired - please log in again');
+  return sess;
+}
+
+/**
+ * Requires the caller to be an admin. Returns the session.
+ */
+function requireAdmin(token) {
+  var sess = requireSession(token);
+  if (sess.role !== 'admin') throw new Error('Admin access required');
+  return sess;
+}
+
+/**
+ * Invalidates a session token. Always returns {ok:true}.
+ */
+function logout(token) {
+  if (token) {
+    try { CacheService.getScriptCache().remove('sess_' + token); } catch(_) {}
+  }
+  return { ok: true };
 }
 
 function getClients() {
@@ -827,11 +894,13 @@ function getTask(taskId) {
 // Aliases used in manifest and screens
 function getTaskDetail(taskId) { return getTask(taskId); }
 function getTaskById(taskId) { return getTask(taskId); }
-function addUser(payload, requestingUserId) { return createUser(payload, requestingUserId); }
+function addUser(payload, token) { return createUser(payload, token); }
 
 // ── Write functions ─────────────────────────────────────────
 
-function createTask(payload) {
+// Internal worker — creates a task from a fully-resolved payload (no token).
+// Used by scheduleNextRecurrence, seedDemoData, addPlanItem (which supply userId directly).
+function _createTask(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
@@ -896,35 +965,46 @@ function createTask(payload) {
       ts, ''
     ]));
   } catch(e) {
-    throw new Error('createTask: ' + e.message);
+    throw new Error('_createTask: ' + e.message);
   } finally {
     lock.releaseLock();
   }
 }
 
-function saveTask(taskData) {
+// Client-facing createTask: resolves createdBy from token.
+function createTask(payload, token) {
+  var sess = requireSession(token);
+  payload = Object.assign({}, payload);
+  payload.createdBy = sess.userId;
+  return _createTask(payload);
+}
+
+function saveTask(taskData, token) {
   try {
     if (taskData.id) {
-      return updateTask(taskData.id, taskData, taskData.updatedBy || taskData.createdBy);
+      return updateTask(taskData.id, taskData, token);
     } else {
-      return createTask(taskData);
+      return createTask(taskData, token);
     }
   } catch(e) {
     throw new Error('saveTask: ' + e.message);
   }
 }
 
+// Server-side/admin helper — bypasses token auth intentionally
 function quickSaveTask(title, clientId, priority, scheduledTime, isShared) {
-  return quickAddTask({
+  return _createTask({
     title: title, clientId: clientId, priority: priority || 'medium',
-    scheduledTime: scheduledTime, isShared: isShared,
-    createdBy: Session.getActiveUser().getEmail() || 'system'
+    scheduledTime: scheduledTime, isShared: isShared || false,
+    createdBy: Session.getActiveUser().getEmail() || 'system',
+    status: 'todo', assigneeIds: []
   });
 }
 
-function quickAddTask(payload) {
+function quickAddTask(payload, token) {
   try {
-    return createTask({
+    var sess = requireSession(token);
+    return _createTask({
       title: payload.title,
       clientId: payload.clientId || '',
       priority: payload.priority || 'medium',
@@ -932,7 +1012,7 @@ function quickAddTask(payload) {
       dueDate: payload.dueDate || '',
       scheduledTime: payload.scheduledTime || '',
       isShared: payload.isShared || false,
-      createdBy: payload.createdBy || Session.getActiveUser().getEmail() || 'system',
+      createdBy: sess.userId,
       assigneeIds: payload.assigneeIds || []
     });
   } catch(e) {
@@ -941,7 +1021,7 @@ function quickAddTask(payload) {
 }
 
 // Alias
-function quickCreateTask(payload) { return quickAddTask(payload); }
+function quickCreateTask(payload, token) { return quickAddTask(payload, token); }
 
 // FIX A — internal worker: performs the actual sheet write with NO authz check.
 // Use this for backend-to-backend calls (startTimer, claimTask, unclaimTask,
@@ -1005,22 +1085,20 @@ function _updateTaskFields(taskId, fields) {
   }
 }
 
-// FIX A — client-facing updateTask: performs authz check then delegates to _updateTaskFields.
-// requestingUserId MUST be a UUID from the frontend session (not an email address).
-function updateTask(taskId, fields, requestingUserId) {
+// Client-facing updateTask: resolves identity from token.
+function updateTask(taskId, fields, token) {
   try {
+    var sess = requireSession(token);
+    var userId = sess.userId;
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
-    var userId = requestingUserId;
-    if (!userId) throw new Error('requestingUserId is required');
 
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] !== taskId) continue;
       var oldRow = data[i];
 
       // Authorization: requester must be creator, an assignee, or an admin
-      var requester = getUserById(userId);
-      var isAdmin = requester && requester.role === 'admin';
+      var isAdmin = sess.role === 'admin';
       var isCreator = oldRow[8] === userId;
       var existingAssignees = parseAssigneeIds(oldRow[7]);
       var isAssignee = existingAssignees.indexOf(userId) !== -1;
@@ -1036,27 +1114,27 @@ function updateTask(taskId, fields, requestingUserId) {
   }
 }
 
-// FIX A — userId param is a UUID from the frontend session; no email fallback.
-function updateTaskStatus(taskId, newStatus, userId) {
+// Client-facing updateTaskStatus: token in place of userId.
+function updateTaskStatus(taskId, newStatus, token) {
   try {
-    if (!userId) throw new Error('userId is required');
-    return updateTask(taskId, { status: newStatus }, userId);
+    requireSession(token);
+    return updateTask(taskId, { status: newStatus }, token);
   } catch(e) {
     throw new Error('updateTaskStatus: ' + e.message);
   }
 }
 
-// FIX A — userId param is a UUID from the frontend session.
-function markTaskDone(taskId, userId) {
-  return updateTaskStatus(taskId, 'done', userId);
+// Client-facing markTaskDone: token in place of userId.
+function markTaskDone(taskId, token) {
+  return updateTaskStatus(taskId, 'done', token);
 }
 
-// FIX A — userId must be a UUID from the frontend; no email fallback.
-function deleteTask(taskId, userId) {
+// Client-facing deleteTask: token in place of userId.
+function deleteTask(taskId, token) {
   try {
-    if (!userId) throw new Error('userId is required');
-    var result = updateTask(taskId, { status: 'deleted' }, userId);
-    logActivity(taskId, userId, 'deleted', '');
+    var sess = requireSession(token);
+    updateTask(taskId, { status: 'deleted' }, token);
+    logActivity(taskId, sess.userId, 'deleted', '');
     return { success: true };
   } catch(e) {
     throw new Error('deleteTask: ' + e.message);
@@ -1168,23 +1246,26 @@ function getDailyPlanForScreen() {
   return getDailyPlan(Session.getActiveUser().getEmail(), todayStr());
 }
 
-function beginMyDay(userId) {
+function beginMyDay(token) {
   try {
-    logActivity('', userId || Session.getActiveUser().getEmail(), 'begin_my_day', todayStr());
+    var sess = requireSession(token);
+    logActivity('', sess.userId, 'begin_my_day', todayStr());
     return { success: true };
   } catch(e) {
     throw new Error('beginMyDay: ' + e.message);
   }
 }
 
-function startDay(userId) { return beginMyDay(userId); }
+function startDay(token) { return beginMyDay(token); }
 
-function addPlanItem(payload) {
+function addPlanItem(payload, token) {
   try {
-    return createTask({
+    var sess = requireSession(token);
+    var userId = sess.userId;
+    return _createTask({
       title: payload.text,
-      assigneeIds: [payload.userId],
-      createdBy: payload.userId,
+      assigneeIds: [userId],
+      createdBy: userId,
       status: 'todo',
       priority: 'medium',
       dueDate: todayStr()
@@ -1194,13 +1275,13 @@ function addPlanItem(payload) {
   }
 }
 
-function updatePlanItem(itemId, fields) {
+function updatePlanItem(itemId, fields, token) {
   try {
+    requireSession(token);
     if (fields.done !== undefined) {
-      return updateTask(itemId, { status: fields.done ? 'done' : 'todo' },
-        Session.getActiveUser().getEmail());
+      return updateTask(itemId, { status: fields.done ? 'done' : 'todo' }, token);
     }
-    return updateTask(itemId, fields, Session.getActiveUser().getEmail());
+    return updateTask(itemId, fields, token);
   } catch(e) {
     throw new Error('updatePlanItem: ' + e.message);
   }
@@ -1210,11 +1291,12 @@ function updatePlanItem(itemId, fields) {
 //  TIMER
 // ============================================================
 
-function startTimer(taskId, userId) {
+// Internal timer starter — takes a resolved userId directly.
+// Used by claimTask (which already has uid from session) to avoid double-token resolution.
+function _startTimerForUser(taskId, uid) {
   var lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
     var tl = getSheet('time_log');
     var tlData = tl.getDataRange().getValues();
     var nowStr = now();
@@ -1244,15 +1326,21 @@ function startTimer(taskId, userId) {
 
     var logId = newId();
     tl.appendRow([logId, taskId, uid, nowStr, '', '', nowStr]);
-    try { _updateTaskFields(taskId, { status: 'in-progress' }); } catch(e) {} // FIX A — internal call
+    try { _updateTaskFields(taskId, { status: 'in-progress' }); } catch(e) {}
     try { logActivity(taskId, uid, 'timer_started', ''); } catch(e) {}
 
     return { logId: logId, startedAt: nowStr, taskId: taskId };
   } catch(e) {
-    throw new Error('startTimer: ' + e.message);
+    throw new Error('_startTimerForUser: ' + e.message);
   } finally {
     lock.releaseLock();
   }
+}
+
+// Client-facing startTimer: token in place of userId.
+function startTimer(taskId, token) {
+  var sess = requireSession(token);
+  return _startTimerForUser(taskId, sess.userId);
 }
 
 // Return ALL open timers for the user — supports multi-timer rendering
@@ -1274,11 +1362,12 @@ function getActiveTimers(userId) {
   return out;
 }
 
-function stopTimer(logId, userId, markDone) {
+function stopTimer(logId, token, markDone) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var tl = getSheet('time_log');
     var tlData = tl.getDataRange().getValues();
     var stoppedAt = now();
@@ -1369,9 +1458,10 @@ function getActiveTimer(userId) {
   }
 }
 
-function heartbeatTimer(logId, userId) {
+function heartbeatTimer(logId, token) {
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var tl = getSheet('time_log');
     var tlData = tl.getDataRange().getValues();
     for (var i = 1; i < tlData.length; i++) {
@@ -1419,11 +1509,12 @@ function checkTimerWarnings() {
 //  SHARED TASKS
 // ============================================================
 
-function claimTask(taskId, userId) {
+function claimTask(taskId, token) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
 
@@ -1450,8 +1541,8 @@ function claimTask(taskId, userId) {
 
       lock.releaseLock();
 
-      // Start timer
-      var timerResult = startTimer(taskId, uid);
+      // Start timer — use internal worker (uid already resolved from session)
+      var timerResult = _startTimerForUser(taskId, uid);
       return { success: true, logId: timerResult.logId, startedAt: timerResult.startedAt };
     }
     throw new Error('Task not found');
@@ -1461,11 +1552,12 @@ function claimTask(taskId, userId) {
   }
 }
 
-function unclaimTask(taskId, userId) {
+function unclaimTask(taskId, token) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
 
@@ -2018,8 +2110,9 @@ function getNotifications(userId) {
   }
 }
 
-function markNotificationRead(notifId) {
+function markNotificationRead(notifId, token) {
   try {
+    requireSession(token);
     var s = getSheet('notifications');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -2034,9 +2127,10 @@ function markNotificationRead(notifId) {
   }
 }
 
-function markAllNotificationsRead(userId) {
+function markAllNotificationsRead(token) {
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var s = getSheet('notifications');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -2050,18 +2144,13 @@ function markAllNotificationsRead(userId) {
   }
 }
 
-// Alias used in manifest
-function markAllRead(userName) {
-  try {
-    var users = getUsers();
-    var user = users.find(function(u) { return u.name === userName; });
-    return markAllNotificationsRead(user ? user.id : userName);
-  } catch(e) {
-    throw new Error('markAllRead: ' + e.message);
-  }
+// Alias — now takes token, not userName
+function markAllRead(token) {
+  return markAllNotificationsRead(token);
 }
 
-function markAllNotificationsReadByName(userName) { return markAllRead(userName); }
+// Deprecated — now takes token, not userName
+function markAllNotificationsReadByName(token) { return markAllNotificationsRead(token); }
 
 function createNotification(userId, type, taskId, message) {
   try {
@@ -2123,9 +2212,10 @@ function sendDueSoonNotifications() {
 //  COMMENTS & CHECKLIST
 // ============================================================
 
-function addComment(taskId, commentText, userId) {
+function addComment(taskId, commentText, token) {
   try {
-    var uid = userId || Session.getActiveUser().getEmail();
+    var sess = requireSession(token);
+    var uid = sess.userId;
     var user = getUserById(uid);
     var userName = user ? user.name : uid;
 
@@ -2156,40 +2246,42 @@ function addComment(taskId, commentText, userId) {
   }
 }
 
-function toggleChecklistItem(taskId, itemId, checked) {
+function toggleChecklistItem(taskId, itemId, checked, token) {
   try {
+    requireSession(token);
     var task = getTask(taskId);
     var checklist = task.checklist || [];
     checklist = checklist.map(function(item) {
       if (item.id === itemId) item.done = checked;
       return item;
     });
-    return updateTask(taskId, { checklist: checklist },
-      Session.getActiveUser().getEmail());
+    return updateTask(taskId, { checklist: checklist }, token);
   } catch(e) {
     throw new Error('toggleChecklistItem: ' + e.message);
   }
 }
 
-function addChecklistItem(taskId, text, userId) {
+function addChecklistItem(taskId, text, token) {
   try {
+    requireSession(token);
     var task = getTask(taskId);
     var checklist = Array.isArray(task.checklist) ? task.checklist.slice() : [];
     var item = { id: newId(), text: String(text || '').trim(), done: false };
     if (!item.text) return { error: 'empty' };
     checklist.push(item);
-    updateTask(taskId, { checklist: checklist }, userId || Session.getActiveUser().getEmail());
+    updateTask(taskId, { checklist: checklist }, token);
     return item;
   } catch(e) {
     throw new Error('addChecklistItem: ' + e.message);
   }
 }
 
-function deleteChecklistItem(taskId, itemId, userId) {
+function deleteChecklistItem(taskId, itemId, token) {
   try {
+    requireSession(token);
     var task = getTask(taskId);
     var checklist = (task.checklist || []).filter(function(i) { return i.id !== itemId; });
-    return updateTask(taskId, { checklist: checklist }, userId || Session.getActiveUser().getEmail());
+    return updateTask(taskId, { checklist: checklist }, token);
   } catch(e) {
     throw new Error('deleteChecklistItem: ' + e.message);
   }
@@ -2220,7 +2312,7 @@ function scheduleNextRecurrence(taskId) {
     var nextDueStr = Utilities.formatDate(nextDue, getTimezone(), 'yyyy-MM-dd');
     if (rec.ends && nextDueStr > rec.ends) return; // Past end date
 
-    createTask({
+    _createTask({
       title: task.title,
       description: task.description,
       clientId: task.clientId,
@@ -2239,7 +2331,7 @@ function scheduleNextRecurrence(taskId) {
       recurrence: task.recurrence
     });
   } catch(e) {
-    // Silent — called from updateTask internally
+    // Silent — called from _updateTaskFields internally
   }
 }
 
@@ -2267,7 +2359,10 @@ function shareToWhatsApp(taskId) {
 // Removed myFunction() per spec — only testPing() is kept (defined above).
 
 // ============================================================
-//  SEED DEMO DATA  (run once via clasp run seedDemoData)
+//  SEED DEMO DATA
+//  MUST be invoked via `clasp run seedDemoData` only — never from
+//  a web-app request.  The WIPE_AND_SEED guard is the primary
+//  safeguard; do NOT expose this function through the web UI.
 // ============================================================
 
 function seedDemoData(confirmToken) {
