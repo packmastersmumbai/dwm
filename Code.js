@@ -2977,3 +2977,99 @@ function seedDemoData(confirmToken) {
   }
 }
 
+// ============================================================
+//  ADMIN — settings read/write
+// ============================================================
+
+/**
+ * Returns all settings as a key→value object.
+ * Requires admin token.
+ */
+function getSettings(token) {
+  requireAdmin(token);
+  var s = getSheet('settings');
+  if (!s) return {};
+  var data = s.getDataRange().getValues();
+  var result = {};
+  for (var i = 1; i < data.length; i++) {
+    var k = String(data[i][0] || '').trim();
+    if (k) result[k] = data[i][1];
+  }
+  return result;
+}
+
+/**
+ * Updates one or more settings from a plain object payload.
+ * Requires admin token.
+ *
+ * Allowed keys (any other key is rejected with a generic error):
+ *   sla_urgent_hours, sla_high_hours, sla_medium_hours, sla_low_hours,
+ *   escalation_enabled, timezone, working_start, working_end,
+ *   archive_after_days, timer_warning_hours, auto_archive
+ *
+ * Numeric SLA/hours keys must be positive numbers.
+ * Busts the settings cache (if any) on success.
+ * Returns { ok: true }.
+ */
+function updateSettings(payload, token) {
+  requireAdmin(token);
+
+  var ALLOWED_KEYS = {
+    sla_urgent_hours:    'number',
+    sla_high_hours:      'number',
+    sla_medium_hours:    'number',
+    sla_low_hours:       'number',
+    timer_warning_hours: 'number',
+    working_start:       'number',
+    working_end:         'number',
+    archive_after_days:  'number',
+    escalation_enabled:  'any',
+    timezone:            'any',
+    auto_archive:        'any'
+  };
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid request');
+  }
+
+  var keys = Object.keys(payload);
+  for (var ki = 0; ki < keys.length; ki++) {
+    var k = keys[ki];
+    if (!ALLOWED_KEYS.hasOwnProperty(k)) {
+      throw new Error('Invalid request');
+    }
+    if (ALLOWED_KEYS[k] === 'number') {
+      var n = Number(payload[k]);
+      if (isNaN(n) || n <= 0) {
+        throw new Error('Invalid value for ' + k);
+      }
+    }
+  }
+
+  var s = getSheet('settings');
+  if (!s) throw new Error('Settings sheet not found');
+  var data = s.getDataRange().getValues();
+
+  // Build row-index map (1-based Sheet row = array index + 1)
+  var rowMap = {};
+  for (var i = 1; i < data.length; i++) {
+    var rk = String(data[i][0] || '').trim();
+    if (rk) rowMap[rk] = i + 1; // 1-based Sheet row
+  }
+
+  for (var ki2 = 0; ki2 < keys.length; ki2++) {
+    var key = keys[ki2];
+    var val = payload[key];
+    if (rowMap.hasOwnProperty(key)) {
+      s.getRange(rowMap[key], 2).setValue(val);
+    } else {
+      s.appendRow([key, val]);
+    }
+  }
+
+  // Bust settings cache entries used by cachedRead
+  cacheBust('settings');
+
+  return { ok: true };
+}
+
