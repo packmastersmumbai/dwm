@@ -1,0 +1,252 @@
+<div data-screen="shift-handover">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface border-b border-outline-variant shadow-sm sticky top-0 full-width">
+  <button data-ref="btn-back" class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95">
+    <span class="material-symbols-outlined">arrow_back</span>
+  </button>
+  <div class="font-title-main-mobile text-title-main-mobile font-bold text-primary">Shift Handover</div>
+  <button data-ref="btn-whatsapp" class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95" title="Share via WhatsApp">
+    <span class="material-symbols-outlined">share</span>
+  </button>
+</header>
+
+<main class="p-margin-edge space-y-5 pb-8">
+
+  <!-- Loading State -->
+  <div data-ref="loading-state" class="space-y-3 mt-2">
+    <div class="tf-skeleton h-[40px] w-2/3 rounded-lg"></div>
+    <div class="tf-skeleton h-[20px] w-1/2 rounded"></div>
+    <div class="tf-skeleton h-[72px] w-full rounded-xl mt-4"></div>
+    <div class="tf-skeleton h-[72px] w-full rounded-xl opacity-80"></div>
+    <div class="tf-skeleton h-[72px] w-full rounded-xl opacity-60"></div>
+  </div>
+
+  <!-- Content (hidden until loaded) -->
+  <div data-ref="content" class="hidden space-y-5">
+
+    <!-- Handover Meta -->
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1;">assignment_turned_in</span>
+        <span class="font-body-standard text-body-standard font-semibold text-on-surface" data-ref="meta-generated-by">—</span>
+      </div>
+      <div class="font-label-bold text-label-bold text-on-surface-variant" data-ref="meta-generated-at">—</div>
+      <!-- Count chips row -->
+      <div data-ref="count-chips" class="flex flex-wrap gap-2 mt-3"></div>
+    </div>
+
+    <!-- Section: Completed Today -->
+    <section>
+      <h2 class="font-body-standard text-body-standard font-semibold text-on-surface flex items-center gap-2 mb-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-success inline-block"></span>
+        Completed Today
+        <span data-ref="count-completed" class="ml-auto font-label-bold text-label-bold text-on-surface-variant"></span>
+      </h2>
+      <div data-ref="list-completed" class="space-y-2">
+        <div class="text-center text-on-surface-variant py-4 font-label-bold text-label-bold">None</div>
+      </div>
+    </section>
+
+    <!-- Section: Still Open -->
+    <section>
+      <h2 class="font-body-standard text-body-standard font-semibold text-on-surface flex items-center gap-2 mb-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-warning inline-block"></span>
+        Still Open
+        <span data-ref="count-open" class="ml-auto font-label-bold text-label-bold text-on-surface-variant"></span>
+      </h2>
+      <div data-ref="list-open" class="space-y-2">
+        <div class="text-center text-on-surface-variant py-4 font-label-bold text-label-bold">None</div>
+      </div>
+    </section>
+
+    <!-- Section: Blocked -->
+    <section>
+      <h2 class="font-body-standard text-body-standard font-semibold text-on-surface flex items-center gap-2 mb-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-error inline-block"></span>
+        Blocked
+        <span data-ref="count-blocked" class="ml-auto font-label-bold text-label-bold text-on-surface-variant"></span>
+      </h2>
+      <div data-ref="list-blocked" class="space-y-2">
+        <div class="text-center text-on-surface-variant py-4 font-label-bold text-label-bold">None</div>
+      </div>
+    </section>
+
+    <!-- Share via WhatsApp (bottom CTA) -->
+    <button data-ref="btn-whatsapp-bottom"
+      class="w-full h-11 bg-[#25D366] text-white rounded-lg font-label-bold text-label-bold flex items-center justify-center gap-2 hover:bg-[#1EB855] active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1;">share</span>
+      Share via WhatsApp
+    </button>
+  </div>
+
+  <!-- Error State -->
+  <div data-ref="error-state" class="hidden flex flex-col items-center justify-center py-16 gap-3 text-on-surface-variant">
+    <span class="material-symbols-outlined text-[48px] opacity-30">error_outline</span>
+    <p class="font-body-standard text-body-standard">Failed to load handover.</p>
+    <button data-ref="btn-retry" class="mt-2 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg font-label-bold text-label-bold active:scale-95 transition-transform">Retry</button>
+  </div>
+
+</main>
+</div>
+
+<script>
+(function() {
+  var PRIORITY_STYLES = {
+    urgent: 'bg-error text-on-error',
+    high:   'bg-tertiary text-on-tertiary',
+    medium: 'bg-tertiary-fixed-dim text-on-tertiary',
+    low:    'bg-secondary-container text-on-secondary-container'
+  };
+
+  function qs(screen, ref) {
+    return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  function priorityChip(priority) {
+    var p = (priority || 'low').toLowerCase();
+    var cls = PRIORITY_STYLES[p] || PRIORITY_STYLES.low;
+    return '<span class="text-[10px] font-label-bold px-2 py-0.5 rounded-full ' + cls + ' shrink-0">' + (priority || 'low') + '</span>';
+  }
+
+  function buildTaskRow(task) {
+    var assignees = Array.isArray(task.assigneeNames) ? task.assigneeNames.join(', ') : (task.assigneeNames || '');
+    var row = document.createElement('div');
+    row.className = 'bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-3 flex items-start gap-3';
+    row.innerHTML =
+      '<div class="flex-1 min-w-0">' +
+        '<div class="font-body-standard text-body-standard font-medium text-on-surface leading-snug">' + (task.title || 'Untitled') + '</div>' +
+        '<div class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">' +
+          (task.client ? task.client + (assignees ? ' · ' : '') : '') +
+          (assignees || '') +
+        '</div>' +
+      '</div>' +
+      priorityChip(task.priority);
+    return row;
+  }
+
+  function renderSection(screen, refName, tasks) {
+    var container = qs(screen, refName);
+    container.innerHTML = '';
+    if (!tasks || tasks.length === 0) {
+      container.innerHTML = '<div class="text-center text-on-surface-variant py-3 font-label-bold text-label-bold opacity-60">None</div>';
+      return;
+    }
+    tasks.forEach(function(t) {
+      container.appendChild(buildTaskRow(t));
+    });
+  }
+
+  function buildWhatsAppText(data) {
+    var lines = [];
+    lines.push('*Shift Handover Report*');
+    lines.push('_Generated by ' + (data.generatedBy || '—') + ' at ' + (data.generatedAt || '—') + '_');
+    lines.push('');
+
+    var counts = data.counts || {};
+    lines.push('Total: ' + (counts.total || 0) + ' | Done: ' + (data.completedToday || []).length + ' | Open: ' + (data.stillOpen || []).length + ' | Blocked: ' + (data.blocked || []).length);
+    lines.push('');
+
+    function addSection(label, tasks) {
+      lines.push('*' + label + ' (' + (tasks ? tasks.length : 0) + ')*');
+      (tasks || []).forEach(function(t) {
+        var assignees = Array.isArray(t.assigneeNames) ? t.assigneeNames.join(', ') : (t.assigneeNames || '');
+        lines.push('• ' + (t.title || 'Untitled') + ' [' + (t.priority || '') + ']' + (assignees ? ' – ' + assignees : ''));
+      });
+      lines.push('');
+    }
+
+    addSection('Completed Today', data.completedToday);
+    addSection('Still Open', data.stillOpen);
+    addSection('Blocked', data.blocked);
+
+    return lines.join('\n');
+  }
+
+  function loadHandover(screen) {
+    qs(screen, 'loading-state').classList.remove('hidden');
+    qs(screen, 'content').classList.add('hidden');
+    qs(screen, 'error-state').classList.add('hidden');
+
+    APP.call('getShiftHandover', APP.token)
+      .then(function(data) {
+        qs(screen, 'loading-state').classList.add('hidden');
+        qs(screen, 'content').classList.remove('hidden');
+
+        qs(screen, 'meta-generated-by').textContent = 'Report by ' + (data.generatedBy || 'System');
+        qs(screen, 'meta-generated-at').textContent = data.generatedAt || '';
+
+        // Count chips
+        var counts = data.counts || {};
+        var chipsEl = qs(screen, 'count-chips');
+        chipsEl.innerHTML = '';
+        [
+          { label: 'Total', val: counts.total, color: 'bg-surface-container-high text-on-surface' },
+          { label: 'Done',  val: (data.completedToday || []).length, color: 'bg-success text-on-success' },
+          { label: 'Open',  val: (data.stillOpen || []).length, color: 'bg-warning text-on-warning' },
+          { label: 'Blocked', val: (data.blocked || []).length, color: 'bg-error text-on-error' }
+        ].forEach(function(c) {
+          var chip = document.createElement('span');
+          chip.className = 'text-[11px] font-label-bold px-2 py-1 rounded-full ' + c.color;
+          chip.textContent = c.label + ': ' + (c.val || 0);
+          chipsEl.appendChild(chip);
+        });
+
+        qs(screen, 'count-completed').textContent = (data.completedToday || []).length;
+        qs(screen, 'count-open').textContent      = (data.stillOpen || []).length;
+        qs(screen, 'count-blocked').textContent   = (data.blocked || []).length;
+
+        renderSection(screen, 'list-completed', data.completedToday);
+        renderSection(screen, 'list-open',      data.stillOpen);
+        renderSection(screen, 'list-blocked',   data.blocked);
+
+        // Store for WhatsApp sharing
+        screen._handoverData = data;
+      })
+      .catch(function(err) {
+        qs(screen, 'loading-state').classList.add('hidden');
+        qs(screen, 'error-state').classList.remove('hidden');
+        APP.showError(err);
+      });
+  }
+
+  function openWhatsApp(screen) {
+    var text = buildWhatsAppText(screen._handoverData || {});
+    var url = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(url, '_blank');
+  }
+
+  APP.register('shift-handover', {
+    mount: function(params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      if (APP.currentUser.role !== 'admin') {
+        APP.showError('Access denied. Admin only.');
+        APP.navigate('kanban-home');
+        return;
+      }
+
+      var screen = document.querySelector('[data-screen="shift-handover"]');
+      screen._handoverData = null;
+
+      loadHandover(screen);
+
+      qs(screen, 'btn-back').addEventListener('click', function() {
+        APP.navigate('admin-panel');
+      });
+
+      qs(screen, 'btn-whatsapp').addEventListener('click', function() {
+        openWhatsApp(screen);
+      });
+
+      qs(screen, 'btn-whatsapp-bottom').addEventListener('click', function() {
+        openWhatsApp(screen);
+      });
+
+      qs(screen, 'btn-retry').addEventListener('click', function() {
+        loadHandover(screen);
+      });
+    },
+
+    unmount: function() {}
+  });
+})();
+</script>

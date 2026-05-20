@@ -42,15 +42,38 @@
 <div class="flex-1 flex flex-col px-margin-edge pb-margin-edge overflow-y-auto">
 <!-- Title Input -->
 <div class="mb-4">
-<input id="qc-title-input"
-  class="w-full bg-transparent border-0 border-b border-primary-container focus:ring-0 focus:border-primary-container font-title-main-mobile text-title-main-mobile px-0 py-2 placeholder-on-surface-variant outline-none"
-  placeholder="What needs to be done?"
-  type="text"
-  maxlength="100"/>
+<div class="flex items-end gap-2">
+  <input id="qc-title-input"
+    class="flex-1 bg-transparent border-0 border-b border-primary-container focus:ring-0 focus:border-primary-container font-title-main-mobile text-title-main-mobile px-0 py-2 placeholder-on-surface-variant outline-none"
+    placeholder="What needs to be done?"
+    type="text"
+    maxlength="100"/>
+  <!-- Mic button — shown only when SpeechRecognition supported -->
+  <button id="qc-mic-btn" type="button" aria-label="Dictate title"
+    class="w-[44px] h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex-shrink-0 hidden">
+    <span class="material-symbols-outlined text-[22px]">mic</span>
+  </button>
+  <!-- Scan button — shown only when BarcodeDetector supported -->
+  <button id="qc-scan-btn" type="button" aria-label="Scan barcode or QR code"
+    class="w-[44px] h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex-shrink-0 hidden">
+    <span class="material-symbols-outlined text-[22px]">qr_code_scanner</span>
+  </button>
+</div>
 <div class="flex justify-between mt-1">
 <span id="qc-title-error" class="text-[11px] text-error hidden">Title is required</span>
 <span id="qc-char-count" class="text-[11px] text-[#9AA0A6] ml-auto">0/100</span>
 </div>
+</div>
+<!-- Camera preview for barcode scan -->
+<div id="qc-scan-preview" class="hidden mb-4 relative rounded-xl overflow-hidden bg-black">
+  <video id="qc-scan-video" class="w-full rounded-xl" autoplay muted playsinline style="max-height:200px;object-fit:cover;"></video>
+  <button id="qc-scan-cancel" type="button"
+    class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
+    <span class="material-symbols-outlined text-[18px]">close</span>
+  </button>
+  <div class="absolute bottom-2 left-0 right-0 flex justify-center">
+    <span class="bg-black/60 text-white text-[11px] font-label-bold px-3 py-1 rounded-full">Point at QR / barcode</span>
+  </div>
 </div>
 
 <!-- Client Row -->
@@ -184,6 +207,111 @@ APP.register('quick-capture', {
       if (len > 0) screen.querySelector('#qc-title-error').classList.add('hidden');
     });
 
+    // ── Voice input (Task 2) ───────────────────────────────
+    (function() {
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var micBtn = screen.querySelector('#qc-mic-btn');
+      if (!SpeechRecognition || !micBtn) return;
+      micBtn.classList.remove('hidden');
+      var _recog = null;
+      var _listening = false;
+      micBtn.addEventListener('click', function() {
+        if (_listening) { if (_recog) _recog.stop(); return; }
+        _recog = new SpeechRecognition();
+        _recog.lang = 'en-IN';
+        _recog.interimResults = false;
+        _recog.maxAlternatives = 1;
+        _listening = true;
+        micBtn.classList.add('bg-error-container', 'text-error');
+        micBtn.setAttribute('aria-pressed', 'true');
+        micBtn.querySelector('.material-symbols-outlined').textContent = 'mic_off';
+        _recog.onresult = function(e) {
+          var transcript = (e.results[0] && e.results[0][0].transcript) || '';
+          var inp = screen.querySelector('#qc-title-input');
+          var cur = inp.value;
+          inp.value = cur ? cur + ' ' + transcript : transcript;
+          var len = inp.value.length;
+          screen.querySelector('#qc-char-count').textContent = len + '/100';
+        };
+        _recog.onerror = function(e) {
+          if (e.error !== 'no-speech') APP.showError('Voice error: ' + e.error);
+        };
+        _recog.onend = function() {
+          _listening = false;
+          micBtn.classList.remove('bg-error-container', 'text-error');
+          micBtn.removeAttribute('aria-pressed');
+          micBtn.querySelector('.material-symbols-outlined').textContent = 'mic';
+        };
+        _recog.start();
+      });
+      // expose for unmount cleanup
+      self._micRecog = function() { return _recog; };
+    })();
+
+    // ── Barcode / QR scan (Task 4) ─────────────────────────
+    (function() {
+      var scanBtn     = screen.querySelector('#qc-scan-btn');
+      var preview     = screen.querySelector('#qc-scan-preview');
+      var video       = screen.querySelector('#qc-scan-video');
+      var cancelBtn   = screen.querySelector('#qc-scan-cancel');
+      if (!('BarcodeDetector' in window) || !scanBtn) return;
+      scanBtn.classList.remove('hidden');
+
+      var _stream     = null;
+      var _scanFrame  = null;
+      var _detector   = null;
+
+      function stopCamera() {
+        if (_scanFrame) { cancelAnimationFrame(_scanFrame); _scanFrame = null; }
+        if (_stream) { _stream.getTracks().forEach(function(t) { t.stop(); }); _stream = null; }
+        video.srcObject = null;
+        preview.classList.add('hidden');
+      }
+
+      function startScan() {
+        try { _detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'data_matrix', 'upc_a', 'upc_e'] }); }
+        catch(e) { _detector = new BarcodeDetector(); }
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+          .then(function(stream) {
+            _stream = stream;
+            video.srcObject = stream;
+            preview.classList.remove('hidden');
+            video.play();
+            scanLoop();
+          })
+          .catch(function(err) {
+            APP.showError('Camera access denied: ' + (err.message || err));
+          });
+      }
+
+      function scanLoop() {
+        if (!_stream) return;
+        _detector.detect(video)
+          .then(function(barcodes) {
+            if (barcodes && barcodes.length) {
+              var val = barcodes[0].rawValue;
+              stopCamera();
+              var inp = screen.querySelector('#qc-title-input');
+              inp.value = 'Asset: ' + val;
+              var len = inp.value.length;
+              screen.querySelector('#qc-char-count').textContent = Math.min(len, 100) + '/100';
+              if (len > 0) screen.querySelector('#qc-title-error').classList.add('hidden');
+            } else {
+              _scanFrame = requestAnimationFrame(scanLoop);
+            }
+          })
+          .catch(function() {
+            _scanFrame = requestAnimationFrame(scanLoop);
+          });
+      }
+
+      scanBtn.addEventListener('click', startScan);
+      cancelBtn.addEventListener('click', stopCamera);
+      // expose for unmount
+      self._stopCamera = stopCamera;
+    })();
+
     // Overlay dismiss → cancel
     screen.querySelector('#qc-overlay').addEventListener('click', function() {
       self._close();
@@ -265,6 +393,10 @@ APP.register('quick-capture', {
   },
 
   unmount: function() {
+    // Release camera stream if active
+    if (typeof this._stopCamera === 'function') { try { this._stopCamera(); } catch(e) {} this._stopCamera = null; }
+    // Stop voice recognition if active
+    if (typeof this._micRecog === 'function') { try { var r = this._micRecog(); if (r) r.abort(); } catch(e) {} this._micRecog = null; }
     this._selectedClientId  = null;
     this._selectedPriority  = 'medium';
     this._selectedSchedule  = 'afternoon';

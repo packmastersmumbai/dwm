@@ -17,6 +17,20 @@
 <span class="material-symbols-outlined text-[20px]">more_vert</span>
 </button>
 </div>
+<!-- Shift Handover Quick-Action (admin only) -->
+<div data-ref="shift-handover-card" class="hidden bg-primary-container rounded-xl p-4 flex items-center justify-between border border-primary shadow-sm active:scale-95 transition-transform cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[20px]" style="font-variation-settings:'FILL' 1;">swap_horiz</span>
+</div>
+<div>
+<div class="font-body-standard text-body-standard font-semibold text-on-primary-container">Shift Handover</div>
+<div class="font-label-bold text-label-bold text-on-primary-container opacity-70">End-of-shift summary</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-primary-container opacity-60">chevron_right</span>
+</div>
+
 <!-- Stats Row (Bento Grid Style) -->
 <div class="grid grid-cols-2 gap-gutter-card">
 <!-- Active -->
@@ -73,6 +87,7 @@
 </button>
 <button data-tab="reports" data-ref="tab-reports" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Reports</button>
 <button data-tab="masters" data-ref="tab-masters" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Masters</button>
+<button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
 </div>
 
 <!-- Tab: Workload (default visible) -->
@@ -100,6 +115,72 @@
 <!-- Tab: Reports (hidden by default) -->
 <div data-ref="panel-reports" class="hidden">
 <div class="text-center text-on-surface-variant py-16 font-body-standard">Reports coming soon.</div>
+</div>
+
+<!-- Tab: SLA (hidden by default) -->
+<div data-ref="panel-sla" class="hidden space-y-4">
+<!-- Loading skeleton -->
+<div data-ref="sla-loading" class="space-y-3">
+<div class="tf-skeleton h-[52px] w-full"></div>
+<div class="tf-skeleton h-[52px] w-full opacity-80"></div>
+<div class="tf-skeleton h-[52px] w-full opacity-60"></div>
+</div>
+<!-- SLA Form (hidden until data loads) -->
+<div data-ref="sla-form" class="hidden space-y-4">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+<h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">SLA Thresholds (hours)</h3>
+<!-- Urgent -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Urgent SLA (hrs)</label>
+<input data-ref="sla-urgent" type="number" min="0.1" step="0.5" placeholder="e.g. 4"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+<!-- High -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">High SLA (hrs)</label>
+<input data-ref="sla-high" type="number" min="0.1" step="0.5" placeholder="e.g. 8"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+<!-- Medium -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Medium SLA (hrs)</label>
+<input data-ref="sla-medium" type="number" min="0.1" step="0.5" placeholder="e.g. 24"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+<!-- Low -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Low SLA (hrs)</label>
+<input data-ref="sla-low" type="number" min="0.1" step="0.5" placeholder="e.g. 72"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+</div>
+
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+<h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Escalation &amp; Archival</h3>
+<!-- Escalation toggle -->
+<div class="flex items-center justify-between min-h-[44px]">
+<span class="font-body-standard text-body-standard text-on-surface">Auto-Escalation</span>
+<button data-ref="sla-escalation-toggle" role="switch" aria-checked="false"
+class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-container bg-surface-container-high">
+<span data-ref="sla-escalation-knob" class="inline-block h-5 w-5 rounded-full bg-on-surface-variant shadow transition-transform translate-x-1"></span>
+</button>
+</div>
+<!-- Timer warning -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Timer Warning (hrs before SLA)</label>
+<input data-ref="sla-timer-warning" type="number" min="0.1" step="0.5" placeholder="e.g. 1"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+<!-- Archive after days -->
+<div class="space-y-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Archive Completed After (days)</label>
+<input data-ref="sla-archive-days" type="number" min="1" step="1" placeholder="e.g. 30"
+class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+</div>
+</div>
+
+<button data-ref="btn-save-sla" class="w-full h-11 bg-primary text-on-primary rounded-lg font-label-bold text-label-bold hover:bg-primary/90 active:scale-95 transition-all">Save SLA Settings</button>
+</div>
 </div>
 
 <!-- Tab: Masters (hidden by default) -->
@@ -149,14 +230,50 @@
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false };
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false };
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
   }
 
+  function setSlaToggle(screen, enabled) {
+    var btn = qs(screen, 'sla-escalation-toggle');
+    var knob = qs(screen, 'sla-escalation-knob');
+    btn.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    if (enabled) {
+      btn.classList.remove('bg-surface-container-high');
+      btn.classList.add('bg-primary');
+      knob.classList.remove('translate-x-1', 'bg-on-surface-variant');
+      knob.classList.add('translate-x-6', 'bg-on-primary');
+    } else {
+      btn.classList.add('bg-surface-container-high');
+      btn.classList.remove('bg-primary');
+      knob.classList.add('translate-x-1', 'bg-on-surface-variant');
+      knob.classList.remove('translate-x-6', 'bg-on-primary');
+    }
+  }
+
+  function loadSlaSettings(screen) {
+    APP.call('getSettings', APP.token)
+      .then(function(s) {
+        qs(screen, 'sla-loading').classList.add('hidden');
+        qs(screen, 'sla-form').classList.remove('hidden');
+        qs(screen, 'sla-urgent').value  = s.sla_urgent_hours  || '';
+        qs(screen, 'sla-high').value    = s.sla_high_hours    || '';
+        qs(screen, 'sla-medium').value  = s.sla_medium_hours  || '';
+        qs(screen, 'sla-low').value     = s.sla_low_hours     || '';
+        qs(screen, 'sla-timer-warning').value  = s.timer_warning_hours  || '';
+        qs(screen, 'sla-archive-days').value   = s.archive_after_days   || '';
+        setSlaToggle(screen, s.escalation_enabled === 'true' || s.escalation_enabled === true);
+      })
+      .catch(function(err) {
+        qs(screen, 'sla-loading').classList.add('hidden');
+        APP.showError(err);
+      });
+  }
+
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'reports', 'masters'];
+    var tabs = ['tasks', 'workload', 'reports', 'masters', 'sla'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -295,8 +412,17 @@
         .then(function(data) { renderWorkload(screen, data); })
         .catch(function(err) { APP.showError(err); });
 
+      // Show shift handover card for admins
+      var _shCard = qs(screen, 'shift-handover-card');
+      if (_shCard) {
+        _shCard.classList.remove('hidden');
+        _shCard.addEventListener('click', function() {
+          APP.navigate('shift-handover');
+        });
+      }
+
       // Tab switching
-      ['tasks', 'workload', 'reports', 'masters'].forEach(function(tab) {
+      ['tasks', 'workload', 'reports', 'masters', 'sla'].forEach(function(tab) {
         qs(screen, 'tab-' + tab).addEventListener('click', function() {
           setActiveTab(screen, tab);
 
@@ -312,6 +438,47 @@
             APP.call('getUsers')
               .then(function(users) { renderUsers(screen, users); })
               .catch(function(err) { APP.showError(err); });
+          }
+
+          if (tab === 'sla' && !LOAD_LABELS_PER_TAB.sla) {
+            LOAD_LABELS_PER_TAB.sla = true;
+            loadSlaSettings(screen);
+
+            // Escalation toggle click
+            qs(screen, 'sla-escalation-toggle').addEventListener('click', function() {
+              var isOn = this.getAttribute('aria-checked') === 'true';
+              setSlaToggle(screen, !isOn);
+            });
+
+            // Save button
+            qs(screen, 'btn-save-sla').addEventListener('click', function() {
+              var urgent  = parseFloat(qs(screen, 'sla-urgent').value);
+              var high    = parseFloat(qs(screen, 'sla-high').value);
+              var medium  = parseFloat(qs(screen, 'sla-medium').value);
+              var low     = parseFloat(qs(screen, 'sla-low').value);
+              var warn    = parseFloat(qs(screen, 'sla-timer-warning').value);
+              var archive = parseInt(qs(screen, 'sla-archive-days').value, 10);
+              var escalEn = qs(screen, 'sla-escalation-toggle').getAttribute('aria-checked') === 'true';
+
+              if ([urgent, high, medium, low].some(function(v) { return isNaN(v) || v <= 0; })) {
+                APP.showError('All SLA hours must be positive numbers.');
+                return;
+              }
+
+              var payload = {
+                sla_urgent_hours: urgent,
+                sla_high_hours:   high,
+                sla_medium_hours: medium,
+                sla_low_hours:    low,
+                escalation_enabled: String(escalEn)
+              };
+              if (!isNaN(warn) && warn > 0) payload.timer_warning_hours = warn;
+              if (!isNaN(archive) && archive > 0) payload.archive_after_days = archive;
+
+              APP.call('updateSettings', payload, APP.token)
+                .then(function() { APP.showSuccess('SLA settings saved.'); })
+                .catch(function(err) { APP.showError(err); });
+            });
           }
         });
       });
@@ -346,7 +513,7 @@
     },
 
     unmount: function() {
-      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false };
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false };
     }
   });
 })();

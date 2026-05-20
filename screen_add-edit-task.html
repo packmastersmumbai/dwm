@@ -14,7 +14,13 @@
 
   <!-- Title Input -->
   <div class="w-full">
-    <input data-ref="field-title" class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary-container focus:ring-0 px-0 py-3 font-title-main-mobile text-title-main-mobile text-on-surface placeholder:text-on-surface-variant transition-colors rounded-none" placeholder="Task Title" type="text" required/>
+    <div class="flex items-end gap-2">
+      <input data-ref="field-title" class="flex-1 bg-transparent border-0 border-b border-outline-variant focus:border-primary-container focus:ring-0 px-0 py-3 font-title-main-mobile text-title-main-mobile text-on-surface placeholder:text-on-surface-variant transition-colors rounded-none" placeholder="Task Title" type="text" required/>
+      <button data-ref="btn-mic" type="button" aria-label="Dictate title"
+        class="w-[44px] h-[44px] flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors flex-shrink-0 hidden">
+        <span class="material-symbols-outlined text-[22px]">mic</span>
+      </button>
+    </div>
     <p data-ref="err-title" class="text-error text-[12px] mt-1 hidden">Title is required.</p>
   </div>
 
@@ -527,6 +533,46 @@
         }
       }).catch(function(err) { APP.showError(err); });
 
+      // Voice input — mic button (feature-detected)
+      (function() {
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var micBtn = qs(screen, 'btn-mic');
+        if (!SpeechRecognition || !micBtn) return;
+        micBtn.classList.remove('hidden'); // only show when supported
+        var _recog = null;
+        var _listening = false;
+        micBtn.addEventListener('click', function() {
+          if (_listening) {
+            if (_recog) _recog.stop();
+            return;
+          }
+          _recog = new SpeechRecognition();
+          _recog.lang = 'en-IN';
+          _recog.interimResults = false;
+          _recog.maxAlternatives = 1;
+          _listening = true;
+          micBtn.classList.add('bg-error-container', 'text-error');
+          micBtn.setAttribute('aria-pressed', 'true');
+          micBtn.querySelector('.material-symbols-outlined').textContent = 'mic_off';
+          _recog.onresult = function(e) {
+            var transcript = (e.results[0] && e.results[0][0].transcript) || '';
+            var titleInput = qs(screen, 'field-title');
+            var current = titleInput.value;
+            titleInput.value = current ? current + ' ' + transcript : transcript;
+          };
+          _recog.onerror = function(e) {
+            if (e.error !== 'no-speech') APP.showError('Voice input error: ' + e.error);
+          };
+          _recog.onend = function() {
+            _listening = false;
+            micBtn.classList.remove('bg-error-container', 'text-error');
+            micBtn.removeAttribute('aria-pressed');
+            micBtn.querySelector('.material-symbols-outlined').textContent = 'mic';
+          };
+          _recog.start();
+        });
+      })();
+
       // Cancel / back
       qs(screen, 'btn-cancel').addEventListener('click', function() {
         APP.navigate('kanban-home');
@@ -555,6 +601,12 @@
     },
 
     unmount: function() {
+      // Stop any active recognition
+      try {
+        var screen = document.querySelector('[data-screen="add-edit-task"]');
+        var micBtn = screen && screen.querySelector('[data-ref="btn-mic"]');
+        if (micBtn && micBtn._recog) { micBtn._recog.abort(); }
+      } catch(e) {}
       _editMode           = false;
       _taskId             = null;
       _selectedClientId   = null;
