@@ -1,0 +1,375 @@
+<div data-screen="task-detail-whatsapp">
+<!-- Mock Background Content -->
+<div class="absolute inset-0 z-0 flex flex-col p-4 opacity-50 pointer-events-none">
+<div class="h-nav-height bg-surface-container-high rounded-lg w-full mb-4"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full border-l-4 border-l-[#EA4335]"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#34A853]"></div>
+</div>
+<!-- Scrim (Dim Background) -->
+<div class="absolute inset-0 bg-black/40 z-40 transition-opacity duration-300" data-action="close"></div>
+<!-- Bottom Sheet Container -->
+<div class="absolute bottom-0 w-full max-w-md bg-surface h-[85%] rounded-t-2xl z-50 flex flex-col shadow-2xl overflow-hidden transition-transform duration-300 transform translate-y-0">
+<!-- Drag Handle Area -->
+<div class="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing bg-surface sticky top-0 z-10">
+<div class="w-8 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-margin-edge pb-24 no-scrollbar">
+<!-- HEADER -->
+<div class="flex items-start justify-between mt-2 mb-6">
+<div class="flex items-start gap-3 flex-1">
+<div data-priority-dot aria-label="Priority" class="w-2.5 h-2.5 rounded-full bg-[#EA4335] mt-1.5 flex-shrink-0"></div>
+<h1 class="font-title-main-mobile text-title-main-mobile text-on-surface line-clamp-2 pr-2" data-area="task-title">
+                        Loading…
+                    </h1>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0 text-on-surface-variant">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors" data-action="edit">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-low" data-action="close">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- OWNERSHIP ROW -->
+<div class="flex items-center gap-3 mb-6 bg-surface-container-low p-3 rounded-xl border border-surface-container-highest">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm" data-assignee-avatar>?</div>
+<span class="font-body-standard text-body-standard text-on-surface flex-1" data-assignee-name>—</span>
+</div>
+<!-- STATUS CHIPS -->
+<div class="flex justify-between items-center mb-8 px-2" data-area="task-meta">
+<button class="status-chip w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors" data-status-val="todo">
+<span class="material-symbols-outlined text-[20px]">radio_button_unchecked</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<button class="status-chip w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors" data-status-val="in-progress">
+<span class="material-symbols-outlined fill text-[20px]">play_arrow</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<button class="status-chip w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors" data-status-val="done">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<button class="status-chip w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors" data-status-val="blocked">
+<span class="material-symbols-outlined text-[20px]">pause</span>
+</button>
+</div>
+<!-- META GRID (2x2) -->
+<div class="grid grid-cols-2 gap-3 mb-8">
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">person</span>
+<span class="font-body-standard text-body-standard text-on-surface truncate" data-meta-client>—</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">campaign</span>
+<span class="font-body-standard text-body-standard text-on-surface truncate" data-meta-category>—</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<div class="w-2.5 h-2.5 rounded-full" data-meta-priority-dot style="background:#9AA0A6"></div>
+<span class="font-body-standard text-body-standard text-on-surface truncate" data-meta-priority>—</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">calendar_today</span>
+<span class="font-body-standard text-body-standard text-on-surface truncate" data-meta-due>—</span>
+</div>
+</div>
+<!-- TIMER CARD -->
+<div class="mb-8 relative rounded-xl bg-surface overflow-hidden shadow-sm border border-outline-variant p-1" data-area="timer-display">
+<div class="bg-surface-container-lowest rounded-lg p-4 flex flex-col items-center justify-center gap-3 relative z-10">
+<div class="font-timer-display text-timer-display text-on-surface text-center" data-timer-display>
+                        00:00:00
+                    </div>
+<div class="flex gap-2 w-full">
+<button class="flex-1 bg-[#EA4335] text-white font-label-bold text-label-bold h-touch-target rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-[#d33828] active:scale-[0.98] transition-all" data-action="stop-done">
+<span class="material-symbols-outlined fill text-[18px]">stop</span>
+        STOP &amp; DONE
+    </button>
+<button class="flex-1 bg-secondary text-on-secondary font-label-bold text-label-bold h-touch-target rounded-lg flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-[0.98] transition-all" data-action="share-whatsapp">
+<span class="material-symbols-outlined text-[18px]">share</span>
+        Share
+    </button>
+</div>
+</div>
+</div>
+<!-- CHECKLIST SECTION -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface">Checklist</h3>
+<span class="bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold px-2 py-0.5 rounded-full" data-checklist-count>0/0</span>
+</div>
+<div class="flex flex-col gap-3" data-area="checklist-list">
+</div>
+</div>
+<!-- COMMENTS SECTION -->
+<div>
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface mb-4">Activity</h3>
+<div class="flex flex-col gap-4" data-area="comments-list">
+</div>
+</div>
+<!-- Bottom spacing for fixed input -->
+<div class="h-16"></div>
+</div> <!-- End Scrollable Content -->
+<!-- Pinned Comment Input -->
+<div class="absolute bottom-0 left-0 w-full bg-surface border-t border-outline-variant p-3 z-20">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm" data-current-user-avatar>?</div>
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 px-4 font-body-standard text-[14px] text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary-container focus:bg-surface-container-lowest transition-colors h-10" placeholder="Add comment..." type="text" data-comment-input/>
+<button class="absolute right-1 top-1 w-8 h-8 flex items-center justify-center text-primary-container rounded-full hover:bg-primary-fixed transition-colors" data-action="send-comment">
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+(function () {
+  var _taskId = null;
+  var _task = null;
+  var _timerInterval = null;
+  var _timerStart = null;
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function priorityColor(p) {
+    return p === 'high' ? '#EA4335' : p === 'medium' ? '#FBBC04' : '#9AA0A6';
+  }
+
+  function formatElapsed(startIso) {
+    var secs = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    if (secs < 0) secs = 0;
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    return [h, m, s].map(function (v) { return String(v).padStart(2, '0'); }).join(':');
+  }
+
+  function initials(name) {
+    return (name || '?').split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+  }
+
+  function populateTask(screen, task) {
+    _task = task;
+
+    // Title & priority dot
+    var titleEl = screen.querySelector('[data-area="task-title"]');
+    if (titleEl) titleEl.textContent = task.title || '—';
+    var dot = screen.querySelector('[data-priority-dot]');
+    if (dot) dot.style.backgroundColor = priorityColor(task.priority);
+
+    // Assignee
+    var avEl = screen.querySelector('[data-assignee-avatar]');
+    var nameEl = screen.querySelector('[data-assignee-name]');
+    if (avEl) avEl.textContent = initials(task.assignee);
+    if (nameEl) nameEl.textContent = task.assignee || '—';
+
+    // Current user avatar
+    var cuEl = screen.querySelector('[data-current-user-avatar]');
+    if (cuEl && APP.currentUser) cuEl.textContent = initials(APP.currentUser.name);
+
+    // Meta grid
+    screen.querySelector('[data-meta-client]').textContent = task.client || '—';
+    screen.querySelector('[data-meta-category]').textContent = task.category || '—';
+    screen.querySelector('[data-meta-priority]').textContent = task.priority || '—';
+    screen.querySelector('[data-meta-priority-dot]').style.backgroundColor = priorityColor(task.priority);
+    screen.querySelector('[data-meta-due]').textContent = task.dueDate || '—';
+
+    // Status chips
+    highlightStatus(screen, task.status);
+
+    // Checklist
+    renderChecklist(screen, task.checklist || []);
+
+    // Comments
+    renderComments(screen, task.comments || []);
+
+    // Timer
+    if (task.timerStart) {
+      _timerStart = task.timerStart;
+      startTimerUI(screen);
+    }
+  }
+
+  function highlightStatus(screen, status) {
+    screen.querySelectorAll('.status-chip').forEach(function (btn) {
+      var isActive = btn.dataset.statusVal === status;
+      btn.classList.toggle('bg-[#34A853]', isActive && status === 'in-progress');
+      btn.classList.toggle('text-white', isActive);
+      btn.classList.toggle('shadow-md', isActive);
+      btn.classList.toggle('scale-110', isActive);
+      btn.classList.toggle('border-outline-variant', !isActive);
+      btn.classList.toggle('text-outline', !isActive);
+    });
+  }
+
+  function renderChecklist(screen, items) {
+    var area = screen.querySelector('[data-area="checklist-list"]');
+    var countEl = screen.querySelector('[data-checklist-count]');
+    var done = items.filter(function (i) { return i.checked; }).length;
+    if (countEl) countEl.textContent = done + '/' + items.length;
+    if (!area) return;
+    area.innerHTML = items.map(function (item) {
+      return '<label class="flex items-start gap-3 cursor-pointer group">' +
+        '<input type="checkbox" class="mt-0.5 w-5 h-5 rounded border-outline-variant bg-surface-container-lowest"' +
+        (item.checked ? ' checked' : '') +
+        ' data-action="toggle-checklist" data-item-id="' + escHtml(item.id) + '"/>' +
+        '<span class="font-body-standard text-[14px] flex-1' + (item.checked ? ' line-through text-on-surface-variant' : ' text-on-surface') + '">' +
+        escHtml(item.text) + '</span></label>';
+    }).join('');
+  }
+
+  function renderComments(screen, comments) {
+    var area = screen.querySelector('[data-area="comments-list"]');
+    if (!area) return;
+    area.innerHTML = comments.map(function (c) {
+      return '<div class="flex items-start gap-3">' +
+        '<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">' + escHtml(initials(c.author)) + '</div>' +
+        '<div class="flex flex-col flex-1">' +
+          '<div class="flex items-baseline gap-2 mb-0.5">' +
+            '<span class="font-label-bold text-[12px] font-bold text-on-surface">' + escHtml(c.author) + '</span>' +
+            '<span class="font-body-standard text-[11px] text-on-surface-variant">' + escHtml(c.time || '') + '</span>' +
+          '</div>' +
+          '<p class="font-body-standard text-[13px] text-on-surface">' + escHtml(c.text) + '</p>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function startTimerUI(screen) {
+    clearInterval(_timerInterval);
+    var display = screen.querySelector('[data-timer-display]');
+    _timerInterval = setInterval(function () {
+      if (display && _timerStart) display.textContent = formatElapsed(_timerStart);
+    }, 1000);
+    if (display && _timerStart) display.textContent = formatElapsed(_timerStart);
+  }
+
+  function buildShareText(task) {
+    return '*' + (task.title || '') + '*\n' +
+      'Status: ' + (task.status || '') + '\n' +
+      'Priority: ' + (task.priority || '') + '\n' +
+      'Due: ' + (task.dueDate || '—') + '\n' +
+      'Client: ' + (task.client || '—');
+  }
+
+  function handleClick(e, screen) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+
+    if (action === 'close') {
+      APP.navigate('kanban-home');
+      return;
+    }
+
+    if (action === 'edit') {
+      APP.navigate('add-edit-task', { taskId: _taskId });
+      return;
+    }
+
+    if (action === 'stop-done') {
+      APP.call('stopTimer', _taskId).then(function () {
+        return APP.call('updateTaskStatus', _taskId, 'done');
+      }).then(function () {
+        APP.navigate('kanban-home');
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'share-whatsapp') {
+      APP.call('shareToWhatsApp', _taskId).then(function (shareData) {
+        var text = (shareData && shareData.text) ? shareData.text : buildShareText(_task || {});
+        window.open('whatsapp://send?text=' + encodeURIComponent(text));
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'send-comment') {
+      var input = screen.querySelector('[data-comment-input]');
+      var text = input ? input.value.trim() : '';
+      if (!text) return;
+      APP.call('addComment', _taskId, text).then(function (updatedTask) {
+        input.value = '';
+        if (updatedTask && updatedTask.comments) renderComments(screen, updatedTask.comments);
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'toggle-checklist') {
+      var itemId = btn.dataset.itemId;
+      var checked = btn.checked;
+      APP.call('toggleChecklistItem', _taskId, itemId, checked).then(function (updatedTask) {
+        if (updatedTask && updatedTask.checklist) renderChecklist(screen, updatedTask.checklist);
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+  }
+
+  function handleStatusChip(e, screen) {
+    var btn = e.target.closest('.status-chip');
+    if (!btn) return;
+    var newStatus = btn.dataset.statusVal;
+    if (!newStatus || !_taskId) return;
+    APP.call('updateTaskStatus', _taskId, newStatus).then(function () {
+      highlightStatus(screen, newStatus);
+      if (_task) _task.status = newStatus;
+    }).catch(function (err) { APP.showError(err); });
+  }
+
+  function handleCommentEnter(e) {
+    if (e.key === 'Enter') {
+      var screen = document.querySelector('[data-screen="task-detail-whatsapp"]');
+      var input = screen.querySelector('[data-comment-input]');
+      var text = input ? input.value.trim() : '';
+      if (!text) return;
+      APP.call('addComment', _taskId, text).then(function (updatedTask) {
+        input.value = '';
+        if (updatedTask && updatedTask.comments) renderComments(screen, updatedTask.comments);
+      }).catch(function (err) { APP.showError(err); });
+    }
+  }
+
+  APP.register('task-detail-whatsapp', {
+    mount: function (params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      var screen = document.querySelector('[data-screen="task-detail-whatsapp"]');
+      _taskId = (params && params.taskId) || null;
+      _task = null;
+      _timerStart = null;
+      clearInterval(_timerInterval);
+
+      screen._clickHandler = function (e) {
+        handleClick(e, screen);
+        handleStatusChip(e, screen);
+      };
+      screen.addEventListener('click', screen._clickHandler);
+
+      var commentInput = screen.querySelector('[data-comment-input]');
+      if (commentInput) {
+        screen._keyHandler = handleCommentEnter;
+        commentInput.addEventListener('keydown', screen._keyHandler);
+      }
+
+      if (_taskId) {
+        APP.call('getTaskDetail', _taskId).then(function (task) {
+          populateTask(screen, task);
+        }).catch(function (err) { APP.showError(err); });
+      }
+    },
+    unmount: function () {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      var screen = document.querySelector('[data-screen="task-detail-whatsapp"]');
+      if (screen) {
+        if (screen._clickHandler) { screen.removeEventListener('click', screen._clickHandler); screen._clickHandler = null; }
+        var ci = screen.querySelector('[data-comment-input]');
+        if (ci && screen._keyHandler) { ci.removeEventListener('keydown', screen._keyHandler); screen._keyHandler = null; }
+      }
+    }
+  });
+}());
+</script>

@@ -1,0 +1,172 @@
+<div data-screen="task-detail-sheet">
+<!-- Mock Background Content -->
+<div class="absolute inset-0 z-0 flex flex-col p-4 opacity-50 pointer-events-none">
+<div class="h-nav-height bg-surface-container-high rounded-lg w-full mb-4"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full border-l-4 border-l-[#EA4335]"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#34A853]"></div>
+</div>
+<!-- Scrim (Dim Background) -->
+<div class="absolute inset-0 bg-black/40 z-40 transition-opacity duration-300"></div>
+<!-- Bottom Sheet Container -->
+<div class="absolute bottom-0 w-full max-w-md bg-surface h-[85%] rounded-t-2xl z-50 flex flex-col shadow-2xl overflow-hidden transition-transform duration-300 transform translate-y-0">
+<!-- Drag Handle Area -->
+<div class="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing bg-surface sticky top-0 z-10">
+<div class="w-8 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-margin-edge pb-24 no-scrollbar">
+<!-- HEADER -->
+<div class="flex items-start justify-between mt-2 mb-6">
+<div class="flex items-start gap-3 flex-1">
+<div aria-label="High Priority" class="w-2.5 h-2.5 rounded-full bg-[#EA4335] mt-1.5 flex-shrink-0"></div>
+<h1 class="font-title-main-mobile text-title-main-mobile text-on-surface line-clamp-2 pr-2">
+                        Draft Q3 Marketing Campaign Strategy Presentation
+                    </h1>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0 text-on-surface-variant">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- OWNERSHIP ROW -->
+<div class="flex items-center gap-3 mb-6 bg-surface-container-low p-3 rounded-xl border border-surface-container-highest">
+<img alt="Current User Avatar" class="w-8 h-8 rounded-full border border-surface-variant object-cover" data-alt="A small circular profile picture of a young professional woman with dark hair, smiling warmly. The lighting is bright and even, typical of a modern corporate headshot. The background is a soft, out-of-focus neutral gray, fitting seamlessly into a light-mode UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUY39iVjucwyF3gKBDKeoFZKJHfj7JTTPrarTQQ2afMfPASQLwFht62FasrcCEv7B1IVqsCwgdYhY-GxWu4Py7UvQ4bSvl3gDF3-smEJDZIPkbjsQhVpT3TP9MI0DoD0OxpxPjncgBy7JkOGNhYF464s84y469ncLYKIdfZaV69wyFfBwqh4TC-Syiliu3_xraZqFyxzczbjxQ6tUfLtJrw2wCTxiC2fXYRs1P8HbZZqH0zpwq7ZrZvhXwB5uI2fL4chjicaCIjSam"/>
+<span class="font-body-standard text-body-standard text-on-surface flex-1">Assigned to me</span>
+</div>
+<!-- STATUS CHIPS -->
+<div class="flex justify-between items-center mb-8 px-2">
+<!-- To Do -->
+<button class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors group">
+<span class="material-symbols-outlined text-[20px]">radio_button_unchecked</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- In Progress (Selected) -->
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-[#34A853] text-white shadow-md transform scale-110 transition-transform">
+<span class="material-symbols-outlined fill text-[20px]">play_arrow</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- Done -->
+<button class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- Blocked -->
+<button class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">pause</span>
+</button>
+</div>
+<!-- META GRID (2x2) -->
+<div class="grid grid-cols-2 gap-3 mb-8">
+<!-- Client -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">person</span>
+<span class="font-body-standard text-body-standard text-on-surface truncate">Acme Corp</span>
+</div>
+<!-- Category -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">campaign</span>
+<span class="font-body-standard text-body-standard text-on-surface truncate">Marketing</span>
+</div>
+<!-- Priority -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<div class="w-2.5 h-2.5 rounded-full bg-[#EA4335]"></div>
+<span class="font-body-standard text-body-standard text-on-surface truncate">Urgent</span>
+</div>
+<!-- Due Date (Overdue) -->
+<div class="flex items-center gap-2 bg-error-container/30 border border-[#ba1a1a]/30 rounded-lg p-2.5">
+<span class="material-symbols-outlined text-[#ba1a1a] text-[18px]">calendar_today</span>
+<span class="font-body-standard text-body-standard font-medium text-[#ba1a1a] truncate">Yesterday</span>
+</div>
+</div>
+<!-- TIMER CARD -->
+<div class="mb-8 relative rounded-xl bg-surface overflow-hidden shadow-sm border border-outline-variant p-1">
+<!-- Pulsing border effect -->
+<div class="absolute inset-0 rounded-xl border-2 border-[#EA4335]/30 animate-pulse pointer-events-none"></div>
+<div class="bg-surface-container-lowest rounded-lg p-4 flex flex-col items-center justify-center gap-3 relative z-10">
+<div class="font-timer-display text-timer-display text-on-surface text-center">
+                        00:14:32
+                    </div>
+<button class="w-full bg-[#EA4335] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-[#d33828] active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined fill text-[18px]">stop</span>
+                        STOP &amp; DONE
+                    </button>
+</div>
+</div>
+<!-- CHECKLIST SECTION -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface">Checklist</h3>
+<span class="bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold px-2 py-0.5 rounded-full">2/4</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Item 1 (Done) -->
+<label class="flex items-start gap-3 cursor-pointer group">
+<input checked="" class="mt-0.5 w-5 h-5 rounded text-primary-container border-outline-variant focus:ring-primary-container focus:ring-offset-surface bg-surface-container-lowest" type="checkbox"/>
+<span class="font-body-standard text-[14px] text-on-surface-variant line-through flex-1">Review Q2 analytics report</span>
+</label>
+<!-- Item 2 (Done) -->
+<label class="flex items-start gap-3 cursor-pointer group">
+<input checked="" class="mt-0.5 w-5 h-5 rounded text-primary-container border-outline-variant focus:ring-primary-container focus:ring-offset-surface bg-surface-container-lowest" type="checkbox"/>
+<span class="font-body-standard text-[14px] text-on-surface-variant line-through flex-1">Identify key target demographics</span>
+</label>
+<!-- Item 3 (Pending) -->
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="mt-0.5 w-5 h-5 rounded text-primary-container border-outline-variant focus:ring-primary-container focus:ring-offset-surface bg-surface-container-lowest" type="checkbox"/>
+<span class="font-body-standard text-[14px] text-on-surface flex-1">Draft initial slide deck outline</span>
+</label>
+<!-- Item 4 (Pending) -->
+<label class="flex items-start gap-3 cursor-pointer group">
+<input class="mt-0.5 w-5 h-5 rounded text-primary-container border-outline-variant focus:ring-primary-container focus:ring-offset-surface bg-surface-container-lowest" type="checkbox"/>
+<span class="font-body-standard text-[14px] text-on-surface flex-1">Schedule review with design team</span>
+</label>
+</div>
+</div>
+<!-- COMMENTS SECTION -->
+<div>
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface mb-4">Activity</h3>
+<div class="flex flex-col gap-4">
+<!-- Comment 1 -->
+<div class="flex items-start gap-3">
+<img alt="User Avatar" class="w-6 h-6 rounded-full object-cover flex-shrink-0 mt-0.5" data-alt="A small circular profile picture of a young man with short hair and glasses. The image is brightly lit, typical of a corporate directory photo. The background is a flat, soft blue, fitting well within a modern, light-mode interface design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQDrZCKr7PdC-__OA6wEmfjaV5E_oT_GksHti476vJqmK5fX6pCIeozfKip4QOySpbEZ7OwVq_BFVm9CFnz5fsPJz9IHF-n-nfLg0NO3Q_x3OCUeikC6EELHtBFg_MBLZndK5oOM56cL6HGIU6HMdmBJLZuYbkffM6NzbJlND9VrBIRcMvzs7HwTlGZ469lWT-llI88JSaHdu1GByhuchNji90EotnoeA4nfS-QlQmpC2NuRahdlDHfFz8BFAKwLuS8gc-GtTg1Byn"/>
+<div class="flex flex-col flex-1">
+<div class="flex items-baseline gap-2 mb-0.5">
+<span class="font-label-bold text-[12px] font-bold text-on-surface">Alex Chen</span>
+<span class="font-body-standard text-[11px] text-on-surface-variant">2 hours ago</span>
+</div>
+<p class="font-body-standard text-[13px] text-on-surface">The analytics report is in the shared drive. Let me know if you need the raw data.</p>
+</div>
+</div>
+<!-- Comment 2 -->
+<div class="flex items-start gap-3">
+<img alt="Current User Avatar" class="w-6 h-6 rounded-full object-cover flex-shrink-0 mt-0.5" data-alt="A small circular profile picture of a young professional woman with dark hair, smiling warmly. The lighting is bright and even, typical of a modern corporate headshot. The background is a soft, out-of-focus neutral gray, fitting seamlessly into a light-mode UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAus126o0pusUw-goyboNDE0U8DD7kMt6-7gINOcQWiUa0Ry7niaDvPHotV03utM3_r0pY80OQsbSpONGQKvAe4QRkp_tyBYzKrFXVIDjmghwsrN5cUjZFhSHei2Fs0Bf6SPQmO21GXsNriMG74gEJl0VZUKxZFgHfkB6P79Ek8F4tmavgjfXst28sB5lfi1lWpT48qLHdhyfpegmMNxD1Wkq8r2zc6DZbfikx9yJDo_mzmAi4MbGyGsOSho8B6LXzi04J2YdYaiRSR"/>
+<div class="flex flex-col flex-1">
+<div class="flex items-baseline gap-2 mb-0.5">
+<span class="font-label-bold text-[12px] font-bold text-on-surface">You</span>
+<span class="font-body-standard text-[11px] text-on-surface-variant">1 hour ago</span>
+</div>
+<p class="font-body-standard text-[13px] text-on-surface">Got it, thanks! Reviewing it now before starting the deck.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom spacing for fixed input -->
+<div class="h-16"></div>
+</div> <!-- End Scrollable Content -->
+<!-- Pinned Comment Input -->
+<div class="absolute bottom-0 left-0 w-full bg-surface border-t border-outline-variant p-3 z-20">
+<div class="flex items-center gap-3">
+<img alt="Current User Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A small circular profile picture of a young professional woman with dark hair, smiling warmly. The lighting is bright and even, typical of a modern corporate headshot. The background is a soft, out-of-focus neutral gray, fitting seamlessly into a light-mode UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMBzFrNfc0_DOl8e69Ci3kaEADse_kRmppcaDN5JN5O_S_rCAU97SSasJR1oYBrgrmlhk1aHwklOCrthmb2RUcJRd43j6eiHtExMtv_UC8IJVjJqq_gOzU46LtOF4Ce1erdPy6-OGLP_cwv_C7EVVo2NkysE6XraOpVB_93FtJB4dLwGoDcJ94inT_kUSfUBFRWNC2XaWic8tVPleBDEWiJ_PVOYGjoiAuaHPmSEEMDXpmGHRZwcCVi8xwUf337P6oYXWQkJwAS9v9"/>
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 px-4 font-body-standard text-[14px] text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary-container focus:bg-surface-container-lowest transition-colors h-10" placeholder="Add comment..." type="text"/>
+<button class="absolute right-1 top-1 w-8 h-8 flex items-center justify-center text-primary-container rounded-full hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>

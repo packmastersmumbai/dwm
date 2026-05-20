@@ -1,0 +1,115 @@
+<div data-screen="notifications">
+<!-- Top App Bar (Mocked for context, matching JSON) -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline shadow-sm relative">
+<div class="flex items-center gap-3 cursor-pointer hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full p-1 active:scale-95 transition-transform">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-primary dark:text-primary-fixed-dim font-bold">
+                U
+             </div>
+</div>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary dark:text-primary-fixed-dim">TaskFlow</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full active:scale-95 transition-transform relative">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Content Mockup (Behind Backdrop) -->
+<main class="p-margin-edge pt-[80px]">
+<div class="bg-surface rounded-xl shadow-sm p-4 mb-4 border-l-4 border-primary">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-outline">description</span>
+<h3 class="font-title-main-mobile text-title-main-mobile">Prepare Q3 Report</h3>
+</div>
+<p class="text-on-surface-variant font-label-bold">Project Alpha</p>
+</div>
+<div class="bg-surface rounded-xl shadow-sm p-4 border-l-4 border-error">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-outline">warning</span>
+<h3 class="font-title-main-mobile text-title-main-mobile">Server Maintenance</h3>
+</div>
+<p class="text-on-surface-variant font-label-bold">Infrastructure</p>
+</div>
+</main>
+<!-- Bottom Nav Bar (Mocked for context, matching JSON) -->
+<nav class="flex justify-around items-center w-full h-nav-height px-2 bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg fixed bottom-0 z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-bold text-label-bold mt-1">My Day</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-bold text-label-bold mt-1">Team</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-bold text-label-bold mt-1">Admin</span>
+</a>
+</nav>
+<!-- Overlay Backdrop -->
+<div class="fixed inset-0 bg-[#000000] opacity-30 z-[60]"></div>
+<!-- Notifications Panel -->
+<div class="fixed top-0 left-0 w-full h-[618px] bg-surface rounded-b-[16px] z-[70] shadow-xl flex flex-col overflow-hidden">
+<!-- Header -->
+<div class="flex justify-between items-center px-4 h-[48px] bg-surface-container-lowest border-b border-outline-variant shrink-0">
+<h2 class="text-[16px] font-semibold text-on-surface">Notifications</h2>
+<button class="text-[13px] text-[#1A73E8] font-medium hover:underline active:scale-95 transition-transform">Mark all read</button>
+</div>
+<!-- Notification List -->
+<div class="overflow-y-auto flex-1 bg-surface">
+<!-- Assigned -->
+<div class="flex items-start px-4 h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2">
+<div class="w-[32px] h-[32px] rounded-full bg-[#1A73E8] flex items-center justify-center shrink-0 mr-3">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="assignment" style="font-variation-settings: 'FILL' 1;">assignment</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+<p class="text-[13px] leading-[18px] text-on-surface font-medium truncate">You were assigned to <span class="font-semibold">Q3 Marketing Push</span></p>
+<p class="text-[11px] text-[#9AA0A6] mt-0.5">2m ago</p>
+</div>
+<div class="w-[8px] h-[8px] rounded-full bg-[#1A73E8] shrink-0 mt-2 ml-2"></div>
+</div>
+<!-- Mention -->
+<div class="flex items-start px-4 h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2">
+<div class="w-[32px] h-[32px] rounded-full bg-[#9334E6] flex items-center justify-center shrink-0 mr-3">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+<p class="text-[13px] leading-[18px] text-on-surface truncate">Sarah mentioned you in <span class="font-semibold">Design Sync</span></p>
+<p class="text-[11px] text-[#9AA0A6] mt-0.5">15m ago</p>
+</div>
+<div class="w-[8px] h-[8px] rounded-full bg-[#1A73E8] shrink-0 mt-2 ml-2"></div>
+</div>
+<!-- Due Soon -->
+<div class="flex items-start px-4 h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2 opacity-70">
+<div class="w-[32px] h-[32px] rounded-full bg-[#FA7B17] flex items-center justify-center shrink-0 mr-3">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="schedule" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+<p class="text-[13px] leading-[18px] text-on-surface truncate"><span class="font-semibold">Client Presentation</span> is due in 1 hour</p>
+<p class="text-[11px] text-[#9AA0A6] mt-0.5">1h ago</p>
+</div>
+</div>
+<!-- Done -->
+<div class="flex items-start px-4 h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2 opacity-70">
+<div class="w-[32px] h-[32px] rounded-full bg-[#34A853] flex items-center justify-center shrink-0 mr-3">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+<p class="text-[13px] leading-[18px] text-on-surface truncate">Alex completed <span class="font-semibold">Update Assets</span></p>
+<p class="text-[11px] text-[#9AA0A6] mt-0.5">3h ago</p>
+</div>
+</div>
+<!-- Timer -->
+<div class="flex items-start px-4 h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2 opacity-70">
+<div class="w-[32px] h-[32px] rounded-full bg-[#EA4335] flex items-center justify-center shrink-0 mr-3">
+<span class="material-symbols-outlined text-white text-[18px]" data-icon="timer" style="font-variation-settings: 'FILL' 1;">timer</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+<p class="text-[13px] leading-[18px] text-on-surface truncate">Timer exceeded for <span class="font-semibold">Code Review</span></p>
+<p class="text-[11px] text-[#9AA0A6] mt-0.5">Yesterday</p>
+</div>
+</div>
+</div>
+</div>
+</div>

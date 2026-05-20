@@ -1,0 +1,6 @@
+node_modules/
+.playwright/
+screenshots/
+creds.json
+*.log
+.DS_Store

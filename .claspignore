@@ -1,0 +1,15 @@
+tailwind-input.css
+tailwind-generated.css
+node_modules/**
+package.json
+package-lock.json
+screens/**
+stage1_extract.py
+manifest.json
+stitch-meta-prompt.md
+*.cjs
+
+e2e-test.js
+e2e-*.js
+docs/README.md
+docs/index.html

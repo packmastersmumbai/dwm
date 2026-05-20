@@ -1,0 +1,593 @@
+<div data-screen="kanban-home">
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse, .animate-ping { animation: none !important; }
+  }
+</style>
+
+<!-- TopAppBar -->
+<header class="docked full-width top-0 h-nav-height border-b border-outline-variant shadow-sm flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface text-primary">
+  <div class="flex items-center gap-3">
+    <div id="kh-header-avatar" class="w-8 h-8 rounded-full border border-outline-variant cursor-pointer bg-secondary-container flex items-center justify-center text-[11px] font-bold text-on-secondary-container overflow-hidden shrink-0"></div>
+    <h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary">My Board</h1>
+  </div>
+  <div class="flex items-center gap-4">
+    <button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" aria-label="Search" data-action="search">
+      <span class="material-symbols-outlined">search</span>
+    </button>
+    <button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary relative" data-action="notifications" aria-label="Notifications">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EA4335]"></span>
+    </button>
+  </div>
+</header>
+
+<!-- Search Overlay -->
+<div id="kh-search-overlay" class="absolute inset-0 bg-surface z-[60] flex flex-col" style="display:none">
+  <div class="flex items-center gap-2 px-3 py-2 border-b border-outline-variant bg-surface shrink-0">
+    <button id="kh-search-close" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container" aria-label="Close search">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <input id="kh-search-input" type="search" placeholder="Search tasks, clients…"
+      class="flex-1 h-10 bg-surface-container rounded-full px-4 text-sm text-on-surface outline-none border border-outline-variant focus:border-primary transition-colors"/>
+  </div>
+  <div id="kh-search-results" class="flex-1 overflow-y-auto px-margin-edge py-3 flex flex-col gap-2">
+    <p class="text-on-surface-variant text-sm text-center mt-8">Type to search tasks…</p>
+  </div>
+</div>
+
+<!-- Filter Row -->
+<div class="w-full overflow-x-auto hide-scrollbar py-3 px-margin-edge flex gap-2 shrink-0 border-b border-outline-variant bg-surface" data-filter-row>
+  <button class="filter-btn px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="today">Today</button>
+  <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="week">This Week</button>
+  <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="all">All</button>
+  <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap flex items-center gap-1 cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="overdue">
+    Overdue <span class="bg-error text-on-error px-1.5 py-0.5 rounded-full text-[10px] leading-none" data-overdue-count>3</span>
+  </button>
+</div>
+
+<!-- Main Kanban Area -->
+<main class="flex-1 overflow-x-auto overflow-y-hidden kanban-snap flex gap-4 px-margin-edge py-4 pb-24">
+
+  <!-- Column: To Do -->
+  <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-todo rounded-lg overflow-hidden" data-col-status="todo">
+    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-[#9AA0A6]">pending</span>
+        <h2 class="text-[13px] font-semibold text-on-surface">To Do</h2>
+        <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="todo">0</span>
+      </div>
+      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="todo" aria-label="Add task to To Do">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+      </button>
+    </div>
+    <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-todo"></div>
+  </section>
+
+  <!-- Column: In Progress -->
+  <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-progress rounded-lg overflow-hidden" data-col-status="in-progress">
+    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-[#1A73E8]">model_training</span>
+        <h2 class="text-[13px] font-semibold text-on-surface">In Progress</h2>
+        <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="in-progress">0</span>
+      </div>
+      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="in-progress" aria-label="Add task to In Progress">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+      </button>
+    </div>
+    <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-inprogress"></div>
+  </section>
+
+  <!-- Column: Blocked -->
+  <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-blocked rounded-lg overflow-hidden" data-col-status="blocked">
+    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-[#EA4335]">block</span>
+        <h2 class="text-[13px] font-semibold text-on-surface">Blocked</h2>
+        <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="blocked">0</span>
+      </div>
+      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="blocked" aria-label="Add task to Blocked">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+      </button>
+    </div>
+    <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-blocked"></div>
+  </section>
+
+  <!-- Column: Done -->
+  <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-done rounded-lg overflow-hidden" data-col-status="done">
+    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-[#34A853]">check_circle</span>
+        <h2 class="text-[13px] font-semibold text-on-surface">Done</h2>
+        <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="done">0</span>
+      </div>
+    </div>
+    <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-done"></div>
+  </section>
+
+</main>
+
+<!-- FAB -->
+<button class="fixed bottom-[80px] right-margin-edge w-fab-size h-fab-size bg-[#1A73E8] rounded-full flex items-center justify-center text-white z-40 cursor-pointer hover:bg-primary active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary" style="box-shadow:0 4px 12px rgba(26,115,232,0.35)" data-action="add-task" aria-label="Add task">
+  <span class="material-symbols-outlined text-[24px]">add</span>
+</button>
+
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-nav-height z-50 border-t border-outline-variant shadow-lg flex justify-around items-center px-2 bg-surface">
+  <button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 cursor-pointer active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-primary" data-nav="kanban-home">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Home</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="myday-share">
+    <span class="material-symbols-outlined">calendar_today</span>
+    <span class="font-label-bold text-label-bold mt-0.5">My Day</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="team-board">
+    <span class="material-symbols-outlined">group</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Team</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="admin-panel">
+    <span class="material-symbols-outlined">settings</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Admin</span>
+  </button>
+</nav>
+</div>
+
+<script>
+(function () {
+  var _timerInterval = null;
+  var _allTasks = [];
+  var _activeFilter = 'today';
+  // Multi-timer state: map of taskId → { logId, startedAt }
+  // Supports any number of concurrent running timers per user.
+  var _activeTimers = {};
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  function priorityBorderClass(p) {
+    if (p === 'urgent' || p === 'high') return 'border-error';
+    if (p === 'medium') return 'border-[#FBBC04]';
+    if (p === 'low') return 'border-[#34A853]';
+    return 'border-outline-variant';
+  }
+  function priorityDotColor(p) {
+    if (p === 'urgent') return '#EA4335';
+    if (p === 'high') return '#FF6D00';
+    if (p === 'medium') return '#FBBC04';
+    if (p === 'low') return '#34A853';
+    return '#DADCE0';
+  }
+  function presenceDotColor(status) {
+    return status === 'online' ? '#34A853' : status === 'away' ? '#FBBC04' : '#DADCE0';
+  }
+
+  function formatElapsed(startIso) {
+    var secs = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    return [h, m, s].map(function (v) { return String(v).padStart(2, '0'); }).join(':');
+  }
+
+  function renderCard(task) {
+    var session = _activeTimers[task.id] || null;
+    var isTimer = !!session;
+    var timerStart = session ? session.startedAt : null;
+    var borderClass = priorityBorderClass(task.priority);
+    var _assignee0 = (task.assignees && task.assignees[0]) || {};
+    var _assigneeName = _assignee0.name || task.assignee || '?';
+    var _assigneeAvatar = _assignee0.avatar || task.assigneeAvatar || null;
+    var _assigneeStatus = _assignee0.status || 'offline';
+    var initials = _assigneeName.split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || '?';
+    var isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+
+    // Checklist count — defensively parse if stored as JSON string
+    var checklist = task.checklist;
+    if (typeof checklist === 'string') { try { checklist = JSON.parse(checklist); } catch(e) { checklist = []; } }
+    if (!Array.isArray(checklist)) checklist = [];
+    var checklistDone = checklist.filter(function(c) { return c.done; }).length;
+    var checklistHtml = checklist.length > 0
+      ? '<span class="flex items-center gap-0.5 bg-surface-container px-1.5 py-0.5 rounded text-[10px]">' + checklistDone + '/' + checklist.length + ' ✓</span>'
+      : '';
+
+    // Due date with overdue styling
+    var dueDateHtml = task.dueDate
+      ? '<span class="flex items-center gap-0.5' + (isOverdue ? ' text-[#EA4335] font-semibold' : '') + '"><span class="material-symbols-outlined text-[12px]">calendar_today</span> ' + escHtml(task.dueDate) + '</span>'
+      : '';
+
+    // Task-type icon (design_services / code / etc.) per reference
+    var typeIconMap = { design: 'design_services', dev: 'code', design_services: 'design_services', code: 'code', mktg: 'campaign', comms: 'forum' };
+    var taskType = (task.category && task.category.name ? task.category.name : task.type) || '';
+    var typeKey = taskType.toLowerCase().split(' ')[0];
+    var typeIcon = typeIconMap[typeKey] ? '<span class="material-symbols-outlined text-[14px] text-on-surface-variant">' + typeIconMap[typeKey] + '</span>' : '';
+    // task.client is an object {id, name, color, ...} after expandTask
+    var clientName = (task.client && task.client.name) ? task.client.name : (typeof task.client === 'string' ? task.client : '');
+    var clientChip = clientName ? '<span class="px-2 py-0.5 bg-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '';
+
+    var timerHtml = isTimer
+      ? '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-[#EA4335] font-bold mt-1"><span class="animate-pulse" data-live-timer data-start="' + escHtml(timerStart || '') + '">● REC ' + formatElapsed(timerStart) + '</span>' +
+          (clientName ? '<span class="ml-auto px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '') +
+        '</div>'
+      : '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface-variant mt-1">' +
+          clientChip + typeIcon + dueDateHtml + checklistHtml +
+        '</div>';
+
+    var playStop = isTimer
+      ? '<button class="w-[52px] h-[52px] rounded-full bg-[#EA4335] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto relative cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#EA4335] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="absolute inset-0 rounded-full border-[4px] border-[#EA4335] opacity-20 animate-ping"></span><span class="material-symbols-outlined fill-icon">stop</span></button>'
+      : '<button class="w-[52px] h-[52px] rounded-full bg-[#34A853] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#34A853] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon">play_arrow</span></button>';
+
+    var activeClass = isTimer
+      ? ' border border-[#EA4335] shadow-md'
+      : ' hover:shadow-md';
+
+    // Assignee with presence dot (image when available, initials fallback)
+    var assigneeInner = _assigneeAvatar
+      ? '<img alt="' + escHtml(_assigneeName) + '" class="w-full h-full object-cover rounded-full" src="' + escHtml(_assigneeAvatar) + '"/>'
+      : '<div class="w-full h-full flex items-center justify-center text-[9px] font-bold bg-surface-variant text-on-surface-variant rounded-full">' + initials + '</div>';
+    var presenceDotStyle = 'background:' + presenceDotColor(_assigneeStatus);
+    var assigneePulse = isTimer ? ' animate-pulse' : '';
+    var assigneeHtml = '<div class="relative w-[20px] h-[20px] shrink-0">' +
+      assigneeInner +
+      '<span class="absolute -bottom-0.5 -right-0.5 w-[8px] h-[8px] rounded-full border border-surface' + assigneePulse + '" style="' + presenceDotStyle + '"></span>' +
+    '</div>';
+
+    return '<article class="bg-surface rounded-xl shadow-sm border-l-4 ' + borderClass + ' p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task">' +
+      '<div class="flex-1 flex flex-col justify-between min-w-0">' +
+        '<div class="flex justify-between items-start mb-2 gap-2">' +
+          '<h3 class="font-body-standard text-[14px] font-medium leading-tight truncate">' + escHtml(task.title) + '</h3>' +
+          assigneeHtml +
+        '</div>' +
+        timerHtml +
+      '</div>' +
+      playStop +
+    '</article>';
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function applyFilter(tasks, filter) {
+    var today = new Date().toDateString();
+    if (filter === 'today') {
+      return tasks.filter(function (t) {
+        if (!t.dueDate) return true;
+        return new Date(t.dueDate).toDateString() === today;
+      });
+    }
+    if (filter === 'week') {
+      var weekAhead = new Date(); weekAhead.setDate(weekAhead.getDate() + 7);
+      return tasks.filter(function (t) {
+        if (!t.dueDate) return true;
+        return new Date(t.dueDate) <= weekAhead;
+      });
+    }
+    if (filter === 'overdue') {
+      return tasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; });
+    }
+    return tasks; // 'all'
+  }
+
+  function renderTasks(screen, tasks) {
+    var statuses = { 'todo': 'task-list-todo', 'in-progress': 'task-list-inprogress', 'blocked': 'task-list-blocked', 'done': 'task-list-done' };
+    var counts = { 'todo': 0, 'in-progress': 0, 'blocked': 0, 'done': 0 };
+
+    Object.keys(statuses).forEach(function (status) {
+      var area = screen.querySelector('[data-area="' + statuses[status] + '"]');
+      if (!area) return;
+      var col = tasks.filter(function (t) { return t.status === status; });
+      counts[status] = col.length;
+      if (status === 'done') {
+        area.innerHTML = col.map(function (t) {
+          return '<article class="bg-surface/60 rounded-xl shadow-sm border-l-4 border-outline p-3 opacity-60 cursor-pointer">' +
+            '<h3 class="font-body-standard text-[14px] font-medium leading-tight line-through text-on-surface-variant">' + escHtml(t.title) + '</h3>' +
+          '</article>';
+        }).join('') + (col.length > 3 ? '<div class="text-center mt-4 mb-2"><a class="text-[12px] text-primary hover:underline cursor-pointer">Archive older tasks</a></div>' : '');
+      } else {
+        area.innerHTML = col.map(function (t) {
+          return renderCard(t);
+        }).join('');
+      }
+      var countEl = screen.querySelector('[data-col-count="' + status + '"]');
+      if (countEl) countEl.textContent = col.length;
+    });
+
+    // overdue badge
+    var overdueCount = tasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; }).length;
+    var badge = screen.querySelector('[data-overdue-count]');
+    if (badge) badge.textContent = overdueCount;
+  }
+
+  // Single interval ticks ALL active per-card timer pills.
+  // Each `[data-live-timer]` carries its own `data-start` ISO timestamp.
+  function ensureTickerRunning() {
+    if (_timerInterval) return;
+    _timerInterval = setInterval(function () {
+      var liveEls = document.querySelectorAll('[data-live-timer]');
+      if (!liveEls.length) {
+        clearInterval(_timerInterval); _timerInterval = null;
+        return;
+      }
+      liveEls.forEach(function (el) {
+        var s = el.getAttribute('data-start');
+        if (s) el.textContent = '● REC ' + formatElapsed(s);
+      });
+    }, 1000);
+  }
+
+  function activateTimer(taskId, logId, startedAt) {
+    _activeTimers[taskId] = { logId: logId, startedAt: startedAt || new Date().toISOString() };
+    ensureTickerRunning();
+  }
+  function deactivateTimer(taskId) {
+    delete _activeTimers[taskId];
+  }
+
+  function loadTasks(screen) {
+    APP.call('getTasks').then(function (tasks) {
+      _allTasks = tasks || [];
+      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+      ensureTickerRunning();
+    }).catch(function (err) { APP.showError(err); });
+
+    // Hydrate ALL active timers for current user (multi-timer)
+    APP.call('getActiveTimers', APP.currentUser.id).then(function (sessions) {
+      _activeTimers = {};
+      (sessions || []).forEach(function (s) {
+        if (s && s.taskId && s.logId) {
+          _activeTimers[s.taskId] = { logId: s.logId, startedAt: s.startedAt || new Date().toISOString() };
+        }
+      });
+      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+      ensureTickerRunning();
+    }).catch(function () { /* benign — first deploy may not have getActiveTimers yet */ });
+  }
+
+  // ── search ────────────────────────────────────────────────────────────────
+
+  function openSearch(screen) {
+    var overlay = screen.querySelector('#kh-search-overlay');
+    var input = screen.querySelector('#kh-search-input');
+    var results = screen.querySelector('#kh-search-results');
+    var closeBtn = screen.querySelector('#kh-search-close');
+    if (!overlay) return;
+
+    overlay.style.removeProperty('display');
+    input.value = '';
+    results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">Type to search tasks…</p>';
+    input.focus();
+
+    var _debounce;
+    function doSearch() {
+      var q = input.value.trim();
+      if (!q) {
+        results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">Type to search tasks…</p>';
+        return;
+      }
+      results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">Searching…</p>';
+      APP.call('searchTasks', q, APP.currentUser.id).then(function(tasks) {
+        if (!tasks || tasks.length === 0) {
+          results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">No tasks found for “' + q + '”</p>';
+          return;
+        }
+        results.innerHTML = tasks.map(function(t) {
+          var priorityColors = { urgent: '#EA4335', high: '#FF6D00', medium: '#FBBC04', low: '#34A853' };
+          var dotColor = priorityColors[t.priority] || '#DADCE0';
+          var clientName = (t.client && t.client.name) ? t.client.name : (t.clientId || '');
+          return '<div class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container active:scale-[0.98] cursor-pointer transition-all" data-action="open-task" data-task-id="' + t.id + '">' +
+            '<div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + dotColor + '"></div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<p class="text-sm font-medium text-on-surface truncate">' + escHtml(t.title) + '</p>' +
+              (clientName ? '<p class="text-xs text-on-surface-variant truncate">' + escHtml(clientName) + '</p>' : '') +
+            '</div>' +
+            '<span class="text-xs text-on-surface-variant shrink-0 capitalize">' + (t.status || '') + '</span>' +
+          '</div>';
+        }).join('');
+        // Tap to open task
+        results.querySelectorAll('[data-action="open-task"]').forEach(function(row) {
+          row.addEventListener('click', function() {
+            closeSearch(screen);
+            APP.navigate('task-detail-sheet', { taskId: row.getAttribute('data-task-id') });
+          });
+        });
+      }).catch(function() {
+        results.innerHTML = '<p class="text-error text-sm text-center mt-8">Search failed. Try again.</p>';
+      });
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(_debounce);
+      _debounce = setTimeout(doSearch, 400);
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeSearch(screen);
+    });
+    closeBtn.addEventListener('click', function() { closeSearch(screen); });
+  }
+
+  function closeSearch(screen) {
+    var overlay = screen.querySelector('#kh-search-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  // ── event delegation ─────────────────────────────────────────────────────
+
+  function handleClick(e, screen) {
+    var btn = e.target.closest('[data-action]');
+    var nav = e.target.closest('[data-nav]');
+
+    if (nav) {
+      APP.navigate(nav.dataset.nav);
+      return;
+    }
+
+    if (!btn) return;
+    var action = btn.dataset.action;
+
+    if (action === 'search') {
+      openSearch(screen);
+      return;
+    }
+
+    if (action === 'add-task' || action === 'add-task-col') {
+      APP.navigate('add-edit-task');
+      return;
+    }
+
+    if (action === 'notifications') {
+      APP.navigate('notifications');
+      return;
+    }
+
+    if (action === 'open-task') {
+      var taskId = btn.dataset.taskId;
+      APP.navigate('task-detail-sheet', { taskId: taskId });
+      return;
+    }
+
+    if (action === 'start-timer') {
+      var taskId = btn.dataset.taskId;
+      e.stopPropagation();
+      e.preventDefault();
+
+      // OPTIMISTIC: activate inline timer + re-render so play→stop instantly
+      var optimisticStart = new Date().toISOString();
+      activateTimer(taskId, 'PENDING', optimisticStart);
+      // Reflect status locally so renderCard puts the task in In Progress
+      var localTask = _allTasks.find(function (t) { return t.id === taskId; });
+      if (localTask) localTask.status = 'in-progress';
+      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+
+      APP.call('startTimer', taskId, APP.currentUser.id).then(function (session) {
+        if (!session || !session.logId) {
+          deactivateTimer(taskId);
+          if (localTask) localTask.status = 'todo';
+          renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+          if (session && session.error === 'not_claimed') {
+            APP.showError('Claim this shared task before starting the timer');
+          } else {
+            APP.showError((session && session.error) || 'Could not start timer');
+          }
+          return;
+        }
+        // Reconcile with real logId + startedAt from server
+        _activeTimers[taskId] = { logId: session.logId, startedAt: session.startedAt || optimisticStart };
+        loadTasks(screen);
+      }).catch(function (err) {
+        deactivateTimer(taskId);
+        if (localTask) localTask.status = 'todo';
+        renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+        APP.showError(err);
+      });
+      return;
+    }
+
+    if (action === 'stop-timer') {
+      e.stopPropagation();
+      e.preventDefault();
+      var taskId = btn.dataset.taskId;
+      var session = _activeTimers[taskId];
+      if (!session || !session.logId || session.logId === 'PENDING') {
+        APP.showError('Timer for this task is still starting — try again in a moment');
+        return;
+      }
+      // OPTIMISTIC: deactivate + re-render instantly
+      var snapshot = session;
+      deactivateTimer(taskId);
+      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+
+      APP.call('stopTimer', session.logId, APP.currentUser.id).then(function () {
+        loadTasks(screen);
+      }).catch(function (err) {
+        // Roll back optimistic stop
+        _activeTimers[taskId] = snapshot;
+        renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+        ensureTickerRunning();
+        APP.showError(err);
+      });
+      return;
+    }
+  }
+
+  function handleFilterClick(e, screen) {
+    var btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    _activeFilter = btn.dataset.filter || 'all';
+    screen.querySelectorAll('.filter-btn').forEach(function (b) {
+      b.classList.remove('bg-primary-container', 'text-on-primary-container');
+      b.classList.add('border', 'border-outline', 'text-on-surface-variant');
+    });
+    btn.classList.add('bg-primary-container', 'text-on-primary-container');
+    btn.classList.remove('border', 'border-outline', 'text-on-surface-variant');
+    renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+  }
+
+  // ── drag-drop (basic HTML5) ───────────────────────────────────────────────
+
+  function setupDragDrop(screen) {
+    screen.addEventListener('dragstart', function (e) {
+      var card = e.target.closest('article[data-task-id]');
+      if (!card) return;
+      e.dataTransfer.setData('text/plain', card.dataset.taskId);
+    });
+    screen.querySelectorAll('[data-col-status]').forEach(function (col) {
+      col.addEventListener('dragover', function (e) { e.preventDefault(); });
+      col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        var taskId = e.dataTransfer.getData('text/plain');
+        var newStatus = col.dataset.colStatus;
+        if (!taskId || !newStatus) return;
+        var task = _allTasks.find(function (t) { return t.id === taskId; });
+        if (task && task.status !== newStatus) {
+          task.status = newStatus;
+          APP.call('updateTaskStatus', taskId, newStatus).then(function () {
+            renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+          }).catch(function (err) { APP.showError(err); });
+        }
+      });
+    });
+    screen.querySelectorAll('article[data-task-id]').forEach(function (el) {
+      el.setAttribute('draggable', 'true');
+    });
+  }
+
+  // ── registration ──────────────────────────────────────────────────────────
+
+  APP.register('kanban-home', {
+    mount: function (params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      var screen = document.querySelector('[data-screen="kanban-home"]');
+
+      // Header avatar
+      var _khAvatarEl = screen.querySelector('#kh-header-avatar');
+      if (_khAvatarEl) {
+        if (APP.currentUser.avatar) {
+          _khAvatarEl.innerHTML = '<img alt="' + (APP.currentUser.name || 'User') + '" class="w-full h-full object-cover" src="' + APP.currentUser.avatar + '"/>';
+        } else {
+          var _khIni = (APP.currentUser.name || 'U').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+          _khAvatarEl.textContent = _khIni;
+        }
+      }
+
+      screen._clickHandler = function (e) {
+        handleClick(e, screen);
+        handleFilterClick(e, screen);
+      };
+      screen.addEventListener('click', screen._clickHandler);
+
+      loadTasks(screen);
+      setupDragDrop(screen);
+    },
+    unmount: function () {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      var screen = document.querySelector('[data-screen="kanban-home"]');
+      if (screen && screen._clickHandler) {
+        screen.removeEventListener('click', screen._clickHandler);
+        screen._clickHandler = null;
+      }
+    }
+  });
+}());
+</script>

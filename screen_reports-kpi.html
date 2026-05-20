@@ -1,0 +1,295 @@
+<div data-screen="reports-kpi">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface dark:bg-surface-dim docked full-width top-0 shadow-sm border-b border-outline-variant dark:border-outline sticky">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-title-main-mobile text-title-main-mobile" data-user-avatar>JD</div>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary dark:text-primary-fixed-dim tracking-tight">Reports</h1>
+</div>
+<div class="flex items-center gap-2">
+<button aria-label="Search" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button aria-label="Notifications" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95 relative" data-action="notifications">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+</header>
+<main class="p-margin-edge flex flex-col gap-6 max-w-5xl mx-auto">
+<!-- Time Filter -->
+<section class="flex bg-surface-container-low rounded-xl p-1 shadow-inner overflow-x-auto no-scrollbar" data-filter-row>
+<button class="period-btn flex-1 py-2 px-4 rounded-lg font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors whitespace-nowrap" data-period="daily">Daily</button>
+<button class="period-btn flex-1 py-2 px-4 rounded-lg font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors whitespace-nowrap" data-period="weekly">Weekly</button>
+<button class="period-btn flex-1 py-2 px-4 rounded-lg bg-surface-container-lowest shadow-sm font-label-bold text-label-bold text-primary transition-colors whitespace-nowrap" data-period="monthly">Monthly</button>
+</section>
+<!-- KPI Overview (Bento Grid) -->
+<section class="bento-grid">
+<div class="bento-card flex flex-col gap-2 relative overflow-hidden border-l-4 border-[#1A73E8]">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="font-label-bold text-label-bold">Total Hours</span>
+</div>
+<div class="font-timer-display text-timer-display text-primary" data-area="kpi-total-hours">—</div>
+<div class="text-xs text-[#34A853] flex items-center gap-1 font-body-standard text-body-standard" data-kpi-hours-trend></div>
+<div class="absolute -right-4 -bottom-4 opacity-5"><span class="material-symbols-outlined text-[80px]">schedule</span></div>
+</div>
+<div class="bento-card flex flex-col gap-2 relative overflow-hidden border-l-4 border-[#34A853]">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">task_alt</span>
+<span class="font-label-bold text-label-bold">Tasks Completed</span>
+</div>
+<div class="font-timer-display text-timer-display text-on-surface" data-area="kpi-tasks-completed">—</div>
+<div class="text-xs text-[#34A853] flex items-center gap-1 font-body-standard text-body-standard" data-kpi-tasks-trend></div>
+<div class="absolute -right-4 -bottom-4 opacity-5"><span class="material-symbols-outlined text-[80px]">task_alt</span></div>
+</div>
+<div class="bento-card flex flex-col gap-2 relative overflow-hidden border-l-4 border-[#FBBC04]">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+<span class="font-label-bold text-label-bold">Efficiency %</span>
+</div>
+<div class="font-timer-display text-timer-display text-on-surface" data-area="kpi-efficiency">—</div>
+<div class="text-xs text-on-surface-variant flex items-center gap-1 font-body-standard text-body-standard" data-kpi-efficiency-trend></div>
+<div class="absolute -right-4 -bottom-4 opacity-5"><span class="material-symbols-outlined text-[80px]">bolt</span></div>
+</div>
+<div class="bento-card flex flex-col gap-2 relative overflow-hidden border-l-4 border-[#EA4335]">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+<span class="font-label-bold text-label-bold">Active Timers</span>
+</div>
+<div class="font-timer-display text-timer-display text-[#EA4335]" data-area="kpi-active-timers">—</div>
+<div class="text-xs text-on-surface-variant flex items-center gap-1 font-body-standard text-body-standard" data-kpi-timers-note></div>
+<div class="absolute -right-4 -bottom-4 opacity-5"><span class="material-symbols-outlined text-[80px]">timer</span></div>
+</div>
+</section>
+<!-- Charts Section -->
+<section class="bento-grid">
+<!-- Hours by Client -->
+<div class="bento-card bento-card-large bento-card-medium flex flex-col gap-4">
+<h2 class="font-title-main-mobile text-title-main-mobile">Hours by Client</h2>
+<div class="flex flex-col gap-3" data-area="chart-hours-by-client">
+<div class="space-y-2 w-full"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-3 w-2/3 opacity-80"></div><div class="tf-skeleton h-3 w-1/2 opacity-60"></div></div>
+</div>
+</div>
+<!-- Team Productivity -->
+<div class="bento-card bento-card-large bento-card-medium flex flex-col gap-4">
+<h2 class="font-title-main-mobile text-title-main-mobile">Team Productivity</h2>
+<div class="flex items-end gap-2 h-32 mt-auto" data-area="chart-team-productivity">
+<div class="space-y-2 w-full"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-3 w-2/3 opacity-80"></div><div class="tf-skeleton h-3 w-1/2 opacity-60"></div></div>
+</div>
+</div>
+</div>
+<!-- Category Split -->
+<div class="bento-card bento-card-large flex flex-col gap-4">
+<h2 class="font-title-main-mobile text-title-main-mobile">Category Split</h2>
+<div class="flex flex-wrap gap-4 items-center justify-center">
+<div class="w-24 h-24 rounded-full border-8 border-surface-variant relative flex items-center justify-center">
+<span class="font-label-bold text-label-bold">Dev 40%</span>
+<div class="absolute inset-0 rounded-full border-8 border-[#34A853] border-t-transparent border-r-transparent transform -rotate-45"></div>
+</div>
+<div class="flex flex-col gap-2 font-body-standard text-body-standard">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#34A853]"></span> Development (40%)</div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#4285F4]"></span> Design (35%)</div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#FBBC04]"></span> Marketing (25%)</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Detailed List -->
+<section class="flex flex-col gap-4 pb-20 md:pb-0">
+<h2 class="font-title-main-mobile text-title-main-mobile px-1">Top Performers</h2>
+<div class="flex flex-col gap-2" data-area="top-performers-list">
+<div class="space-y-2 w-full"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-3 w-2/3 opacity-80"></div><div class="tf-skeleton h-3 w-1/2 opacity-60"></div></div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden flex justify-around items-center w-full h-nav-height px-2 bg-surface dark:bg-surface-dim fixed bottom-0 z-50 border-t border-outline-variant dark:border-outline shadow-lg">
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-nav="kanban-home">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-nav="myday-share">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-bold text-label-bold">My Day</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-nav="team-board">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-bold text-label-bold">Team</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1 active:scale-90 transition-all duration-200" data-nav="admin-panel">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-bold text-label-bold">Admin</span>
+</button>
+</nav>
+</div>
+
+<script>
+(function () {
+  var _activePeriod = 'monthly';
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function trendIcon(pct) {
+    if (pct > 0) return '<span class="material-symbols-outlined text-[14px]">trending_up</span> +' + pct + '%';
+    if (pct < 0) return '<span class="material-symbols-outlined text-[14px]">trending_down</span> ' + pct + '%';
+    return '<span class="material-symbols-outlined text-[14px]">trending_flat</span> 0%';
+  }
+
+  function renderKpi(screen, kpi) {
+    var hoursEl = screen.querySelector('[data-area="kpi-total-hours"]');
+    var tasksEl = screen.querySelector('[data-area="kpi-tasks-completed"]');
+    var effEl   = screen.querySelector('[data-area="kpi-efficiency"]');
+    var timerEl = screen.querySelector('[data-area="kpi-active-timers"]');
+
+    if (hoursEl) hoursEl.textContent = kpi.totalHours != null ? kpi.totalHours : '—';
+    if (tasksEl) tasksEl.textContent = kpi.tasksCompleted != null ? kpi.tasksCompleted : '—';
+    if (effEl)   effEl.textContent   = kpi.efficiency != null ? kpi.efficiency + '%' : '—';
+    if (timerEl) timerEl.textContent = kpi.activeTimers != null ? kpi.activeTimers : '—';
+
+    var hoursTrend = screen.querySelector('[data-kpi-hours-trend]');
+    var tasksTrend = screen.querySelector('[data-kpi-tasks-trend]');
+    var effTrend   = screen.querySelector('[data-kpi-efficiency-trend]');
+    var timerNote  = screen.querySelector('[data-kpi-timers-note]');
+
+    if (hoursTrend) hoursTrend.innerHTML = trendIcon(kpi.hoursTrend || 0);
+    if (tasksTrend) tasksTrend.innerHTML = trendIcon(kpi.tasksTrend || 0);
+    if (effTrend)   effTrend.innerHTML   = trendIcon(kpi.efficiencyTrend || 0);
+    if (timerNote)  timerNote.textContent = kpi.timersNote || '';
+  }
+
+  function renderClientChart(screen, clientHours) {
+    var area = screen.querySelector('[data-area="chart-hours-by-client"]');
+    if (!area) return;
+    if (!clientHours || !clientHours.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    var max = Math.max.apply(null, clientHours.map(function (c) { return c.hours; }));
+    var colors = ['#4285F4','#EA4335','#FBBC04','#34A853','#9334E6'];
+    area.innerHTML = clientHours.map(function (c, i) {
+      var pct = max > 0 ? Math.round((c.hours / max) * 100) : 0;
+      return '<div class="flex flex-col gap-1">' +
+        '<div class="flex justify-between font-body-standard text-body-standard">' +
+          '<span>' + escHtml(c.client) + '</span>' +
+          '<span class="font-semibold">' + escHtml(String(c.hours)) + 'h</span>' +
+        '</div>' +
+        '<div class="w-full bg-surface-variant rounded-full h-2">' +
+          '<div class="h-2 rounded-full" style="width:' + pct + '%;background:' + colors[i % colors.length] + '"></div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function renderTeamChart(screen, memberStats) {
+    var area = screen.querySelector('[data-area="chart-team-productivity"]');
+    if (!area) return;
+    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    var max = Math.max.apply(null, memberStats.map(function (m) { return m.hours || 0; }));
+    // Rank members high→low to apply tiered opacity (top performer fully opaque)
+    var ranked = memberStats.slice().sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
+    var rankMap = {};
+    ranked.forEach(function (m, i) { rankMap[m.name] = i; });
+    var opacityTiers = [1.0, 0.8, 0.6, 0.4];
+    area.innerHTML = memberStats.map(function (m) {
+      var pct = max > 0 ? Math.round(((m.hours || 0) / max) * 100) : 0;
+      var rank = rankMap[m.name] || 0;
+      var opacity = opacityTiers[Math.min(rank, opacityTiers.length - 1)];
+      return '<div class="flex flex-col items-center flex-1 gap-2">' +
+        '<div class="w-full bg-primary rounded-t-md" style="height:' + pct + '%;min-height:4px;opacity:' + opacity + '"></div>' +
+        '<span class="font-label-bold text-label-bold text-on-surface-variant text-[10px]">' + escHtml(m.name || '') + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderTopPerformers(screen, memberStats) {
+    var area = screen.querySelector('[data-area="top-performers-list"]');
+    if (!area) return;
+    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    var sorted = memberStats.slice().sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
+    var borderColors = ['#1A73E8','#34A853','#FBBC04','#EA4335'];
+    area.innerHTML = sorted.map(function (m, i) {
+      var initials = (m.name || '?').split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+      return '<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center justify-between shadow-sm border-l-4" style="border-left-color:' + borderColors[i % borderColors.length] + '">' +
+        '<div class="flex items-center gap-3">' +
+          (m.avatar
+            ? '<img alt="' + escHtml(m.name || 'User') + '" class="w-10 h-10 rounded-full object-cover" src="' + escHtml(m.avatar) + '"/>'
+            : '<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">' + escHtml(initials) + '</div>') +
+          '<div>' +
+            '<div class="font-body-standard text-body-standard font-semibold">' + escHtml(m.name) + '</div>' +
+            '<div class="font-label-bold text-label-bold text-on-surface-variant">' + escHtml(m.role || '') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="text-right">' +
+          '<div class="font-body-standard text-body-standard font-semibold">' + escHtml(String(m.hours || 0)) + 'h logged</div>' +
+          '<div class="font-label-bold text-label-bold text-[#34A853]">' + escHtml(m.efficiency != null ? m.efficiency + '% Efficiency' : '') + '</div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function loadData(screen, period) {
+    // KPI summary (filtered by period)
+    APP.call('getKpiByFilter', period).then(function (kpi) {
+      renderKpi(screen, kpi || {});
+    }).catch(function (err) { APP.showError(err); });
+
+    APP.call('getHoursByClient').then(function (clientHours) {
+      renderClientChart(screen, clientHours || []);
+    }).catch(function (err) { APP.showError(err); });
+
+    APP.call('getTeamProductivity').then(function (memberStats) {
+      renderTeamChart(screen, memberStats || []);
+      renderTopPerformers(screen, memberStats || []);
+    }).catch(function (err) { APP.showError(err); });
+  }
+
+  function setActivePeriodBtn(screen, period) {
+    screen.querySelectorAll('.period-btn').forEach(function (btn) {
+      var isActive = btn.dataset.period === period;
+      btn.classList.toggle('bg-surface-container-lowest', isActive);
+      btn.classList.toggle('shadow-sm', isActive);
+      btn.classList.toggle('text-primary', isActive);
+      btn.classList.toggle('text-on-surface-variant', !isActive);
+    });
+  }
+
+  APP.register('reports-kpi', {
+    mount: function (params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      var screen = document.querySelector('[data-screen="reports-kpi"]');
+
+      // user avatar initials
+      var avEl = screen.querySelector('[data-user-avatar]');
+      if (avEl && APP.currentUser) {
+        avEl.textContent = (APP.currentUser.name || 'JD').split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+      }
+
+      screen._clickHandler = function (e) {
+        var nav = e.target.closest('[data-nav]');
+        if (nav) { APP.navigate(nav.dataset.nav); return; }
+
+        var periodBtn = e.target.closest('.period-btn');
+        if (periodBtn) {
+          _activePeriod = periodBtn.dataset.period || 'monthly';
+          setActivePeriodBtn(screen, _activePeriod);
+          loadData(screen, _activePeriod);
+          return;
+        }
+
+        var actionBtn = e.target.closest('[data-action]');
+        if (actionBtn && actionBtn.dataset.action === 'notifications') {
+          APP.navigate('notifications');
+        }
+      };
+      screen.addEventListener('click', screen._clickHandler);
+
+      setActivePeriodBtn(screen, _activePeriod);
+      loadData(screen, _activePeriod);
+    },
+    unmount: function () {
+      var screen = document.querySelector('[data-screen="reports-kpi"]');
+      if (screen && screen._clickHandler) {
+        screen.removeEventListener('click', screen._clickHandler);
+        screen._clickHandler = null;
+      }
+    }
+  });
+}());
+</script>

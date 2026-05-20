@@ -1,0 +1,170 @@
+<div data-screen="add-edit-task">
+<!-- Top App Bar (Modified for transactional "Add Task" context) -->
+<!-- Suppressed global nav elements as per "Linear/Transactional" rule -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface shadow-sm sticky top-0">
+<button class="w-touch-target h-touch-target flex items-center justify-center -ml-3 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-on-surface">New Task</h1>
+<div class="w-touch-target"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto px-margin-edge pb-32 pt-4">
+<!-- Form Section -->
+<form class="flex flex-col gap-6">
+<!-- Title Input -->
+<div class="w-full">
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary-container focus:ring-0 px-0 py-3 font-title-main-mobile text-title-main-mobile text-on-surface placeholder:text-on-surface-variant transition-colors rounded-none" placeholder="Task Title" type="text"/>
+</div>
+<!-- Client Chips -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Client</span>
+</div>
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold" type="button">Acme Corp</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors font-label-bold text-label-bold" type="button">Stark Ind</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold" type="button">Wayne Ent</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold" type="button">LexCorp</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold" type="button">Oscorp</button>
+</div>
+</div>
+<!-- Category Chips -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="label">label</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Category</span>
+</div>
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors font-label-bold text-label-bold flex items-center gap-1" type="button">💻 Dev</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold flex items-center gap-1" type="button">🎨 Design</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold flex items-center gap-1" type="button">📊 Mktg</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors font-label-bold text-label-bold flex items-center gap-1" type="button">💬 Comms</button>
+</div>
+</div>
+<!-- Priority Segmented Control -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="error">error</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Priority</span>
+</div>
+<div class="flex w-full h-[52px] bg-surface-container-low rounded-xl p-1 border border-outline-variant">
+<button class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Urgent</button>
+<button class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">High</button>
+<button class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold bg-surface-container-lowest shadow-sm text-primary transition-all" type="button">Med</button>
+<button class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Low</button>
+</div>
+</div>
+<!-- Due Date Row -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Due Date</span>
+</div>
+<button class="w-full flex justify-between items-center bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 hover:bg-surface-container-low transition-colors" type="button">
+<span class="text-on-surface font-body-standard">Today</span>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+<!-- Schedule Chips -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Schedule</span>
+</div>
+<div class="flex gap-2 w-full">
+<button class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors" type="button">
+<span>☀</span>
+<span class="font-label-bold text-label-bold">Morning</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors" type="button">
+<span>⛅</span>
+<span class="font-label-bold text-label-bold">Afternoon</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors" type="button">
+<span>🌙</span>
+<span class="font-label-bold text-label-bold">Evening</span>
+</button>
+</div>
+</div>
+<!-- Assignee Chips -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="group">group</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Assign</span>
+</div>
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+<button class="flex-shrink-0 w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container-high overflow-hidden relative" type="button">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A close up portrait of a young professional woman with a warm smile. She is wearing a light neutral blouse against a bright, softly blurred background. The lighting is bright and modern, creating a clean corporate aesthetic consistent with the light-mode UI style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjQpOM99hkLtMHjfS6uoCN6du_KKC4b1e5_hmAfFXH_OrkY4LFayUi-HwInaj7K7G_E-VyqYe_bmLN5KeZvfIGks-MfmSCHSfEZUrY0YW9oGjtG-8IBxOU5pkoP_WBaboXvquSWT3PSLOVlT5JXhQtnRKjyX1BYqyuospW6Lllb5slKIjeYbtWDdo5oN11Zy8FEGW5xVA9SyEbheRn5Nfp3LTHecgQFGhdRAkw528S48cnO0XyUCW8oO_C7_vuXTao1-sqd3T7t4K2"/>
+<div class="absolute inset-0 bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="check">check</span>
+</div>
+</button>
+<button class="flex-shrink-0 w-10 h-10 rounded-full border-2 border-transparent bg-surface-container-high overflow-hidden hover:opacity-80 transition-opacity" type="button">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A portrait of a male professional looking directly at the camera. He has short hair and a subtle beard, wearing a casual dark shirt. The setting is bright and professional, lit with soft white light to match a modern corporate dashboard style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1t3cEJy2L9pwC1Z1NoVQi750mF9K6e4zqlBRrCTionR-vHTxp7PVYw1Wg4-P5copp2KFcMYPztVC3T9fb0F7UP0DWEPEhaAyWmgNwMVJwrn8h4-Y9qFty_WfoEVb-9ZdytJhIDe6FalkrFnqvcAJ3kaRX5We5hgYP-lrcO5caKD_joyWX4eB-k54CbXfO8lLXglj8Rr4za0R9f9ScCIZOH1GRZUvhlVz4KhlVoEWk5hazrhUXLavfkjVNXe8QjKb1slXg8L71frR8"/>
+</button>
+<button class="flex-shrink-0 w-10 h-10 rounded-full border-2 border-transparent bg-surface-container-high overflow-hidden hover:opacity-80 transition-opacity" type="button">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a smiling woman with dark hair. The background is a clean, out-of-focus light gray. The overall lighting is even and high-key, ensuring she fits seamlessly into a modern, light-themed user interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArdlD5svhmAKtSfAR_MaiYkWVUUO3XJY4s6KUc-SofNNPfHxYMr_9o3enPu2cKzImVMIB8NY0toI2lRYQ_t8BX6siEsdxiKt12ggPkucPOISwIfcjrnrKhxU4b32rYFTtpdkcg44zZA-xubM-aXqsfXMkihoK4kQ9uxf-0YoyxWmD8-0mVfvuz6FxmntTPFUXreoMvd5FJnutPrZ5fcl5nA0eMxvQjSVNrHTRfOqQ3jSKWSpAQoTRTUiVjcnWt7rbWrp5YQXSI8TCb"/>
+</button>
+<button class="flex-shrink-0 w-10 h-10 rounded-full border border-dashed border-outline-variant bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+</button>
+</div>
+</div>
+<!-- Toggles (Shared, Recurring, Checklist) -->
+<div class="flex flex-col gap-0 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden mt-2">
+<!-- Shared -->
+<div class="flex justify-between items-center p-4 border-b border-outline-variant">
+<div class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="group">group</span>
+<span class="font-body-standard">Shared</span>
+</div>
+<label class="relative inline-block w-12 h-6 cursor-pointer">
+<input checked="" class="opacity-0 w-0 h-0 toggle-checkbox peer absolute" type="checkbox"/>
+<span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+<span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+</label>
+</div>
+<!-- Recurring -->
+<div class="flex justify-between items-center p-4 border-b border-outline-variant">
+<div class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="repeat">repeat</span>
+<span class="font-body-standard">Recurring</span>
+</div>
+<label class="relative inline-block w-12 h-6 cursor-pointer">
+<input class="opacity-0 w-0 h-0 toggle-checkbox peer absolute" type="checkbox"/>
+<span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+<span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+</label>
+</div>
+<!-- Checklist -->
+<div class="flex justify-between items-center p-4">
+<div class="flex items-center gap-3 text-on-surface">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="check_box">check_box</span>
+<span class="font-body-standard">Checklist</span>
+</div>
+<label class="relative inline-block w-12 h-6 cursor-pointer">
+<input class="opacity-0 w-0 h-0 toggle-checkbox peer absolute" type="checkbox"/>
+<span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+<span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+</label>
+</div>
+</div>
+<!-- Notes Textarea -->
+<div class="flex flex-col gap-2 mt-2">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="notes">notes</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Notes</span>
+</div>
+<textarea class="w-full bg-surface-container-low border-0 rounded-xl p-4 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container resize-none" placeholder="Add description or notes..." rows="4"></textarea>
+</div>
+</form>
+</main>
+<!-- Pinned Save Action -->
+<div class="fixed bottom-0 left-0 right-0 p-margin-edge bg-surface/90 backdrop-blur-sm border-t border-outline-variant z-50">
+<button class="w-full h-[52px] bg-primary-container text-on-primary-container rounded-xl font-title-main-mobile text-title-main-mobile flex items-center justify-center hover:bg-surface-tint active:scale-95 transition-all shadow-md" type="button">
+            Save Task
+        </button>
+</div>
+</div>

@@ -1,0 +1,383 @@
+<div data-screen="myday-share">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 h-nav-height border-b border-outline-variant dark:border-outline shadow-sm flex justify-between items-center px-margin-edge w-full z-50 bg-surface dark:bg-surface-dim active:scale-95 transition-transform sticky top-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm border border-outline-variant" data-user-avatar>?</div>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary dark:text-primary-fixed-dim">My Day</h1>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant dark:text-surface-variant">
+<span class="font-label-bold text-label-bold text-on-surface-variant" data-today-label></span>
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-2xl mx-auto px-margin-edge pt-4 flex flex-col gap-6 pb-32">
+<!-- Morning Greeting Card -->
+<div class="h-[80px] bg-primary-fixed rounded-xl px-4 flex justify-between items-center shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold" data-greeting-avatar>?</div>
+<h2 class="font-title-main text-title-main text-on-primary-container" data-greeting-text>Good morning</h2>
+</div>
+<div class="text-right">
+<p class="font-label-bold text-label-bold text-on-surface-variant" data-summary-counts>— tasks</p>
+</div>
+</div>
+<!-- Overdue Section -->
+<section class="flex flex-col gap-2">
+<button class="flex items-center justify-between w-full h-[32px] group" data-toggle-section="overdue">
+<div class="flex items-center gap-2 text-error">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+<span class="font-label-bold text-label-bold tracking-wider uppercase">Overdue</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-on-surface transition-colors">expand_more</span>
+</button>
+<div class="flex flex-col gap-2" data-area="overdue-tasks"></div>
+</section>
+<!-- In Progress Section -->
+<section class="flex flex-col gap-2">
+<button class="flex items-center justify-between w-full h-[32px] group" data-toggle-section="inprogress">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined fill-icon text-[18px]">play_circle</span>
+<span class="font-label-bold text-label-bold tracking-wider uppercase">In Progress</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-on-surface transition-colors">expand_more</span>
+</button>
+<div class="flex flex-col gap-2" data-area="inprogress-tasks"></div>
+</section>
+<!-- Today Section -->
+<section class="flex flex-col gap-2">
+<button class="flex items-center justify-between w-full h-[32px] group" data-toggle-section="today">
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[18px]">list_alt</span>
+<span class="font-label-bold text-label-bold tracking-wider uppercase">Today</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-on-surface transition-colors">expand_more</span>
+</button>
+<div class="flex flex-col gap-2" data-area="today-tasks"></div>
+</section>
+<!-- Shared Pool Section -->
+<div class="mt-4 pt-4 border-t border-outline-variant dark:border-outline">
+<section class="flex flex-col gap-2">
+<button class="flex items-center justify-between w-full h-[32px] group" data-toggle-section="shared-pool">
+<div class="flex items-center gap-2 text-[#9334E6]">
+<span class="material-symbols-outlined text-[18px]">group</span>
+<span class="font-label-bold text-label-bold tracking-wider uppercase font-semibold text-[#9334E6]" data-pool-label>Shared Pool</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-on-surface transition-colors">expand_more</span>
+</button>
+<div class="flex flex-col gap-2" data-area="shared-pool-tasks"></div>
+</section>
+</div>
+</main>
+<!-- Bottom Summary Bar (desktop) -->
+<div class="fixed bottom-nav-height w-full h-[40px] bg-surface-container flex items-center justify-center gap-4 text-on-surface-variant font-label-bold text-label-bold z-40 border-t border-outline-variant shadow-md hidden md:flex" data-area="summary-bar" style="bottom:56px">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span> <span data-summary-done>0</span> done</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">list</span> <span data-summary-left>0</span> left</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span data-summary-logged>0h</span> logged today</span>
+</div>
+<!-- Mobile Bottom Summary Bar -->
+<div class="fixed bottom-[56px] w-full h-[40px] bg-surface-container flex md:hidden items-center justify-center gap-2 text-on-surface-variant font-label-bold text-label-bold z-40 border-t border-outline-variant shadow-[0_-2px_4px_rgba(0,0,0,0.05)] text-[10px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check_circle</span> <span data-summary-done-mob>0</span> done</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">list</span> <span data-summary-left-mob>0</span> left</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> <span data-summary-logged-mob>0h</span> today</span>
+</div>
+<!-- FAB -->
+<button class="fixed right-margin-edge bottom-[112px] w-fab-size h-fab-size rounded-full bg-primary-container text-on-primary-container shadow-lg flex items-center justify-center z-50 hover:bg-primary transition-colors active:scale-95" data-action="add-task">
+<span class="material-symbols-outlined">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-nav-height z-50 flex justify-around items-center px-2 bg-surface dark:bg-surface-dim shadow-lg md:hidden border-t border-outline-variant dark:border-outline">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high active:scale-90 transition-all duration-200" data-nav="kanban-home">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined fill-icon">calendar_today</span>
+<span class="font-label-bold text-label-bold">My Day</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high active:scale-90 transition-all duration-200" data-nav="team-board">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-bold text-label-bold">Team</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high active:scale-90 transition-all duration-200" data-nav="admin-panel">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-bold text-label-bold">Admin</span>
+</button>
+</nav>
+</div>
+
+<script>
+(function () {
+  var _myTasks = [];
+  var _poolTasks = [];
+  var _activeTimerId = null;
+  var _activeLogId = null;
+  var _timerStart = null;
+  var _timerInterval = null;
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function initials(name) {
+    return (name || '?').split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+  }
+
+  function todayLabel() {
+    var d = new Date();
+    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+  }
+
+  function formatElapsed(startIso) {
+    var secs = Math.floor((Date.now() - new Date(startIso).getTime()) / 1000);
+    if (secs < 0) secs = 0;
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    return [h, m, s].map(function (v) { return String(v).padStart(2, '0'); }).join(':');
+  }
+
+  function buildTaskRow(task, type) {
+    // type: 'overdue' | 'inprogress' | 'todo' | 'done'
+    var isActive = task.id === _activeTimerId;
+    var borderColor = type === 'overdue' ? 'border-error' : type === 'inprogress' ? 'border-primary' : 'border-surface-container-highest';
+    var dotColor = type === 'overdue' ? 'bg-error' : type === 'inprogress' ? 'bg-primary' : 'bg-outline-variant';
+
+    if (type === 'done') {
+      return '<div class="h-[56px] bg-surface-container-low rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 border-surface-variant relative opacity-70" data-task-id="' + task.id + '">' +
+        '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
+          '<span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>' +
+          '<div class="flex flex-col overflow-hidden">' +
+            '<span class="font-body-standard text-body-standard font-medium text-outline line-through truncate">' + escHtml(task.title) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="flex items-center flex-shrink-0">' +
+          '<button class="w-[40px] h-[40px] flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95" data-action="share-task" data-task-id="' + task.id + '">' +
+            '<span class="material-symbols-outlined text-[20px]">share</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var timerBtn = isActive
+      ? '<button class="w-[44px] h-[44px] rounded-full bg-[#EA4335] bg-opacity-10 flex items-center justify-center text-[#EA4335] active:scale-95 relative" data-action="stop-timer" data-task-id="' + task.id + '"><div class="absolute inset-0 rounded-full border-4 border-[#EA4335] border-opacity-20 animate-pulse"></div><span class="material-symbols-outlined fill-icon">stop</span></button>'
+      : '<button class="w-[44px] h-[44px] rounded-full bg-surface-container flex items-center justify-center text-primary hover:bg-surface-container-highest transition-colors active:scale-95" data-action="start-timer" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon text-[#34A853]">play_arrow</span></button>';
+
+    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 ' + borderColor + ' relative" data-task-id="' + task.id + '">' +
+      '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
+        '<div class="w-2 h-2 rounded-full flex-shrink-0 ' + dotColor + '"></div>' +
+        '<div class="flex flex-col overflow-hidden whitespace-nowrap text-ellipsis">' +
+          '<span class="font-body-standard text-body-standard font-medium text-on-surface truncate">' + escHtml(task.title) + '</span>' +
+          '<span class="font-label-bold text-label-bold text-on-surface-variant truncate">' + escHtml(task.client || '') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="flex items-center gap-2 flex-shrink-0">' +
+        timerBtn +
+        '<button class="text-outline-variant hover:text-on-surface transition-colors" data-action="open-task" data-task-id="' + task.id + '"><span class="material-symbols-outlined">chevron_right</span></button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function buildPoolRow(task) {
+    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 border-surface-container-highest relative" data-task-id="' + task.id + '">' +
+      '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
+        '<div class="w-2 h-2 rounded-full bg-outline-variant flex-shrink-0"></div>' +
+        '<div class="flex flex-col overflow-hidden">' +
+          '<span class="font-body-standard text-body-standard font-medium text-on-surface truncate">' + escHtml(task.title) + '</span>' +
+          '<span class="font-label-bold text-label-bold text-on-surface-variant truncate">' + escHtml(task.client || '') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<button class="px-3 py-1.5 rounded-full border border-[#9334E6] text-[#9334E6] flex items-center gap-1 hover:bg-[#9334E6] hover:bg-opacity-10 active:scale-95 font-label-bold text-label-bold" data-action="claim-task" data-task-id="' + task.id + '">Claim <span class="material-symbols-outlined text-[14px]">play_arrow</span></button>' +
+    '</div>';
+  }
+
+  function renderAll(screen) {
+    var today = new Date().toDateString();
+    var overdue = _myTasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; });
+    var inprog  = _myTasks.filter(function (t) { return t.status === 'in-progress'; });
+    var todayTasks = _myTasks.filter(function (t) { return t.status === 'todo' && (!t.dueDate || new Date(t.dueDate).toDateString() === today); });
+    var done    = _myTasks.filter(function (t) { return t.status === 'done'; });
+
+    screen.querySelector('[data-area="overdue-tasks"]').innerHTML   = overdue.map(function (t) { return buildTaskRow(t, 'overdue'); }).join('') || '<div class="text-on-surface-variant text-sm px-1">None</div>';
+    screen.querySelector('[data-area="inprogress-tasks"]').innerHTML = inprog.map(function (t) { return buildTaskRow(t, 'inprogress'); }).join('') || '<div class="text-on-surface-variant text-sm px-1">None</div>';
+    screen.querySelector('[data-area="today-tasks"]').innerHTML     = todayTasks.concat(done).map(function (t) { return buildTaskRow(t, t.status === 'done' ? 'done' : 'todo'); }).join('') || '<div class="text-on-surface-variant text-sm px-1">None</div>';
+    screen.querySelector('[data-area="shared-pool-tasks"]').innerHTML = _poolTasks.map(buildPoolRow).join('') || '<div class="text-on-surface-variant text-sm px-1">No unclaimed tasks</div>';
+
+    var poolLabel = screen.querySelector('[data-pool-label]');
+    if (poolLabel) poolLabel.textContent = 'Shared Pool — ' + _poolTasks.length + ' unclaimed';
+
+    // Summary bar
+    var doneCount = done.length;
+    var leftCount = _myTasks.length - doneCount;
+    ['[data-summary-done]','[data-summary-done-mob]'].forEach(function (sel) { var el = screen.querySelector(sel); if (el) el.textContent = doneCount; });
+    ['[data-summary-left]','[data-summary-left-mob]'].forEach(function (sel) { var el = screen.querySelector(sel); if (el) el.textContent = leftCount; });
+
+    var countEl = screen.querySelector('[data-summary-counts]');
+    if (countEl) countEl.textContent = _myTasks.length + ' tasks';
+  }
+
+  function startTimerUI(screen, task) {
+    _activeTimerId = task.id;
+    _timerStart = task.timerStart || new Date().toISOString();
+    clearInterval(_timerInterval);
+    _timerInterval = setInterval(function () {
+      var loggedEls = screen.querySelectorAll('[data-summary-logged],[data-summary-logged-mob]');
+      loggedEls.forEach(function (el) { el.textContent = formatElapsed(_timerStart); });
+    }, 1000);
+    renderAll(screen);
+  }
+
+  function stopTimerUI(screen) {
+    clearInterval(_timerInterval);
+    _timerInterval = null;
+    _activeTimerId = null;
+    _timerStart = null;
+    renderAll(screen);
+  }
+
+  function buildShareSummary() {
+    var lines = ['*My Day Summary — ' + todayLabel() + '*'];
+    _myTasks.forEach(function (t) {
+      var icon = t.status === 'done' ? '✅' : t.status === 'in-progress' ? '▶️' : '⬜';
+      lines.push(icon + ' ' + (t.title || ''));
+    });
+    return lines.join('\n');
+  }
+
+  function handleClick(e, screen) {
+    var nav = e.target.closest('[data-nav]');
+    if (nav) { APP.navigate(nav.dataset.nav); return; }
+
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+    var taskId = btn.dataset.taskId;
+
+    if (action === 'add-task') { APP.navigate('add-edit-task'); return; }
+
+    if (action === 'open-task') {
+      APP.navigate('task-detail-sheet', { taskId: taskId });
+      return;
+    }
+
+    if (action === 'start-timer') {
+      APP.call('startTimer', taskId, APP.currentUser.id).then(function (session) {
+        if (session && session.logId) _activeLogId = session.logId;
+        var task = _myTasks.find(function (t) { return t.id === taskId; }) || { id: taskId, title: '' };
+        task.status = 'in-progress';
+        startTimerUI(screen, Object.assign({}, task, { timerStart: (session && session.startedAt) || new Date().toISOString() }));
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'stop-timer') {
+      var logId = _activeLogId || taskId; // fallback: backend resolves taskId too
+      APP.call('stopTimer', logId, APP.currentUser.id).then(function () {
+        _activeLogId = null;
+        stopTimerUI(screen);
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'claim-task') {
+      APP.call('claimTask', taskId, APP.currentUser ? APP.currentUser.id : '').then(function () {
+        _poolTasks = _poolTasks.filter(function (t) { return t.id !== taskId; });
+        // reload my tasks to pick up newly claimed
+        return APP.call('getMyDayTasks', APP.currentUser ? APP.currentUser.name : '');
+      }).then(function (tasks) {
+        _myTasks = tasks || [];
+        renderAll(screen);
+      }).catch(function (err) { APP.showError(err); });
+      return;
+    }
+
+    if (action === 'share-task') {
+      var task = _myTasks.find(function (t) { return t.id === taskId; });
+      var text = task ? ('✅ Done: *' + task.title + '*\nClient: ' + (task.client || '—')) : '';
+      window.open('whatsapp://send?text=' + encodeURIComponent(text));
+      return;
+    }
+
+    if (action === 'share-day') {
+      window.open('whatsapp://send?text=' + encodeURIComponent(buildShareSummary()));
+      return;
+    }
+
+    if (action === 'toggle-section') {
+      // section collapse handled by toggle-section buttons
+      var sectionKey = btn.dataset.toggleSection;
+      var areaMap = { overdue: 'overdue-tasks', inprogress: 'inprogress-tasks', today: 'today-tasks', 'shared-pool': 'shared-pool-tasks' };
+      var area = screen.querySelector('[data-area="' + (areaMap[sectionKey] || '') + '"]');
+      if (area) area.style.display = area.style.display === 'none' ? '' : 'none';
+      return;
+    }
+  }
+
+  // Wire section collapse toggle buttons (data-toggle-section is on the button itself)
+  function handleToggle(e, screen) {
+    var btn = e.target.closest('[data-toggle-section]');
+    if (!btn) return;
+    var key = btn.dataset.toggleSection;
+    var areaMap = { overdue: 'overdue-tasks', inprogress: 'inprogress-tasks', today: 'today-tasks', 'shared-pool': 'shared-pool-tasks' };
+    var area = screen.querySelector('[data-area="' + (areaMap[key] || '') + '"]');
+    if (area) area.style.display = (area.style.display === 'none') ? '' : 'none';
+  }
+
+  APP.register('myday-share', {
+    mount: function (params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      var screen = document.querySelector('[data-screen="myday-share"]');
+
+      // Header setup
+      var avEl = screen.querySelector('[data-user-avatar]');
+      var grAvEl = screen.querySelector('[data-greeting-avatar]');
+      var grText = screen.querySelector('[data-greeting-text]');
+      var labelEl = screen.querySelector('[data-today-label]');
+      if (avEl && APP.currentUser) avEl.textContent = initials(APP.currentUser.name);
+      if (grAvEl && APP.currentUser) grAvEl.textContent = initials(APP.currentUser.name);
+      if (grText && APP.currentUser) {
+        var hr = new Date().getHours();
+        var greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+        grText.textContent = greeting + ', ' + (APP.currentUser.name || '').split(' ')[0];
+      }
+      if (labelEl) labelEl.textContent = todayLabel();
+
+      screen._clickHandler = function (e) {
+        handleClick(e, screen);
+        handleToggle(e, screen);
+      };
+      screen.addEventListener('click', screen._clickHandler);
+
+      var userName = APP.currentUser ? APP.currentUser.name : '';
+
+      APP.call('getMyDayTasks', userName).then(function (tasks) {
+        _myTasks = tasks || [];
+        renderAll(screen);
+      }).catch(function (err) { APP.showError(err); });
+
+      APP.call('getSharedPoolTasks').then(function (tasks) {
+        _poolTasks = tasks || [];
+        renderAll(screen);
+      }).catch(function (err) { APP.showError(err); });
+    },
+    unmount: function () {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      _activeTimerId = null;
+      var screen = document.querySelector('[data-screen="myday-share"]');
+      if (screen && screen._clickHandler) {
+        screen.removeEventListener('click', screen._clickHandler);
+        screen._clickHandler = null;
+      }
+    }
+  });
+}());
+</script>

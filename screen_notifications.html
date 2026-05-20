@@ -1,0 +1,204 @@
+<div data-screen="notifications">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline shadow-sm relative">
+<div class="flex items-center gap-3 cursor-pointer hover:bg-surface-container-high transition-colors rounded-full p-1 active:scale-95">
+<div data-ref="user-avatar" class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-primary font-bold">?</div>
+</div>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary dark:text-primary-fixed-dim">TaskFlow</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+
+<!-- Content Mockup (Behind Backdrop) -->
+<main class="p-margin-edge pt-[80px] opacity-40 pointer-events-none select-none">
+<div class="bg-surface rounded-xl shadow-sm p-4 mb-4 border-l-4 border-primary">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-outline">description</span>
+<h3 class="font-title-main-mobile text-title-main-mobile">Prepare Q3 Report</h3>
+</div>
+<p class="text-on-surface-variant font-label-bold">Project Alpha</p>
+</div>
+<div class="bg-surface rounded-xl shadow-sm p-4 border-l-4 border-error">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-outline">warning</span>
+<h3 class="font-title-main-mobile text-title-main-mobile">Server Maintenance</h3>
+</div>
+<p class="text-on-surface-variant font-label-bold">Infrastructure</p>
+</div>
+</main>
+
+<!-- Bottom Nav Bar -->
+<nav class="flex justify-around items-center w-full h-nav-height px-2 bg-surface border-t border-outline-variant shadow-lg fixed bottom-0 z-50">
+<button data-ref="nav-home" class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold mt-1">Home</span>
+</button>
+<button data-ref="nav-myday" class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-bold text-label-bold mt-1">My Day</span>
+</button>
+<button data-ref="nav-team" class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-bold text-label-bold mt-1">Team</span>
+</button>
+<button data-ref="nav-admin" class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-bold text-label-bold mt-1">Admin</span>
+</button>
+</nav>
+
+<!-- Overlay Backdrop -->
+<div class="fixed inset-0 bg-black opacity-30 z-[60]"></div>
+
+<!-- Notifications Panel -->
+<div class="fixed top-0 left-0 w-full h-[618px] bg-surface rounded-b-[16px] z-[70] shadow-xl flex flex-col overflow-hidden">
+<!-- Panel Header -->
+<div class="flex justify-between items-center px-4 h-[48px] bg-surface-container-lowest border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-2">
+<button data-ref="btn-back" class="p-1 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<h2 class="text-[16px] font-semibold text-on-surface">Notifications</h2>
+</div>
+<button data-ref="btn-mark-all" class="text-[13px] text-[#1A73E8] font-medium hover:underline active:scale-95 transition-transform">Mark all read</button>
+</div>
+
+<!-- Notification List -->
+<div data-ref="notifications-list" class="overflow-y-auto flex-1 bg-surface">
+<!-- Skeleton state -->
+<div data-ref="loading-state" class="px-4 py-2 space-y-2">
+<div class="flex items-center gap-3"><div class="tf-skeleton w-[32px] h-[32px] rounded-full shrink-0"></div><div class="flex-1 space-y-1.5"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-2.5 w-1/3"></div></div></div>
+<div class="flex items-center gap-3 opacity-80"><div class="tf-skeleton w-[32px] h-[32px] rounded-full shrink-0"></div><div class="flex-1 space-y-1.5"><div class="tf-skeleton h-3 w-2/3"></div><div class="tf-skeleton h-2.5 w-1/4"></div></div></div>
+<div class="flex items-center gap-3 opacity-60"><div class="tf-skeleton w-[32px] h-[32px] rounded-full shrink-0"></div><div class="flex-1 space-y-1.5"><div class="tf-skeleton h-3 w-5/6"></div><div class="tf-skeleton h-2.5 w-1/3"></div></div></div>
+<div class="flex items-center gap-3 opacity-40"><div class="tf-skeleton w-[32px] h-[32px] rounded-full shrink-0"></div><div class="flex-1 space-y-1.5"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-2.5 w-1/4"></div></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+(function() {
+  var ICON_MAP = {
+    assigned:  { icon: 'assignment',   color: '#1A73E8' },
+    mention:   { icon: 'chat_bubble',  color: '#9334E6' },
+    due:       { icon: 'schedule',     color: '#FA7B17' },
+    done:      { icon: 'check_circle', color: '#34A853' },
+    timer:     { icon: 'timer',        color: '#EA4335' },
+    default:   { icon: 'notifications',color: '#9AA0A6' }
+  };
+
+  function qs(screen, ref) {
+    return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  function getIconMeta(type) {
+    return ICON_MAP[type] || ICON_MAP.default;
+  }
+
+  function buildNotifRow(notif) {
+    var meta = getIconMeta(notif.type);
+    var isUnread = !notif.isRead && !notif.read;
+
+    var row = document.createElement('div');
+    row.className = 'flex items-start px-4 min-h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2' + (isUnread ? '' : ' opacity-70');
+    row.dataset.notifId = notif.id;
+
+    row.innerHTML =
+      '<div class="w-[32px] h-[32px] rounded-full flex items-center justify-center shrink-0 mr-3" style="background-color:' + meta.color + '">' +
+        '<span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:\'FILL\' 1;">' + meta.icon + '</span>' +
+      '</div>' +
+      '<div class="flex-1 min-w-0 flex flex-col justify-center h-full">' +
+        '<p class="text-[13px] leading-[18px] text-on-surface font-medium truncate">' + (notif.message || notif.text || '') + '</p>' +
+        '<p class="text-[11px] text-on-surface-variant mt-0.5">' + (notif.timeAgo || notif.timestamp || '') + '</p>' +
+      '</div>' +
+      (isUnread ? '<div class="w-[8px] h-[8px] rounded-full bg-[#1A73E8] shrink-0 mt-2 ml-2 self-start"></div>' : '');
+
+    return row;
+  }
+
+  function markRowRead(row) {
+    row.classList.add('opacity-70');
+    var dot = row.querySelector('.rounded-full.bg-\\[\\#1A73E8\\]');
+    if (dot && dot.classList.contains('w-[8px]')) dot.remove();
+  }
+
+  function renderNotifications(screen, notifications) {
+    var list = qs(screen, 'notifications-list');
+    list.innerHTML = '';
+
+    if (!notifications || notifications.length === 0) {
+      list.innerHTML = '<div class="text-center text-on-surface-variant py-12 font-body-standard">You\'re all caught up!</div>';
+      return;
+    }
+
+    notifications.forEach(function(notif) {
+      var row = buildNotifRow(notif);
+
+      row.addEventListener('click', function() {
+        if (!notif.read) {
+          notif.read = true;
+          APP.call('markNotificationRead', notif.id)
+            .then(function() { markRowRead(row); })
+            .catch(function(err) { APP.showError(err); });
+        }
+        // Navigate to linked task if present
+        if (notif.taskId) {
+          APP.navigate('task-detail-sheet', { taskId: notif.taskId });
+        }
+      });
+
+      list.appendChild(row);
+    });
+  }
+
+  APP.register('notifications', {
+    mount: function(params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+
+      var screen = document.querySelector('[data-screen="notifications"]');
+
+      // Avatar
+      qs(screen, 'user-avatar').textContent = APP.currentUser.name ? APP.currentUser.name.charAt(0).toUpperCase() : '?';
+
+      // Load notifications (backend returns {notifications:[],unreadCount:N})
+      APP.call('getNotifications', APP.currentUser.id || APP.currentUser.name)
+        .then(function(result) {
+          qs(screen, 'loading-state').remove();
+          var list = Array.isArray(result) ? result : (result && result.notifications) || [];
+          renderNotifications(screen, list);
+        })
+        .catch(function(err) {
+          APP.showError(err);
+          qs(screen, 'loading-state').remove();
+        });
+
+      // Back button
+      qs(screen, 'btn-back').addEventListener('click', function() {
+        APP.navigate('kanban-home');
+      });
+
+      // Mark all read
+      qs(screen, 'btn-mark-all').addEventListener('click', function() {
+        APP.call('markAllNotificationsRead', APP.currentUser.id || APP.currentUser.name)
+          .then(function() {
+            var list = qs(screen, 'notifications-list');
+            list.querySelectorAll('[data-notif-id]').forEach(function(row) {
+              markRowRead(row);
+            });
+            APP.showSuccess('All notifications marked as read.');
+          })
+          .catch(function(err) { APP.showError(err); });
+      });
+
+      // Bottom nav
+      qs(screen, 'nav-home').addEventListener('click', function() { APP.navigate('kanban-home'); });
+      qs(screen, 'nav-myday').addEventListener('click', function() { APP.navigate('myday-focus'); });
+      qs(screen, 'nav-team').addEventListener('click', function() { APP.navigate('team-board'); });
+      qs(screen, 'nav-admin').addEventListener('click', function() { APP.navigate('admin-panel'); });
+    },
+
+    unmount: function() {}
+  });
+})();
+</script>

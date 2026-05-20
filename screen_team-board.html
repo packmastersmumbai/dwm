@@ -1,0 +1,324 @@
+<div data-screen="team-board">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 h-nav-height flex justify-between items-center px-margin-edge w-full z-50 bg-surface shadow-sm border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest shrink-0">
+<img alt="Avatar" class="w-full h-full object-cover" src=""/>
+</div>
+<div class="flex flex-col">
+<span class="font-title-main-mobile text-title-main-mobile font-bold text-primary">TaskFlow</span>
+<span class="font-label-bold text-label-bold text-on-surface-variant">Team Hub</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button aria-label="Search" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button aria-label="Notifications" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 relative" data-tb-nav="notifications">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+</header>
+
+<!-- Presence Strip -->
+<div class="w-full bg-surface shrink-0 border-b border-surface-variant">
+<div id="tb-presence-strip" class="flex gap-4 overflow-x-auto px-margin-edge py-3 items-center no-scrollbar">
+<!-- Populated dynamically -->
+</div>
+</div>
+
+<!-- Sub-tab Row & Filter -->
+<div class="bg-surface shrink-0">
+<div class="flex px-margin-edge border-b border-surface-variant">
+<button class="px-4 py-3 border-b-2 border-primary text-primary font-label-bold text-label-bold" data-tb-tab="board">Board</button>
+<button class="px-4 py-3 text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-container-lowest" data-tb-tab="timeline">Timeline</button>
+</div>
+<div id="tb-filter-row" class="flex gap-2 overflow-x-auto px-margin-edge py-3 no-scrollbar items-center">
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-on-surface text-surface font-label-bold text-label-bold tb-filter-btn active-filter" data-filter="all">All</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant font-label-bold text-label-bold tb-filter-btn flex items-center gap-1" data-filter="shared">
+<span class="material-symbols-outlined" style="font-size:16px;">group</span> Shared
+</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant font-label-bold text-label-bold tb-filter-btn" data-filter="design">Design Team</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant font-label-bold text-label-bold tb-filter-btn" data-filter="client-acme">Client: Acme Corp</button>
+</div>
+</div>
+
+<!-- Main Board Area -->
+<main class="flex-1 overflow-x-auto bg-surface-container-lowest flex items-start gap-4 px-margin-edge pt-4 pb-[80px]">
+<!-- In Progress Column -->
+<div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-primary-fixed-dim/20 p-2 h-full max-h-full overflow-hidden">
+<div class="flex items-center justify-between px-2 py-1">
+<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">In Progress</span>
+<span id="tb-inprogress-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
+</div>
+<div id="tb-col-inprogress" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
+</div>
+<!-- To Do Column -->
+<div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-surface-container-low p-2 h-full max-h-full overflow-hidden">
+<div class="flex items-center justify-between px-2 py-1">
+<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">To Do</span>
+<span id="tb-todo-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
+</div>
+<div id="tb-col-todo" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
+</div>
+<!-- Blocked Column -->
+<div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-error-container/30 p-2 h-full max-h-full overflow-hidden">
+<div class="flex items-center justify-between px-2 py-1">
+<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">Blocked</span>
+<span id="tb-blocked-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
+</div>
+<div id="tb-col-blocked" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
+</div>
+</main>
+
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-nav-height z-50 border-t border-outline-variant shadow-lg flex justify-around items-center px-2 bg-surface">
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tb-nav="kanban-home">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold mt-1 text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tb-nav="myday-focus">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-bold text-label-bold mt-1 text-[10px]">My Day</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-weight="fill">group</span>
+<span class="font-label-bold text-label-bold mt-1 text-[10px]">Team</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tb-nav="admin-panel">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-bold text-label-bold mt-1 text-[10px]">Admin</span>
+</button>
+</nav>
+</div>
+
+<script>
+APP.register('team-board', {
+  _allTasks: [],
+  _activeFilter: 'all',
+
+  mount: function(params) {
+    if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+    var self = this;
+    var screen = document.querySelector('[data-screen="team-board"]');
+
+    // Set current user avatar in header (fallback to initials)
+    var _avatarEl = screen.querySelector('header .w-8.rounded-full');
+    if (_avatarEl) {
+      if (APP.currentUser.avatar) {
+        _avatarEl.innerHTML = '<img alt="' + (APP.currentUser.name || 'User') + '" class="w-full h-full object-cover" src="' + APP.currentUser.avatar + '"/>';
+      } else {
+        var _ini = (APP.currentUser.name || 'U').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+        _avatarEl.innerHTML = '<div class="w-full h-full flex items-center justify-center text-[11px] font-bold text-on-secondary-container bg-secondary-container">' + _ini + '</div>';
+      }
+    }
+
+    // Bottom nav
+    screen.querySelectorAll('[data-tb-nav]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        APP.navigate(btn.getAttribute('data-tb-nav'));
+      });
+    });
+
+    // Sub-tabs
+    screen.querySelectorAll('[data-tb-tab]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (btn.getAttribute('data-tb-tab') === 'timeline') {
+          APP.navigate('team-timeline');
+        }
+      });
+    });
+
+    // Filter chips
+    screen.querySelector('#tb-filter-row').addEventListener('click', function(e) {
+      var btn = e.target.closest('.tb-filter-btn');
+      if (!btn) return;
+      self._activeFilter = btn.getAttribute('data-filter');
+      screen.querySelectorAll('.tb-filter-btn').forEach(function(b) {
+        var isActive = b === btn;
+        b.classList.toggle('bg-on-surface', isActive);
+        b.classList.toggle('text-surface', isActive);
+        b.classList.toggle('bg-surface-container-low', !isActive);
+        b.classList.toggle('text-on-surface', !isActive);
+        b.classList.toggle('border', !isActive);
+        b.classList.toggle('border-outline-variant', !isActive);
+      });
+      self._renderBoard(screen);
+    });
+
+    // Load data
+    APP.call('getTeamTasks')
+      .then(function(tasks) {
+        self._allTasks = tasks || [];
+        self._renderBoard(screen);
+      })
+      .catch(function(err) { APP.showError(err); });
+
+    APP.call('getTeamPresence')
+      .then(function(presence) {
+        self._renderPresence(screen, presence || []);
+      })
+      .catch(function(err) { APP.showError(err); });
+  },
+
+  unmount: function() {
+    this._allTasks = [];
+    this._activeFilter = 'all';
+  },
+
+  _filteredTasks: function() {
+    var self = this;
+    if (self._activeFilter === 'all') return self._allTasks;
+    if (self._activeFilter === 'shared') return self._allTasks.filter(function(t) { return t.shared; });
+    // member filter
+    return self._allTasks.filter(function(t) { return t.assignee === self._activeFilter; });
+  },
+
+  _renderPresence: function(screen, presence) {
+    var colorMap = { online: '#34A853', away: '#FBBC04', offline: '#DADCE0' };
+    var strip = screen.querySelector('#tb-presence-strip');
+    var currentUserId = (APP.currentUser && APP.currentUser.id) || null;
+    strip.innerHTML = presence.map(function(p) {
+      var statusColor = colorMap[p.status] || colorMap.offline;
+      var initials = (p.name || '?').charAt(0).toUpperCase();
+      var isCurrent = currentUserId && p.id === currentUserId;
+      var avatarHtml = p.avatar
+        ? '<img alt="' + p.name + '" class="w-full h-full object-cover" src="' + p.avatar + '"/>'
+        : '<div class="w-full h-full flex items-center justify-center font-bold text-sm bg-secondary-container text-on-secondary-container">' + initials + '</div>';
+      var avatarRing = isCurrent ? 'border-2 border-primary' : '';
+      var avatarBg = isCurrent ? '' : 'bg-surface-container-highest';
+      var nameColor = isCurrent ? 'text-on-surface' : 'text-on-surface-variant';
+      return '<div class="relative shrink-0 flex flex-col items-center gap-1">' +
+        '<div class="w-10 h-10 rounded-full ' + avatarRing + ' ' + avatarBg + ' overflow-hidden relative">' + avatarHtml + '</div>' +
+        '<div class="absolute bottom-5 -right-1 w-[12px] h-[12px] rounded-full border-2 border-surface" style="background:' + statusColor + '"></div>' +
+        '<span class="font-label-bold text-label-bold ' + nameColor + '">' + (p.name || '') + '</span>' +
+      '</div>';
+    }).join('');
+  },
+
+  _renderBoard: function(screen) {
+    var self = this;
+    var tasks = self._filteredTasks();
+    var inprogress = tasks.filter(function(t) { return t.status === 'in-progress' || t.status === 'inprogress'; });
+    var todo = tasks.filter(function(t) { return t.status === 'todo'; });
+    var blocked = tasks.filter(function(t) { return t.status === 'blocked'; });
+
+    screen.querySelector('#tb-inprogress-count').textContent = inprogress.length;
+    screen.querySelector('#tb-todo-count').textContent = todo.length;
+    screen.querySelector('#tb-blocked-count').textContent = blocked.length;
+
+    screen.querySelector('#tb-col-inprogress').innerHTML = inprogress.map(function(t) {
+      return self._taskCard(t, 'inprogress');
+    }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
+
+    screen.querySelector('#tb-col-todo').innerHTML = todo.map(function(t) {
+      return self._taskCard(t, 'todo');
+    }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
+
+    screen.querySelector('#tb-col-blocked').innerHTML = blocked.map(function(t) {
+      return self._taskCard(t, 'blocked');
+    }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
+
+    // Bind events
+    screen.querySelectorAll('[data-tb-task-id]').forEach(function(card) {
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.tb-action-btn')) return;
+        APP.navigate('task-detail-sheet', { taskId: card.getAttribute('data-tb-task-id') });
+      });
+    });
+
+    screen.querySelectorAll('.tb-stop-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var taskId = btn.getAttribute('data-task-id');
+        var logId = btn.getAttribute('data-log-id') || taskId; // use logId if stored, fallback backend resolves
+        APP.call('stopTimer', logId, APP.currentUser.id)
+          .then(function() {
+            var t = self._allTasks.find(function(x) { return x.id === taskId; });
+            if (t) t.status = 'todo';
+            self._renderBoard(screen);
+          })
+          .catch(function(err) { APP.showError(err); });
+      });
+    });
+
+    screen.querySelectorAll('.tb-play-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var taskId = btn.getAttribute('data-task-id');
+        APP.call('startTimer', taskId, APP.currentUser.id)
+          .then(function(session) {
+            // Store logId on the corresponding stop button for accurate stopTimer call
+            var stopBtn = screen.querySelector('.tb-stop-btn[data-task-id="' + taskId + '"]');
+            if (stopBtn && session && session.logId) stopBtn.setAttribute('data-log-id', session.logId);
+            var t = self._allTasks.find(function(x) { return x.id === taskId; });
+            if (t) t.status = 'in-progress';
+            self._renderBoard(screen);
+          })
+          .catch(function(err) { APP.showError(err); });
+      });
+    });
+  },
+
+  _taskCard: function(task, colType) {
+    var initials = (task.assignee || '?').charAt(0).toUpperCase();
+    var isRunning = colType === 'inprogress' && task.isRunning;
+    var isBlocked = colType === 'blocked';
+    var avatarOpacity = isBlocked ? ' opacity-50' : '';
+    var avatarImgClass = isBlocked ? 'w-full h-full object-cover grayscale' : 'w-full h-full object-cover';
+    var avatarHtml = task.assigneeAvatar
+      ? '<img alt="' + (task.assignee || '') + '" class="' + avatarImgClass + '" src="' + task.assigneeAvatar + '"/>'
+      : '<div class="w-full h-full flex items-center justify-center text-[10px] font-bold bg-secondary-container text-on-secondary-container">' + initials + '</div>';
+
+    // Priority-based border for todo
+    var todoBorder = (task.priority === 'urgent' || task.priority === 'high')
+      ? 'border-l-4 border-error'
+      : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#FBBC04]');
+    var borderColor = colType === 'inprogress'
+      ? (isRunning ? 'border-2 border-error' : 'border-l-4 border-primary')
+      : (colType === 'blocked' ? 'border-l-4 border-outline' : todoBorder);
+
+    var shadowClass = isRunning ? 'shadow-md' : 'shadow-sm';
+    var metaMargin = isRunning ? 'mt-2' : 'mt-1';
+
+    var actionHtml = colType === 'inprogress'
+      ? '<button class="tb-stop-btn tb-action-btn w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">stop</span></button>'
+      : (colType === 'todo'
+          ? '<button class="tb-play-btn tb-action-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-secondary hover:text-on-secondary transition-colors" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">play_arrow</span></button>'
+          : '<button class="tb-action-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant" data-task-id="' + task.id + '"><span class="material-symbols-outlined" style="font-size:20px;">visibility</span></button>');
+
+    var metaHtml = colType === 'inprogress' && task.timerDisplay
+      ? '<div class="flex items-center gap-1 bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold tracking-wider"><span class="w-2 h-2 rounded-full bg-error"></span> REC ' + task.timerDisplay + '</div>'
+      : (task.priority === 'high' || task.priority === 'urgent'
+          ? '<span class="font-label-bold text-label-bold text-error">High Priority</span>'
+          : (colType === 'blocked' && task.blockedReason
+              ? '<span class="font-label-bold text-label-bold text-error flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:14px;">warning</span> ' + task.blockedReason + '</span>'
+              : (task.shared && task.commentCount
+                  ? '<span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined" style="font-size:14px;">chat</span><span class="font-label-bold text-label-bold">' + task.commentCount + '</span></span>'
+                  : '<span></span>')));
+
+    var sharedIcon = task.shared
+      ? '<div class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined" style="font-size:14px;">group</span><span class="font-label-bold text-label-bold">' + (task.client || '') + '</span></div>'
+      : '<span class="font-label-bold text-label-bold text-on-surface-variant">' + (task.client || '') + '</span>';
+
+    var titleClass = isBlocked
+      ? 'font-body-standard text-body-standard text-on-surface-variant font-medium leading-tight mt-1 line-through'
+      : 'font-body-standard text-body-standard text-on-surface font-medium leading-tight mt-1';
+
+    return '<div class="bg-surface-container-lowest rounded-xl ' + shadowClass + ' p-3 flex flex-col gap-2 ' + borderColor + ' relative cursor-pointer" data-tb-task-id="' + task.id + '">' +
+      '<div class="flex justify-between items-start">' +
+        '<div class="flex-1 pr-8">' +
+          sharedIcon +
+          '<h3 class="' + titleClass + '">' + (task.title || 'Untitled') + '</h3>' +
+        '</div>' +
+        '<div class="absolute top-3 right-3 w-6 h-6 rounded-full overflow-hidden border border-outline-variant' + avatarOpacity + '">' + avatarHtml + '</div>' +
+      '</div>' +
+      '<div class="flex items-center justify-between ' + metaMargin + '">' +
+        metaHtml +
+        actionHtml +
+      '</div>' +
+    '</div>';
+  }
+});
+</script>

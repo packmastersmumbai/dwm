@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#1A73E8"/>
+<title>TaskFlow — Pack Masters</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo="/>
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; padding: 0; height: 100vh; height: 100dvh; overflow: hidden; background: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  /* Wrapper crops the iframe's top sandbox banner (38–46px tall on desktop, 60px on mobile).
+     The banner sits in the iframe document, NOT in this wrapper, so we negative-position the iframe
+     and use overflow:hidden on the wrapper to clip it. */
+  #wrap {
+    position: fixed; inset: 0;
+    overflow: hidden;
+    background: #fff;
+  }
+  /* iframe height = viewport + banner-height; offset by -banner-height so banner sits
+     outside the visible window. */
+  #app {
+    position: absolute;
+    left: 0; right: 0;
+    top: -42px;             /* desktop banner ~38–42px */
+    width: 100%;
+    height: calc(100% + 42px);
+    border: 0;
+    display: block;
+  }
+  @media (max-width: 640px) {
+    #app { top: -60px; height: calc(100% + 60px); } /* mobile banner taller */
+  }
+  /* Splash while iframe loads */
+  #splash {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; background: #fff; z-index: 10;
+    transition: opacity .4s ease-out;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash .logo {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: #E8F0FE; color: #1A73E8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+  }
+  #splash h1 {
+    font-size: 20px; font-weight: 700; color: #202124; margin: 0;
+    letter-spacing: -0.01em;
+  }
+  #splash p { font-size: 13px; color: #5F6368; margin: 0; }
+  .spinner {
+    width: 24px; height: 24px;
+    border: 2.5px solid #E8F0FE;
+    border-top-color: #1A73E8;
+    border-radius: 50%;
+    animation: spin .9s linear infinite;
+    margin-top: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="splash">
+  <div class="logo">⚡</div>
+  <h1>TaskFlow</h1>
+  <p>Pack Masters · DWM</p>
+  <div class="spinner" aria-label="Loading"></div>
+</div>
+<div id="wrap">
+  <iframe
+    id="app"
+    src="https://script.google.com/macros/s/AKfycbxG3yKj-XzyU2ydckTNCe0Poc-en3sjDkHJzr-SQFLsEQXF3l4X8Zg49MF_7ZTU_bRHkw/exec"
+    allow="clipboard-read; clipboard-write; geolocation; microphone; camera"
+    referrerpolicy="no-referrer-when-downgrade"
+    loading="eager"
+    title="TaskFlow"
+  ></iframe>
+</div>
+<script>
+  // Hide splash once iframe fires `load`. GAS apps render their body in a nested iframe,
+  // so 'load' on the outer wrapper fires before content paint; we add a 1.2s grace so
+  // the user sees the splash long enough to feel intentional, then fade out.
+  var splash = document.getElementById('splash');
+  var iframe = document.getElementById('app');
+  var minSplash = 1200;
+  var loadedAt = null;
+  var pageStart = Date.now();
+  iframe.addEventListener('load', function() {
+    loadedAt = Date.now();
+    var waited = loadedAt - pageStart;
+    var remain = Math.max(0, minSplash - waited);
+    setTimeout(function() {
+      splash.classList.add('hide');
+      setTimeout(function() { splash.style.display = 'none'; }, 450);
+    }, remain);
+  });
+  // Hard timeout: hide splash after 8s even if iframe never fires load
+  setTimeout(function() { splash.classList.add('hide'); setTimeout(function(){ splash.style.display='none'; }, 450); }, 8000);
+
+  // Service worker registration for offline shell (cache the wrapper itself)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(function() { /* harmless if absent */ });
+  }
+</script>
+</body>
+</html>

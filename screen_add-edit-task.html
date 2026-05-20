@@ -1,0 +1,429 @@
+<div data-screen="add-edit-task">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface shadow-sm sticky top-0">
+<button data-ref="btn-cancel" class="w-touch-target h-touch-target flex items-center justify-center -ml-3 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 data-ref="page-title" class="font-title-main-mobile text-title-main-mobile font-bold text-on-surface">New Task</h1>
+<div class="w-touch-target"></div>
+</header>
+
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto px-margin-edge pb-32 pt-4">
+<form data-ref="task-form" class="flex flex-col gap-6" autocomplete="off">
+
+  <!-- Title Input -->
+  <div class="w-full">
+    <input data-ref="field-title" class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary-container focus:ring-0 px-0 py-3 font-title-main-mobile text-title-main-mobile text-on-surface placeholder:text-on-surface-variant transition-colors rounded-none" placeholder="Task Title" type="text" required/>
+    <p data-ref="err-title" class="text-error text-[12px] mt-1 hidden">Title is required.</p>
+  </div>
+
+  <!-- Client Chips -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">person</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Client</span>
+    </div>
+    <div data-ref="client-chips" class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+      <div class="tf-skeleton h-8 w-24 rounded-full shrink-0"></div><div class="tf-skeleton h-8 w-28 rounded-full shrink-0 opacity-80"></div><div class="tf-skeleton h-8 w-20 rounded-full shrink-0 opacity-60"></div>
+    </div>
+  </div>
+
+  <!-- Category Chips -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">label</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Category</span>
+    </div>
+    <div data-ref="category-chips" class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+      <div class="tf-skeleton h-8 w-20 rounded-full shrink-0"></div><div class="tf-skeleton h-8 w-24 rounded-full shrink-0 opacity-80"></div><div class="tf-skeleton h-8 w-16 rounded-full shrink-0 opacity-60"></div>
+    </div>
+  </div>
+
+  <!-- Priority Segmented Control -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">error</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Priority</span>
+    </div>
+    <div class="flex w-full h-[52px] bg-surface-container-low rounded-xl p-1 border border-outline-variant">
+      <button data-priority="urgent" data-ref="pri-urgent" class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Urgent</button>
+      <button data-priority="high"   data-ref="pri-high"   class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">High</button>
+      <button data-priority="medium" data-ref="pri-medium" class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold bg-surface-container-lowest shadow-sm text-primary transition-all" type="button">Med</button>
+      <button data-priority="low"    data-ref="pri-low"    class="flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Low</button>
+    </div>
+  </div>
+
+  <!-- Due Date -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Due Date</span>
+    </div>
+    <button data-ref="field-due-date-btn" type="button" class="w-full flex justify-between items-center bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 hover:bg-surface-container-low transition-colors">
+      <span data-ref="field-due-date-label" class="text-on-surface font-body-standard">Select date</span>
+      <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+    </button>
+    <input data-ref="field-due-date" type="date" class="sr-only" required/>
+    <p data-ref="err-due" class="text-error text-[12px] mt-1 hidden">Due date is required.</p>
+  </div>
+
+  <!-- Schedule Chips -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">schedule</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Schedule</span>
+    </div>
+    <div class="flex gap-2 w-full">
+      <button data-schedule="morning"   data-ref="sch-morning"   class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors" type="button"><span>☀</span><span class="font-label-bold text-label-bold">Morning</span></button>
+      <button data-schedule="afternoon" data-ref="sch-afternoon" class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors" type="button"><span>⛅</span><span class="font-label-bold text-label-bold">Afternoon</span></button>
+      <button data-schedule="evening"   data-ref="sch-evening"   class="flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors" type="button"><span>🌙</span><span class="font-label-bold text-label-bold">Evening</span></button>
+    </div>
+  </div>
+
+  <!-- Assignee Chips -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">group</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Assign</span>
+    </div>
+    <div data-ref="assignee-chips" class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-margin-edge px-margin-edge">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full border border-dashed border-outline-variant bg-surface-container-low flex items-center justify-center text-on-surface-variant animate-pulse">
+        <span class="material-symbols-outlined text-[20px]">person</span>
+      </div>
+    </div>
+    <p data-ref="err-assignee" class="text-error text-[12px] mt-1 hidden">At least one assignee is required.</p>
+  </div>
+
+  <!-- Toggles -->
+  <div class="flex flex-col gap-0 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden mt-2">
+    <!-- Shared -->
+    <div class="flex justify-between items-center p-4 border-b border-outline-variant">
+      <div class="flex items-center gap-3 text-on-surface">
+        <span class="material-symbols-outlined text-on-surface-variant">group</span>
+        <span class="font-body-standard">Shared</span>
+      </div>
+      <label class="relative inline-block w-12 h-6 cursor-pointer">
+        <input data-ref="toggle-shared" type="checkbox" class="toggle-checkbox opacity-0 w-0 h-0 peer absolute"/>
+        <span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+        <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+      </label>
+    </div>
+    <!-- Recurring -->
+    <div class="flex justify-between items-center p-4 border-b border-outline-variant">
+      <div class="flex items-center gap-3 text-on-surface">
+        <span class="material-symbols-outlined text-on-surface-variant">repeat</span>
+        <span class="font-body-standard">Recurring</span>
+      </div>
+      <label class="relative inline-block w-12 h-6 cursor-pointer">
+        <input data-ref="toggle-recurring" type="checkbox" class="toggle-checkbox opacity-0 w-0 h-0 peer absolute"/>
+        <span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+        <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+      </label>
+    </div>
+    <!-- Checklist -->
+    <div class="flex justify-between items-center p-4">
+      <div class="flex items-center gap-3 text-on-surface">
+        <span class="material-symbols-outlined text-on-surface-variant">check_box</span>
+        <span class="font-body-standard">Checklist</span>
+      </div>
+      <label class="relative inline-block w-12 h-6 cursor-pointer">
+        <input data-ref="toggle-checklist" type="checkbox" class="toggle-checkbox opacity-0 w-0 h-0 peer absolute"/>
+        <span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+        <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="flex flex-col gap-2 mt-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">notes</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">Notes</span>
+    </div>
+    <textarea data-ref="field-notes" class="w-full bg-surface-container-low border-0 rounded-xl p-4 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container resize-none" placeholder="Add description or notes..." rows="4"></textarea>
+  </div>
+
+</form>
+</main>
+
+<!-- Pinned Save Action -->
+<div class="fixed bottom-0 left-0 right-0 p-margin-edge bg-surface/90 backdrop-blur-sm border-t border-outline-variant z-50">
+<button data-ref="btn-save" class="w-full h-[52px] bg-primary-container text-on-primary-container rounded-xl font-title-main-mobile text-title-main-mobile flex items-center justify-center hover:bg-surface-tint active:scale-95 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed" type="button">
+  Save Task
+</button>
+</div>
+</div>
+
+<script>
+(function() {
+  var _editMode = false;
+  var _taskId = null;
+  var _selectedClientId = null;
+  var _selectedCategoryId = null;
+  var _selectedAssignees = [];
+  var _selectedPriority = 'medium';
+  var _selectedSchedule = 'morning';
+
+  function qs(screen, ref) {
+    return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  /* ── Chip builders ─────────────────────────────────────── */
+  function buildChips(container, items, selectedIds, onToggle, multi, asAvatar) {
+    container.innerHTML = '';
+    items.forEach(function(item) {
+      var isSelected = selectedIds.indexOf(item.id) > -1;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.chipId = item.id;
+      if (asAvatar) {
+        // Circular avatar button with check overlay on selected (per Stitch reference)
+        var initials = (item.name || '?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+        btn.className = 'flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative transition-all ' +
+          (isSelected ? 'border-2 border-primary-container' : 'border-2 border-transparent hover:opacity-80');
+        var innerImg = item.avatar
+          ? '<img alt="' + (item.name || 'User') + '" class="w-full h-full object-cover" src="' + item.avatar + '"/>'
+          : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + initials + '</div>';
+        btn.innerHTML = innerImg +
+          (isSelected
+            ? '<div class="absolute inset-0 bg-primary-container/20 flex items-center justify-center">' +
+                '<span class="material-symbols-outlined text-white text-[20px]">check</span>' +
+              '</div>'
+            : '');
+      } else {
+        btn.className = 'whitespace-nowrap px-4 py-2 rounded-full font-label-bold text-label-bold transition-colors ' +
+          (isSelected
+            ? 'border border-primary-container bg-primary-fixed text-on-primary-fixed'
+            : 'border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low');
+        btn.textContent = (item.emoji ? item.emoji + ' ' : '') + item.name;
+      }
+      btn.addEventListener('click', function() {
+        if (multi) {
+          var idx = selectedIds.indexOf(item.id);
+          if (idx > -1) selectedIds.splice(idx, 1);
+          else selectedIds.push(item.id);
+        } else {
+          selectedIds.length = 0;
+          selectedIds.push(item.id);
+        }
+        onToggle();
+        buildChips(container, items, selectedIds, onToggle, multi, asAvatar);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  /* ── Priority segmented control ───────────────────────── */
+  function setPriority(screen, priority) {
+    _selectedPriority = priority;
+    ['urgent', 'high', 'medium', 'low'].forEach(function(p) {
+      var btn = qs(screen, 'pri-' + p);
+      if (!btn) return;
+      if (p === priority) {
+        btn.className = 'flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold bg-surface-container-lowest shadow-sm text-primary transition-all';
+      } else {
+        btn.className = 'flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors';
+      }
+    });
+  }
+
+  /* ── Schedule chips ────────────────────────────────────── */
+  function setSchedule(screen, schedule) {
+    _selectedSchedule = schedule;
+    ['morning', 'afternoon', 'evening'].forEach(function(s) {
+      var btn = qs(screen, 'sch-' + s);
+      if (!btn) return;
+      if (s === schedule) {
+        btn.className = 'flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors';
+      } else {
+        btn.className = 'flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors';
+      }
+    });
+  }
+
+  /* ── Populate form from existing task ─────────────────── */
+  function populateForm(screen, task, clients, categories, members) {
+    qs(screen, 'page-title').textContent = 'Edit Task';
+    qs(screen, 'field-title').value = task.title || '';
+    qs(screen, 'field-notes').value = task.notes || '';
+
+    if (task.dueDate) {
+      qs(screen, 'field-due-date').value = task.dueDate.substring(0, 10);
+      var _d = new Date(task.dueDate.substring(0, 10) + 'T00:00:00');
+      qs(screen, 'field-due-date-label').textContent = isNaN(_d) ? task.dueDate.substring(0, 10) : _d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+    }
+
+    setPriority(screen, task.priority || 'medium');
+    setSchedule(screen, task.schedule || 'morning');
+
+    if (task.shared)    qs(screen, 'toggle-shared').checked    = true;
+    if (task.recurring) qs(screen, 'toggle-recurring').checked = true;
+    if (task.checklist && task.checklist.length) qs(screen, 'toggle-checklist').checked = true;
+
+    // Pre-select client
+    if (task.clientId) {
+      _selectedClientId = task.clientId;
+    } else if (task.client && clients) {
+      var found = clients.find(function(c) { return c.name === task.client; });
+      if (found) _selectedClientId = found.id;
+    }
+
+    // Pre-select assignees
+    _selectedAssignees = task.assignees || (task.assignee ? [task.assignee] : []);
+
+    renderChipSections(screen, clients, categories, members);
+  }
+
+  function renderChipSections(screen, clients, categories, members) {
+    var clientSel = _selectedClientId ? [_selectedClientId] : [];
+    buildChips(qs(screen, 'client-chips'), clients || [], clientSel, function() {
+      _selectedClientId = clientSel[0] || null;
+    }, false);
+
+    var catSel = _selectedCategoryId ? [_selectedCategoryId] : [];
+    buildChips(qs(screen, 'category-chips'), categories || [], catSel, function() {
+      _selectedCategoryId = catSel[0] || null;
+    }, false);
+
+    // Assignees: members as objects with id = name for simplicity
+    var memberItems = (members || []).map(function(m) { return { id: m.id || m.name, name: m.name }; });
+    buildChips(qs(screen, 'assignee-chips'), memberItems, _selectedAssignees, function() {}, true, true);
+  }
+
+  /* ── Validation ────────────────────────────────────────── */
+  function validate(screen) {
+    var ok = true;
+    var title = qs(screen, 'field-title').value.trim();
+    var due   = qs(screen, 'field-due-date').value;
+
+    qs(screen, 'err-title').classList.toggle('hidden', !!title);
+    qs(screen, 'err-due').classList.toggle('hidden', !!due);
+    qs(screen, 'err-assignee').classList.toggle('hidden', _selectedAssignees.length > 0);
+
+    if (!title) ok = false;
+    if (!due)   ok = false;
+    if (_selectedAssignees.length === 0) ok = false;
+    return ok;
+  }
+
+  /* ── Collect task data ─────────────────────────────────── */
+  function collectTaskData(screen) {
+    return {
+      id:           _taskId || undefined,
+      title:        qs(screen, 'field-title').value.trim(),
+      clientId:     _selectedClientId,
+      categoryId:   _selectedCategoryId,
+      priority:     _selectedPriority,
+      dueDate:      qs(screen, 'field-due-date').value,
+      scheduledTime: _selectedSchedule,
+      assigneeIds:  _selectedAssignees.slice(),
+      isShared:     qs(screen, 'toggle-shared').checked,
+      recurrence:   qs(screen, 'toggle-recurring').checked ? { every: 'day' } : null,
+      checklist:    qs(screen, 'toggle-checklist').checked ? [] : null,
+      description:  qs(screen, 'field-notes').value.trim(),
+      createdBy:    APP.currentUser && APP.currentUser.id || ''
+    };
+  }
+
+  /* ── Register ──────────────────────────────────────────── */
+  APP.register('add-edit-task', {
+    mount: function(params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+
+      var screen = document.querySelector('[data-screen="add-edit-task"]');
+
+      _editMode         = !!(params && params.taskId);
+      _taskId           = _editMode ? params.taskId : null;
+      _selectedClientId   = null;
+      _selectedCategoryId = null;
+      _selectedAssignees  = [];
+      _selectedPriority   = 'medium';
+      _selectedSchedule   = 'morning';
+
+      // Set today as default due date
+      var today = new Date();
+      var todayStr = today.toISOString().substring(0, 10);
+      qs(screen, 'field-due-date').value = todayStr;
+      qs(screen, 'field-due-date-label').textContent = today.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+
+      // Styled date button opens hidden input
+      qs(screen, 'field-due-date-btn').addEventListener('click', function() {
+        var inp = qs(screen, 'field-due-date');
+        inp.showPicker ? inp.showPicker() : inp.click();
+      });
+      qs(screen, 'field-due-date').addEventListener('change', function() {
+        var d = new Date(this.value + 'T00:00:00');
+        qs(screen, 'field-due-date-label').textContent = isNaN(d) ? this.value : d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      });
+
+      // Priority buttons
+      ['urgent', 'high', 'medium', 'low'].forEach(function(p) {
+        qs(screen, 'pri-' + p).addEventListener('click', function() { setPriority(screen, p); });
+      });
+      setPriority(screen, 'medium');
+
+      // Schedule buttons
+      ['morning', 'afternoon', 'evening'].forEach(function(s) {
+        qs(screen, 'sch-' + s).addEventListener('click', function() { setSchedule(screen, s); });
+      });
+      setSchedule(screen, 'morning');
+
+      // Load dropdown data in parallel
+      var clientsP    = APP.call('getClients').catch(function() { return []; });
+      var categoriesP = APP.call('getCategories').catch(function() { return []; });
+      var membersP    = APP.call('getTeamMembers').catch(function() { return []; });
+
+      Promise.all([clientsP, categoriesP, membersP]).then(function(results) {
+        var clients    = results[0] || [];
+        var categories = results[1] || [];
+        var members    = results[2] || [];
+
+        if (_editMode) {
+          APP.call('getTaskById', _taskId)
+            .then(function(task) { populateForm(screen, task, clients, categories, members); })
+            .catch(function(err) { APP.showError(err); renderChipSections(screen, clients, categories, members); });
+        } else {
+          renderChipSections(screen, clients, categories, members);
+        }
+      }).catch(function(err) { APP.showError(err); });
+
+      // Cancel / back
+      qs(screen, 'btn-cancel').addEventListener('click', function() {
+        APP.navigate('kanban-home');
+      });
+
+      // Save
+      qs(screen, 'btn-save').addEventListener('click', function() {
+        if (!validate(screen)) return;
+
+        var taskData = collectTaskData(screen);
+        var saveBtn  = qs(screen, 'btn-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = _editMode ? 'Saving...' : 'Creating...';
+
+        APP.call('saveTask', taskData)
+          .then(function() {
+            APP.showSuccess(_editMode ? 'Task updated.' : 'Task created.');
+            APP.navigate('kanban-home');
+          })
+          .catch(function(err) {
+            APP.showError(err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Task';
+          });
+      });
+    },
+
+    unmount: function() {
+      _editMode           = false;
+      _taskId             = null;
+      _selectedClientId   = null;
+      _selectedCategoryId = null;
+      _selectedAssignees  = [];
+      _selectedPriority   = 'medium';
+      _selectedSchedule   = 'morning';
+    }
+  });
+})();
+</script>

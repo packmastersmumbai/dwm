@@ -1,0 +1,348 @@
+<div data-screen="admin-panel">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface border-b border-outline-variant shadow-sm sticky top-0 full-width">
+<div class="flex items-center gap-3">
+<div data-ref="user-avatar" class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm border border-outline-variant">A</div>
+</div>
+<div class="font-title-main-mobile text-title-main-mobile font-bold text-primary">TaskFlow</div>
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 transition-transform p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</header>
+<main class="p-margin-edge space-y-6">
+<!-- Page Title & Context -->
+<div class="flex justify-between items-center">
+<h1 class="font-title-main text-title-main text-on-surface">Admin Dashboard</h1>
+<button class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Stats Row (Bento Grid Style) -->
+<div class="grid grid-cols-2 gap-gutter-card">
+<!-- Active -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-low flex flex-col justify-between gap-2 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-16 h-16 bg-primary-fixed rounded-full opacity-20"></div>
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary mb-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+</div>
+<div>
+<div data-ref="stat-active-tasks" class="font-timer-display text-timer-display text-on-surface">—</div>
+<div class="font-label-bold text-label-bold text-on-surface-variant mt-1">Active Tasks</div>
+</div>
+</div>
+<!-- Live -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-low flex flex-col justify-between gap-2 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-16 h-16 bg-secondary-container rounded-full opacity-20"></div>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-secondary mb-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">sensors</span>
+</div>
+<div>
+<div data-ref="stat-live-sessions" class="font-timer-display text-timer-display text-on-surface">—</div>
+<div class="font-label-bold text-label-bold text-on-surface-variant mt-1">Live Sessions</div>
+</div>
+</div>
+<!-- Today -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-low flex flex-col justify-between gap-2 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-16 h-16 bg-tertiary-fixed rounded-full opacity-20"></div>
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary mb-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+</div>
+<div>
+<div data-ref="stat-due-today" class="font-timer-display text-timer-display text-on-surface">—</div>
+<div class="font-label-bold text-label-bold text-on-surface-variant mt-1">Due Today</div>
+</div>
+</div>
+<!-- Overdue -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-low flex flex-col justify-between gap-2 relative overflow-hidden border-b-4 border-b-error">
+<div class="absolute -right-4 -top-4 w-16 h-16 bg-error-container rounded-full opacity-20"></div>
+<div class="w-8 h-8 rounded-full bg-error-container flex items-center justify-center text-error mb-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<div data-ref="stat-overdue" class="font-timer-display text-timer-display text-on-surface">—</div>
+<div class="font-label-bold text-label-bold text-error mt-1">Overdue</div>
+</div>
+</div>
+</div>
+<!-- Tab Navigation -->
+<div class="flex gap-6 border-b border-outline-variant overflow-x-auto no-scrollbar pb-2">
+<button data-tab="tasks" data-ref="tab-tasks" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Tasks</button>
+<button data-tab="workload" data-ref="tab-workload" class="font-label-bold text-label-bold text-primary border-b-2 border-primary whitespace-nowrap px-1 pb-2 relative">
+  Workload
+  <span data-ref="workload-badge" class="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-error"></span>
+</button>
+<button data-tab="reports" data-ref="tab-reports" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Reports</button>
+<button data-tab="masters" data-ref="tab-masters" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Masters</button>
+</div>
+
+<!-- Tab: Workload (default visible) -->
+<div data-ref="panel-workload" class="space-y-4">
+<div data-ref="workload-cards" class="space-y-4">
+<div class="space-y-3"><div class="tf-skeleton h-[96px] w-full"></div><div class="tf-skeleton h-[96px] w-full opacity-70"></div><div class="tf-skeleton h-[96px] w-full opacity-40"></div></div>
+</div>
+<!-- Priority Legend -->
+<div class="flex flex-wrap gap-4 mt-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant">
+<div class="w-full font-label-bold text-label-bold text-on-surface-variant mb-1">Capacity Priority Legend</div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-error"></span><span class="font-label-bold text-label-bold text-on-surface">Urgent</span></div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-tertiary"></span><span class="font-label-bold text-label-bold text-on-surface">High</span></div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></span><span class="font-label-bold text-label-bold text-on-surface">Medium</span></div>
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-secondary"></span><span class="font-label-bold text-label-bold text-on-surface">Low</span></div>
+</div>
+</div>
+
+<!-- Tab: Tasks (hidden by default) -->
+<div data-ref="panel-tasks" class="space-y-3 hidden">
+<div data-ref="tasks-list" class="space-y-2">
+<div class="space-y-2"><div class="tf-skeleton h-[56px] w-full"></div><div class="tf-skeleton h-[56px] w-full opacity-80"></div><div class="tf-skeleton h-[56px] w-full opacity-60"></div></div>
+</div>
+</div>
+
+<!-- Tab: Reports (hidden by default) -->
+<div data-ref="panel-reports" class="hidden">
+<div class="text-center text-on-surface-variant py-16 font-body-standard">Reports coming soon.</div>
+</div>
+
+<!-- Tab: Masters (hidden by default) -->
+<div data-ref="panel-masters" class="hidden">
+<!-- Add User Form -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3 mb-4">
+<h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Add Team Member</h3>
+<input data-ref="new-user-name" type="text" placeholder="Full Name" class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+<input data-ref="new-user-pin" type="password" placeholder="4-digit PIN" maxlength="4" class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+<select data-ref="new-user-role" class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">
+<option value="member">Member</option>
+<option value="admin">Admin</option>
+</select>
+<button data-ref="btn-add-user" class="w-full h-10 bg-primary-container text-on-primary-container rounded-lg font-label-bold text-label-bold hover:bg-surface-tint active:scale-95 transition-all">Add Member</button>
+</div>
+<!-- Users List -->
+<div data-ref="users-list" class="space-y-2">
+<div class="text-center text-on-surface-variant py-4 font-body-standard">Loading users...</div>
+</div>
+</div>
+</main>
+
+<!-- BottomNavBar -->
+<nav class="flex justify-around items-center w-full h-nav-height px-2 bg-surface fixed bottom-0 z-50 border-t border-outline-variant shadow-lg">
+<button data-ref="nav-home" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button data-ref="nav-myday" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">calendar_today</span>
+<span class="font-label-bold text-label-bold">My Day</span>
+</button>
+<button data-ref="nav-team" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-bold text-label-bold">Team</span>
+</button>
+<button data-ref="nav-admin" class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-bold text-label-bold">Admin</span>
+</button>
+</nav>
+</div>
+
+<script>
+(function() {
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false };
+
+  function qs(screen, ref) {
+    return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  function setActiveTab(screen, activeTab) {
+    var tabs = ['tasks', 'workload', 'reports', 'masters'];
+    tabs.forEach(function(t) {
+      var btn = qs(screen, 'tab-' + t);
+      var panel = qs(screen, 'panel-' + t);
+      if (t === activeTab) {
+        btn.className = 'font-label-bold text-label-bold text-primary border-b-2 border-primary whitespace-nowrap px-1 pb-2 relative';
+        panel.classList.remove('hidden');
+      } else {
+        btn.className = 'font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2';
+        panel.classList.add('hidden');
+      }
+    });
+  }
+
+  function renderWorkload(screen, workloads) {
+    var container = qs(screen, 'workload-cards');
+    container.innerHTML = '';
+    var hasOverload = false;
+    (workloads || []).forEach(function(u) {
+      var isHigh = (u.urgentPct || 0) > 30;
+      if (isHigh) hasOverload = true;
+      var borderColor = isHigh ? 'border-l-error' : u.totalHours < 20 ? 'border-l-secondary' : 'border-l-tertiary';
+      var card = document.createElement('div');
+      card.className = 'bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-low border-l-4 ' + borderColor;
+      card.innerHTML =
+        '<div class="flex justify-between items-center mb-4">' +
+          '<div class="flex items-center gap-3">' +
+            (u.avatar
+              ? '<img alt="' + (u.name || 'User') + '" class="w-10 h-10 rounded-full object-cover" src="' + u.avatar + '"/>'
+              : '<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold">' + (u.name || '?').charAt(0).toUpperCase() + '</div>') +
+            '<div><div class="font-body-standard text-body-standard font-semibold text-on-surface">' + (u.name || 'Unknown') + '</div>' +
+            '<div class="font-label-bold text-label-bold text-on-surface-variant">' + (u.role || '') + '</div></div>' +
+          '</div>' +
+          '<div class="text-right"><div class="font-body-standard text-body-standard font-bold text-on-surface">' + (u.totalHours || 0) + 'h</div>' +
+          '<div class="font-label-bold text-label-bold text-on-surface-variant">logged</div></div>' +
+        '</div>' +
+        '<div class="w-full h-3 rounded-full bg-surface-container-high flex overflow-hidden">' +
+          '<div class="h-full bg-error transition-all" style="width:' + (u.urgentPct || 0) + '%"></div>' +
+          '<div class="h-full bg-tertiary transition-all" style="width:' + (u.highPct || 0) + '%"></div>' +
+          '<div class="h-full bg-tertiary-fixed-dim transition-all" style="width:' + (u.medPct || 0) + '%"></div>' +
+          '<div class="h-full bg-secondary transition-all" style="width:' + (u.lowPct || 0) + '%"></div>' +
+        '</div>';
+      container.appendChild(card);
+    });
+    if (hasOverload) qs(screen, 'workload-badge').classList.remove('hidden');
+    if (!workloads || workloads.length === 0) {
+      container.innerHTML = '<div class="text-center text-on-surface-variant py-8 font-body-standard">No workload data.</div>';
+    }
+  }
+
+  function renderTasks(screen, tasks) {
+    var container = qs(screen, 'tasks-list');
+    container.innerHTML = '';
+    (tasks || []).forEach(function(t) {
+      var row = document.createElement('div');
+      row.className = 'bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between border border-outline-variant';
+      row.innerHTML =
+        '<div class="flex-1 min-w-0">' +
+          '<div class="font-body-standard text-body-standard font-medium text-on-surface truncate">' + (t.title || 'Untitled') + '</div>' +
+          '<div class="font-label-bold text-label-bold text-on-surface-variant">' + (t.assignee || '') + ' · ' + (t.status || '') + '</div>' +
+        '</div>' +
+        '<span class="ml-3 text-[11px] font-label-bold px-2 py-0.5 rounded-full ' + (t.priority === 'high' ? 'bg-error-container text-error' : 'bg-surface-container-high text-on-surface-variant') + '">' + (t.priority || '') + '</span>';
+      container.appendChild(row);
+    });
+    if (!tasks || tasks.length === 0) {
+      container.innerHTML = '<div class="text-center text-on-surface-variant py-8 font-body-standard">No tasks found.</div>';
+    }
+  }
+
+  function renderUsers(screen, users) {
+    var container = qs(screen, 'users-list');
+    container.innerHTML = '';
+    (users || []).forEach(function(u) {
+      var row = document.createElement('div');
+      row.className = 'bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between border border-outline-variant';
+      row.innerHTML =
+        '<div class="flex items-center gap-3">' +
+          '<div class="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold">' + (u.name || '?').charAt(0).toUpperCase() + '</div>' +
+          '<div><div class="font-body-standard font-medium text-on-surface">' + (u.name || 'Unknown') + '</div>' +
+          '<div class="font-label-bold text-label-bold text-on-surface-variant">' + (u.role || 'member') + '</div></div>' +
+        '</div>';
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'p-2 rounded-full text-error hover:bg-error-container transition-colors';
+      removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_remove</span>';
+      removeBtn.addEventListener('click', function() {
+        if (!confirm('Remove ' + u.name + ' from the team?')) return;
+        APP.call('removeUser', u.id)
+          .then(function() {
+            row.remove();
+            APP.showSuccess(u.name + ' removed.');
+          })
+          .catch(function(err) { APP.showError(err); });
+      });
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    });
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="text-center text-on-surface-variant py-4 font-body-standard">No team members yet.</div>';
+    }
+  }
+
+  APP.register('admin-panel', {
+    mount: function(params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+      if (APP.currentUser.role !== 'admin') {
+        APP.showError('Access denied. Admin only.');
+        APP.navigate('kanban-home');
+        return;
+      }
+
+      var screen = document.querySelector('[data-screen="admin-panel"]');
+
+      // Avatar — render <img> when avatar URL present, else initials
+      var _apAv = qs(screen, 'user-avatar');
+      if (_apAv) {
+        if (APP.currentUser.avatar) {
+          _apAv.outerHTML = '<img alt="' + (APP.currentUser.name || 'User') + '" class="w-8 h-8 rounded-full object-cover border border-outline-variant" src="' + APP.currentUser.avatar + '"/>';
+        } else {
+          _apAv.textContent = APP.currentUser.name ? APP.currentUser.name.charAt(0).toUpperCase() : 'A';
+        }
+      }
+
+      // Load stats
+      APP.call('getAdminStats')
+        .then(function(stats) {
+          if (!stats) return;
+          qs(screen, 'stat-active-tasks').textContent = stats.activeTasks != null ? stats.activeTasks : '—';
+          qs(screen, 'stat-live-sessions').textContent = stats.liveSessions != null ? stats.liveSessions : '—';
+          qs(screen, 'stat-due-today').textContent = stats.dueToday != null ? stats.dueToday : '—';
+          qs(screen, 'stat-overdue').textContent = stats.overdue != null ? stats.overdue : '—';
+          if (stats.overdue > 0) qs(screen, 'workload-badge').classList.remove('hidden');
+        })
+        .catch(function(err) { APP.showError(err); });
+
+      // Load workload (default tab)
+      APP.call('getWorkloadByUser')
+        .then(function(data) { renderWorkload(screen, data); })
+        .catch(function(err) { APP.showError(err); });
+
+      // Tab switching
+      ['tasks', 'workload', 'reports', 'masters'].forEach(function(tab) {
+        qs(screen, 'tab-' + tab).addEventListener('click', function() {
+          setActiveTab(screen, tab);
+
+          if (tab === 'tasks' && !LOAD_LABELS_PER_TAB.tasks) {
+            LOAD_LABELS_PER_TAB.tasks = true;
+            APP.call('getTasks')
+              .then(function(tasks) { renderTasks(screen, tasks); })
+              .catch(function(err) { APP.showError(err); });
+          }
+
+          if (tab === 'masters' && !LOAD_LABELS_PER_TAB.masters) {
+            LOAD_LABELS_PER_TAB.masters = true;
+            APP.call('getUsers')
+              .then(function(users) { renderUsers(screen, users); })
+              .catch(function(err) { APP.showError(err); });
+          }
+        });
+      });
+
+      // Add user
+      qs(screen, 'btn-add-user').addEventListener('click', function() {
+        var name = qs(screen, 'new-user-name').value.trim();
+        var pin = qs(screen, 'new-user-pin').value.trim();
+        var role = qs(screen, 'new-user-role').value;
+        if (!name || !pin || pin.length !== 4) {
+          APP.showError('Please provide a name and a 4-digit PIN.');
+          return;
+        }
+        APP.call('addUser', { name: name, pin: pin, role: role })
+          .then(function(newUser) {
+            qs(screen, 'new-user-name').value = '';
+            qs(screen, 'new-user-pin').value = '';
+            APP.showSuccess(name + ' added to the team.');
+            // Refresh users list
+            APP.call('getUsers')
+              .then(function(users) { renderUsers(screen, users); })
+              .catch(function(err) { APP.showError(err); });
+          })
+          .catch(function(err) { APP.showError(err); });
+      });
+
+      // Bottom nav
+      qs(screen, 'nav-home').addEventListener('click', function() { APP.navigate('kanban-home'); });
+      qs(screen, 'nav-myday').addEventListener('click', function() { APP.navigate('myday-focus'); });
+      qs(screen, 'nav-team').addEventListener('click', function() { APP.navigate('team-board'); });
+    },
+
+    unmount: function() {
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false };
+    }
+  });
+})();
+</script>

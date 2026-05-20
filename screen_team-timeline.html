@@ -1,0 +1,310 @@
+<div data-screen="team-timeline">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height z-50 bg-surface shadow-sm border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-3">
+<div id="tt-header-avatar" class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden shrink-0 flex items-center justify-center text-[11px] font-bold text-on-surface-variant">
+</div>
+<span class="font-title-main-mobile text-title-main-mobile font-bold text-primary">TaskFlow</span>
+</div>
+<button class="w-touch-target h-touch-target flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all rounded-full">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<!-- Presence Strip & Sub-tabs Header Area -->
+<div class="bg-surface z-40 shrink-0 flex flex-col border-b border-outline-variant">
+<!-- Presence Strip -->
+<div id="tt-presence-strip" class="flex items-center gap-4 overflow-x-auto hide-scrollbar px-margin-edge py-3">
+<!-- Populated dynamically -->
+</div>
+<!-- Sub-tabs -->
+<div class="flex items-center px-margin-edge pb-3 gap-2">
+<button class="px-4 py-1.5 rounded-full font-label-bold text-label-bold text-on-surface-variant bg-surface-container-low border border-outline-variant" data-tt-tab="board">Board</button>
+<button class="px-4 py-1.5 rounded-full font-label-bold text-label-bold text-on-primary-container bg-primary-container border border-transparent shadow-sm" data-tt-tab="timeline">Timeline</button>
+<button class="px-4 py-1.5 rounded-full font-label-bold text-label-bold text-on-surface-variant bg-surface-container-low border border-outline-variant" data-tt-tab="list">List</button>
+</div>
+</div>
+<!-- Date Nav Row -->
+<div class="flex justify-between items-center px-margin-edge py-2 bg-surface-container-lowest shrink-0 border-b border-surface-container-highest z-30">
+<button id="tt-prev-week" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<span id="tt-date-label" class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider">Today, Mon 17 May</span>
+<button id="tt-next-week" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+<!-- Timeline Main Area -->
+<main class="flex-1 overflow-auto relative bg-surface-bright flex flex-col">
+<div class="min-w-[800px] flex flex-col relative h-full">
+<!-- Time Axis Header (Sticky Top) -->
+<div class="sticky top-0 z-30 flex border-b border-outline-variant bg-surface-container-lowest shadow-sm h-10 items-center text-on-surface-variant font-label-bold text-label-bold">
+<div class="w-20 shrink-0 sticky left-0 bg-surface-container-lowest border-r border-outline-variant h-full z-40"></div>
+<div class="flex-1 relative h-full">
+<div class="absolute top-0 bottom-0 left-[0px] w-[70px] border-l border-surface-container-highest px-1 pt-1">8am</div>
+<div class="absolute top-0 bottom-0 left-[70px] w-[70px] border-l border-surface-container-highest px-1 pt-1">9am</div>
+<div class="absolute top-0 bottom-0 left-[140px] w-[70px] border-l border-surface-container-highest px-1 pt-1">10am</div>
+<div class="absolute top-0 bottom-0 left-[210px] w-[70px] border-l border-surface-container-highest px-1 pt-1">11am</div>
+<div class="absolute top-0 bottom-0 left-[280px] w-[70px] border-l border-surface-container-highest px-1 pt-1">12pm</div>
+<div class="absolute top-0 bottom-0 left-[350px] w-[70px] border-l border-surface-container-highest px-1 pt-1">1pm</div>
+<div class="absolute top-0 bottom-0 left-[420px] w-[70px] border-l border-surface-container-highest px-1 pt-1">2pm</div>
+<div class="absolute top-0 bottom-0 left-[490px] w-[70px] border-l border-surface-container-highest px-1 pt-1">3pm</div>
+<div class="absolute top-0 bottom-0 left-[560px] w-[70px] border-l border-surface-container-highest px-1 pt-1">4pm</div>
+<div class="absolute top-0 bottom-0 left-[630px] w-[70px] border-l border-surface-container-highest px-1 pt-1">5pm</div>
+<div class="absolute top-0 bottom-0 left-[700px] w-[70px] border-l border-surface-container-highest px-1 pt-1">6pm</div>
+<!-- NOW Line Indicator -->
+<div id="tt-now-line" class="absolute top-0 bottom-[-800px] w-0.5 bg-error z-50 pointer-events-none" style="display:none;">
+<div class="absolute -top-1 -left-2 w-4 h-2 bg-error rounded-full shadow-sm"></div>
+</div>
+</div>
+</div>
+<!-- Timeline Rows -->
+<div id="tt-rows-container" class="flex-1 relative pb-20">
+<!-- Populated dynamically by renderTimeline() -->
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<footer class="flex justify-around items-center w-full h-nav-height px-2 bg-surface fixed bottom-0 z-50 border-t border-outline-variant shadow-lg shrink-0 pb-safe">
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tt-nav="kanban-home">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-bold text-[10px] mt-0.5">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tt-nav="myday-focus">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">calendar_today</span>
+<span class="font-label-bold text-[10px] mt-0.5">My Day</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 active:scale-90 transition-all duration-200 shadow-sm" data-tt-nav="team-board">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-bold text-[10px] mt-0.5 font-bold">Team</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-low active:scale-90 transition-all duration-200" data-tt-nav="admin-panel">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-bold text-[10px] mt-0.5">Admin</span>
+</button>
+</footer>
+</div>
+
+<script>
+APP.register('team-timeline', {
+  _weekOffset: 0,
+  _presenceData: [],
+  _timelineData: [],
+
+  mount: function(params) {
+    if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+    var self = this;
+    var screen = document.querySelector('[data-screen="team-timeline"]');
+
+    // Header avatar
+    var _ttAvatarEl = screen.querySelector('#tt-header-avatar');
+    if (_ttAvatarEl) {
+      if (APP.currentUser.avatar) {
+        _ttAvatarEl.innerHTML = '<img alt="' + (APP.currentUser.name || 'User') + '" class="w-full h-full object-cover" src="' + APP.currentUser.avatar + '"/>';
+      } else {
+        var _ttIni = (APP.currentUser.name || 'U').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+        _ttAvatarEl.textContent = _ttIni;
+      }
+    }
+
+    // Bottom nav
+    screen.querySelectorAll('[data-tt-nav]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        APP.navigate(btn.getAttribute('data-tt-nav'));
+      });
+    });
+
+    // Date navigation
+    screen.querySelector('#tt-prev-week').addEventListener('click', function() {
+      self._weekOffset--;
+      self._loadTimeline(screen);
+    });
+    screen.querySelector('#tt-next-week').addEventListener('click', function() {
+      self._weekOffset++;
+      self._loadTimeline(screen);
+    });
+
+    // Sub-tab navigation
+    screen.querySelectorAll('[data-tt-tab]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tab = btn.getAttribute('data-tt-tab');
+        if (tab === 'board') APP.navigate('team-board');
+        // 'timeline' is current screen; 'list' could be future slug
+      });
+    });
+
+    // Initial load
+    self._weekOffset = (params && params.weekOffset) ? params.weekOffset : 0;
+    self._loadTimeline(screen);
+
+    APP.call('getTeamPresence')
+      .then(function(presence) {
+        self._presenceData = presence || [];
+        self._renderPresence(screen);
+      })
+      .catch(function(err) { APP.showError(err); });
+
+    // NOW line
+    self._updateNowLine(screen);
+    self._nowTimer = setInterval(function() { self._updateNowLine(screen); }, 60000);
+  },
+
+  unmount: function() {
+    if (this._nowTimer) { clearInterval(this._nowTimer); this._nowTimer = null; }
+  },
+
+  _loadTimeline: function(screen) {
+    var self = this;
+    var refDate = new Date();
+    refDate.setDate(refDate.getDate() + self._weekOffset * 7);
+    var dateStr = refDate.toISOString().slice(0, 10);
+
+    self._updateDateLabel(screen, refDate);
+
+    APP.call('getTeamTimeline', dateStr)
+      .then(function(rows) {
+        self._timelineData = rows || [];
+        self._renderTimeline(screen);
+      })
+      .catch(function(err) { APP.showError(err); });
+  },
+
+  _updateDateLabel: function(screen, date) {
+    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var today = new Date();
+    var isToday = date.toDateString() === today.toDateString();
+    var prefix = isToday ? 'Today, ' : '';
+    var label = prefix + days[date.getDay()] + ' ' + date.getDate() + ' ' + months[date.getMonth()];
+    screen.querySelector('#tt-date-label').textContent = label;
+  },
+
+  _updateNowLine: function(screen) {
+    var now = new Date();
+    var hours = now.getHours() + now.getMinutes() / 60;
+    // Timeline: 8am = 0px, each hour = 70px
+    if (hours < 8 || hours > 19) {
+      screen.querySelector('#tt-now-line').style.display = 'none';
+      return;
+    }
+    var left = (hours - 8) * 70;
+    var line = screen.querySelector('#tt-now-line');
+    line.style.display = 'block';
+    line.style.left = left + 'px';
+  },
+
+  _renderPresence: function(screen) {
+    var strip = screen.querySelector('#tt-presence-strip');
+    if (!this._presenceData.length) {
+      strip.innerHTML = '<span class="text-on-surface-variant text-xs opacity-60">No presence data</span>';
+      return;
+    }
+    var colorMap = { online: '#34A853', away: '#FBBC04', offline: '#DADCE0' };
+    strip.innerHTML = this._presenceData.map(function(p) {
+      var color = colorMap[p.status] || '#DADCE0';
+      var initials = (p.name || '?').charAt(0).toUpperCase();
+      var dim = p.status === 'offline' ? ' opacity-60' : '';
+      return '<div class="relative shrink-0">' +
+        (p.avatar
+          ? '<img alt="' + (p.name || '') + '" class="w-8 h-8 rounded-full object-cover border-2 border-surface' + dim + '" src="' + p.avatar + '"/>'
+          : '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-sm border-2 border-surface' + dim + '">' + initials + '</div>') +
+        '<div class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-surface" style="background:' + color + '"></div>' +
+        '</div>';
+    }).join('');
+  },
+
+  _renderTimeline: function(screen) {
+    var self = this;
+    var container = screen.querySelector('#tt-rows-container');
+    if (!self._timelineData.length) {
+      container.innerHTML = '<div class="flex items-center justify-center h-32 text-on-surface-variant">No timeline data for this period</div>';
+      return;
+    }
+
+    var gridLines = '';
+    for (var h = 0; h < 11; h++) {
+      gridLines += '<div class="w-[70px] border-l border-surface-container-lowest h-full"></div>';
+    }
+
+    // Collect shared tasks from across rows into a single bottom row
+    var sharedTasks = [];
+    self._timelineData.forEach(function(row) {
+      (row.tasks || []).forEach(function(t) { if (t.shared) sharedTasks.push(t); });
+    });
+
+    container.innerHTML = self._timelineData.map(function(row) {
+      var initials = (row.assignee || '?').charAt(0).toUpperCase();
+      var avatarHtml = row.avatar
+        ? '<img alt="' + row.assignee + '" class="w-8 h-8 rounded-full object-cover" src="' + row.avatar + '"/>'
+        : '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-title-main-mobile">' + initials + '</div>';
+
+      var tasksHtml = (row.tasks || []).map(function(task) {
+        var startHour = task.startHour || 8;
+        var endHour = task.endHour || 9;
+        var left = Math.max(0, (startHour - 8) * 70);
+        var width = Math.max(35, (endHour - startHour) * 70);
+        var isRunning = task.status === 'inprogress';
+        var cardClass = isRunning
+          ? 'bg-primary text-on-primary rounded-lg shadow-md ring-2 ring-primary ring-offset-2 ring-offset-surface p-2 flex items-center gap-1 z-20'
+          : (task.planned
+              ? 'bg-surface border-2 border-dashed border-outline-variant text-on-surface-variant rounded-lg p-2 flex flex-col justify-center z-10'
+              : 'bg-primary-container text-on-primary-container rounded-lg shadow-sm border-l-4 border-primary p-2 flex flex-col justify-center z-10');
+
+        return '<div class="absolute top-2 bottom-2 cursor-pointer hover:shadow-md transition-shadow overflow-hidden ' + cardClass + '" ' +
+          'style="left:' + left + 'px;width:' + width + 'px" data-task-id="' + task.id + '">' +
+          (isRunning ? '<span class="material-symbols-outlined text-[14px]">motion_photos_on</span>' : '') +
+          '<span class="font-label-bold text-[10px] truncate leading-tight flex-1">' + (task.title || 'Task') + '</span>' +
+          '</div>';
+      }).join('');
+
+      return '<div class="flex min-h-[72px] border-b border-surface-container border-dashed hover:bg-surface-container-lowest transition-colors group">' +
+        '<div class="w-20 shrink-0 sticky left-0 bg-surface z-20 flex flex-col items-center justify-center border-r border-outline-variant py-2 group-hover:bg-surface-container-lowest transition-colors">' +
+          avatarHtml +
+          '<span class="font-label-bold text-[10px] text-on-surface mt-1 truncate w-full text-center px-1">' + (row.assignee || '') + '</span>' +
+        '</div>' +
+        '<div class="flex-1 relative">' +
+          '<div class="absolute inset-0 flex pointer-events-none">' + gridLines + '</div>' +
+          tasksHtml +
+        '</div>' +
+      '</div>';
+    }).join('') + (sharedTasks.length ? (function() {
+      // Shared bottom row — per Stitch reference
+      var sharedHtml = sharedTasks.map(function(task) {
+        var startHour = task.startHour || 8;
+        var endHour = task.endHour || 9;
+        var left = Math.max(0, (startHour - 8) * 70);
+        var width = Math.max(35, (endHour - startHour) * 70);
+        var stackedAvatars = (task.assignees || []).slice(0, 3).map(function(a) {
+          return a.avatar
+            ? '<img alt="' + (a.name || '') + '" class="w-5 h-5 rounded-full object-cover ring-2 ring-tertiary-container" src="' + a.avatar + '"/>'
+            : '<div class="w-5 h-5 rounded-full ring-2 ring-tertiary-container bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center text-[9px] font-bold">' + ((a.name || '?').charAt(0).toUpperCase()) + '</div>';
+        }).join('');
+        return '<div class="absolute top-2 bottom-2 cursor-pointer hover:shadow-md transition-shadow overflow-hidden bg-tertiary-container text-on-tertiary-container rounded-lg shadow-sm p-2 flex items-center justify-between z-10" ' +
+          'style="left:' + left + 'px;width:' + width + 'px" data-task-id="' + task.id + '">' +
+          '<span class="font-label-bold text-[10px] truncate leading-tight flex-1">' + (task.title || 'Shared task') + '</span>' +
+          (stackedAvatars ? '<div class="flex -space-x-2 shrink-0">' + stackedAvatars + '</div>' : '') +
+        '</div>';
+      }).join('');
+      return '<div class="flex min-h-[72px] bg-surface-container-low border-t border-outline-variant">' +
+        '<div class="w-20 shrink-0 sticky left-0 bg-surface-container-low z-20 flex flex-col items-center justify-center border-r border-outline-variant py-2">' +
+          '<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">' +
+            '<span class="material-symbols-outlined text-[18px]">group_work</span>' +
+          '</div>' +
+          '<span class="font-label-bold text-[10px] text-on-surface mt-1">Shared</span>' +
+        '</div>' +
+        '<div class="flex-1 relative">' +
+          '<div class="absolute inset-0 flex pointer-events-none">' + gridLines + '</div>' +
+          sharedHtml +
+        '</div>' +
+      '</div>';
+    })() : '');
+
+    // Bind task click events
+    container.querySelectorAll('[data-task-id]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        APP.navigate('task-detail-sheet', { taskId: el.getAttribute('data-task-id') });
+      });
+    });
+  }
+});
+</script>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quick Capture - TaskFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e1e3e4",
+                      "inverse-on-surface": "#f0f1f2",
+                      "surface-container-high": "#e7e8e9",
+                      "on-error-container": "#93000a",
+                      "primary": "#005bbf",
+                      "error": "#ba1a1a",
+                      "surface-dim": "#d9dadb",
+                      "tertiary-fixed-dim": "#ffb68b",
+                      "outline-variant": "#c1c6d6",
+                      "on-secondary-fixed-variant": "#005320",
+                      "outline": "#727785",
+                      "on-primary-fixed-variant": "#004493",
+                      "on-error": "#ffffff",
+                      "secondary": "#006e2c",
+                      "tertiary-container": "#bf5900",
+                      "inverse-surface": "#2e3132",
+                      "primary-container": "#1a73e8",
+                      "secondary-fixed-dim": "#6ddd81",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#edeeef",
+                      "inverse-primary": "#adc7ff",
+                      "tertiary": "#994600",
+                      "surface-tint": "#005bc0",
+                      "on-surface": "#191c1d",
+                      "on-tertiary-container": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-container": "#00722f",
+                      "background": "#f8f9fa",
+                      "surface-container-low": "#f3f4f5",
+                      "on-surface-variant": "#414754",
+                      "secondary-container": "#86f898",
+                      "primary-fixed-dim": "#adc7ff",
+                      "on-tertiary-fixed": "#321200",
+                      "on-background": "#191c1d",
+                      "surface-variant": "#e1e3e4",
+                      "surface": "#f8f9fa",
+                      "primary-fixed": "#d8e2ff",
+                      "on-secondary-fixed": "#002108",
+                      "on-primary-container": "#ffffff",
+                      "tertiary-fixed": "#ffdbc9",
+                      "surface-bright": "#f8f9fa",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#001a41",
+                      "secondary-fixed": "#89fa9b"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "fab-size": "56px",
+                      "stack-tight": "0.25rem",
+                      "nav-height": "56px",
+                      "margin-edge": "1rem",
+                      "touch-target": "48px",
+                      "gutter-card": "0.75rem"
+              },
+              "fontFamily": {
+                      "title-main-mobile": [
+                              "Inter"
+                      ],
+                      "label-bold": [
+                              "Inter"
+                      ],
+                      "timer-display": [
+                              "JetBrains Mono"
+                      ],
+                      "title-main": [
+                              "Inter"
+                      ],
+                      "body-standard": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "title-main-mobile": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "timer-display": [
+                              "28px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-main": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-standard": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-standard relative min-h-screen">
+<!-- Background App (My Board) -->
+<div class="absolute inset-0 bg-background flex flex-col pointer-events-none z-0">
+<!-- TopAppBar (Simulated Background) -->
+<header class="flex justify-between items-center px-margin-edge w-full h-nav-height bg-surface shadow-sm border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvyYAoJig5NobKVyea3JDw6mJjW_totPlzj_IwRwCP_tm0aiYlPPlYesqTngrezFSmpY7T2GDdh-Qz1URaYVjGDXme7VhHcRRVJOEQsmxLb-xzcJFRQ5ZTSI9trcw1XVKjCq8tFAnK4gdrro10OCKtLlNS6Oj6eC5hprpeCKst3M-UhqDCTwlq9WYSs1MxLBUmzZF6rUd_PbK6kRL5DN7dBVLX--UlosUvAPu-ebFZU26GFq8HP67bRlIEYt5dzOMz0q7MtrJ-gqSj"/>
+</div>
+<h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary">TaskFlow</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-full active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<!-- Dummy Content -->
+<main class="p-margin-edge flex-1 flex flex-col gap-4 overflow-hidden">
+<h2 class="font-title-main text-title-main text-on-background">My Board</h2>
+<div class="bg-surface rounded-lg shadow-sm border-l-4 border-error p-4 opacity-50">
+<p class="font-title-main-mobile text-title-main-mobile">Review Q3 Marketing Strategy</p>
+<p class="text-sm text-on-surface-variant mt-1">Acme Corp</p>
+</div>
+<div class="bg-surface rounded-lg shadow-sm border-l-4 border-primary p-4 opacity-50">
+<p class="font-title-main-mobile text-title-main-mobile">Design Homepage Wireframes</p>
+<p class="text-sm text-on-surface-variant mt-1">Global Tech</p>
+</div>
+<div class="bg-surface rounded-lg shadow-sm border-l-4 border-secondary p-4 opacity-50">
+<p class="font-title-main-mobile text-title-main-mobile">Client Feedback Call</p>
+<p class="text-sm text-on-surface-variant mt-1">Stark Industries</p>
+</div>
+</main>
+</div>
+<!-- Dim Overlay -->
+<div class="fixed inset-0 bg-black/40 z-40 transition-opacity"></div>
+<!-- Bottom Sheet -->
+<div class="fixed bottom-0 left-0 w-full h-[320px] bg-surface-container-lowest rounded-t-[24px] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] z-50 flex flex-col transition-transform">
+<!-- Drag Handle -->
+<div class="w-full h-8 flex items-center justify-center pt-2 pb-1 shrink-0">
+<div class="w-8 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<div class="flex-1 flex flex-col px-margin-edge pb-margin-edge overflow-y-auto">
+<!-- Title Input -->
+<div class="mb-4">
+<input class="w-full bg-transparent border-0 border-b border-primary-container focus:ring-0 focus:border-primary-container font-title-main-mobile text-title-main-mobile px-0 py-2 placeholder-on-surface-variant" placeholder="What needs to be done?" type="text"/>
+<div class="text-[11px] text-[#9AA0A6] text-right mt-1">0/100</div>
+</div>
+<!-- Client Row -->
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+<div class="flex-1 flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center">
+<button class="px-3 py-1 rounded-full bg-error-container text-on-error-container font-label-bold text-label-bold shrink-0">Acme Corp</button>
+<button class="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold shrink-0 border-2 border-primary-container">Global Tech</button>
+<button class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-bold text-label-bold shrink-0">Stark Ind</button>
+<button class="px-3 py-1 rounded-full border border-dashed border-outline-variant text-on-surface-variant font-label-bold text-label-bold shrink-0 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">add</span> New
+                    </button>
+</div>
+</div>
+<!-- Priority & Shared Toggle Row -->
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">e911_emergency</span>
+<div class="flex gap-2">
+<button aria-label="Urgent Priority" class="w-8 h-8 rounded-full bg-[#EA4335] shrink-0"></button>
+<button aria-label="High Priority" class="w-8 h-8 rounded-full bg-[#FA7B17] shrink-0"></button>
+<button aria-label="Medium Priority (Selected)" class="w-8 h-8 rounded-full bg-[#FBBC04] shrink-0 ring-2 ring-white ring-inset shadow-sm"></button>
+<button aria-label="Low Priority" class="w-8 h-8 rounded-full bg-[#34A853] shrink-0"></button>
+</div>
+</div>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">group</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<!-- Schedule Row -->
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">schedule</span>
+<div class="flex gap-2 w-full">
+<button class="flex-1 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-bold text-label-bold flex items-center justify-center gap-1 bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]">sunny</span> Morning
+                    </button>
+<button class="flex-1 py-1.5 rounded-full border-2 border-primary-container text-primary-container font-label-bold text-label-bold flex items-center justify-center gap-1 bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]">partly_cloudy_day</span> Afternoon
+                    </button>
+<button class="flex-1 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-bold text-label-bold flex items-center justify-center gap-1 bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]">dark_mode</span> Evening
+                    </button>
+</div>
+</div>
+<!-- Bottom Actions -->
+<div class="mt-auto flex items-center justify-between pt-2">
+<button class="text-primary-container font-label-bold text-label-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">add</span> More details
+                </button>
+<button class="bg-primary-container text-on-primary h-touch-target px-6 rounded-full font-title-main-mobile text-title-main-mobile flex-1 ml-4 shadow-sm active:scale-95 transition-transform">
+                    Add Task
+                </button>
+</div>
+</div>
+</div>
+</body></html>

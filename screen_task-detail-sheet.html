@@ -1,0 +1,511 @@
+<div data-screen="task-detail-sheet">
+<!-- Mock Background Content -->
+<div class="absolute inset-0 z-0 flex flex-col p-4 opacity-50 pointer-events-none">
+<div class="h-nav-height bg-surface-container-high rounded-lg w-full mb-4"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full border-l-4 border-l-[#EA4335]"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#34A853]"></div>
+</div>
+<!-- Scrim (Dim Background) -->
+<div class="absolute inset-0 bg-black/40 z-40 transition-opacity duration-300" data-ref="scrim"></div>
+<!-- Bottom Sheet Container -->
+<div class="absolute bottom-0 w-full max-w-md bg-surface h-[85%] rounded-t-2xl z-50 flex flex-col shadow-2xl overflow-hidden transition-transform duration-300 transform translate-y-0">
+<!-- Drag Handle Area -->
+<div class="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing bg-surface sticky top-0 z-10">
+<div class="w-8 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-margin-edge pb-24 no-scrollbar">
+<!-- HEADER -->
+<div class="flex items-start justify-between mt-2 mb-6">
+<div class="flex items-start gap-3 flex-1">
+<div data-ref="priority-dot" aria-label="Priority" class="w-2.5 h-2.5 rounded-full bg-[#EA4335] mt-1.5 flex-shrink-0"></div>
+<h1 data-ref="task-title" class="font-title-main-mobile text-title-main-mobile text-on-surface line-clamp-2 pr-2">
+  Loading...
+</h1>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0 text-on-surface-variant">
+<button data-ref="btn-edit" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button data-ref="btn-close" class="p-2 rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- OWNERSHIP ROW -->
+<div class="flex items-center gap-3 mb-6 bg-surface-container-low p-3 rounded-xl border border-surface-container-highest">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm" data-ref="assignee-avatar">?</div>
+<span data-ref="assignee-name" class="font-body-standard text-body-standard text-on-surface flex-1">Loading...</span>
+</div>
+<!-- STATUS CHIPS -->
+<div class="flex justify-between items-center mb-8 px-2">
+<!-- To Do -->
+<button data-status="todo" data-ref="status-btn-todo" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors group">
+<span class="material-symbols-outlined text-[20px]">radio_button_unchecked</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- In Progress -->
+<button data-status="in-progress" data-ref="status-btn-inprogress" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined fill text-[20px]">play_arrow</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- Done -->
+<button data-status="done" data-ref="status-btn-done" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
+<!-- Blocked -->
+<button data-status="blocked" data-ref="status-btn-blocked" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">pause</span>
+</button>
+</div>
+<!-- META GRID (2x2) -->
+<div class="grid grid-cols-2 gap-3 mb-8">
+<!-- Client -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">person</span>
+<span data-ref="meta-client" class="font-body-standard text-body-standard text-on-surface truncate">—</span>
+</div>
+<!-- Category -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">campaign</span>
+<span data-ref="meta-category" class="font-body-standard text-body-standard text-on-surface truncate">—</span>
+</div>
+<!-- Priority -->
+<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<div data-ref="meta-priority-dot" class="w-2.5 h-2.5 rounded-full bg-outline-variant"></div>
+<span data-ref="meta-priority" class="font-body-standard text-body-standard text-on-surface truncate">—</span>
+</div>
+<!-- Due Date -->
+<div data-ref="meta-due-wrapper" class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">calendar_today</span>
+<span data-ref="meta-due" class="font-body-standard text-body-standard text-on-surface truncate">—</span>
+</div>
+</div>
+<!-- TIMER CARD -->
+<div data-ref="timer-card" class="mb-8 relative rounded-xl bg-surface overflow-hidden shadow-sm border border-outline-variant p-1">
+<div data-ref="timer-pulse-ring" class="absolute inset-0 rounded-xl border-2 border-[#EA4335]/30 animate-pulse pointer-events-none hidden"></div>
+<div class="bg-surface-container-lowest rounded-lg p-4 flex flex-col items-center justify-center gap-3 relative z-10">
+<div data-ref="timer-display" class="font-timer-display text-timer-display text-on-surface text-center">00:00:00</div>
+<button data-ref="btn-start-timer" class="w-full bg-[#34A853] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:brightness-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined fill-icon text-[18px]">play_arrow</span>
+START TIMER
+</button>
+<button data-ref="btn-stop-timer" class="w-full bg-[#EA4335] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-[#d33828] active:scale-[0.98] transition-all hidden">
+<span class="material-symbols-outlined fill-icon text-[18px]">stop</span>
+STOP &amp; MARK DONE
+</button>
+</div>
+</div>
+<!-- CHECKLIST SECTION -->
+<div class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface">Checklist</h3>
+<span data-ref="checklist-counter" class="bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold px-2 py-0.5 rounded-full">0/0</span>
+</div>
+<div data-ref="checklist-list" class="flex flex-col gap-3">
+<!-- Populated by JS -->
+</div>
+<form data-ref="checklist-add-form" class="flex items-center gap-2 mt-3">
+  <span class="material-symbols-outlined text-on-surface-variant text-[20px]">add</span>
+  <input data-ref="checklist-add-input" type="text" placeholder="Add an item…"
+    class="flex-1 bg-transparent border-b border-outline-variant focus:border-primary focus:ring-0 px-0 py-1 text-[14px] outline-none text-on-surface placeholder-on-surface-variant"/>
+  <button type="submit" data-ref="checklist-add-btn"
+    class="px-3 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50" disabled>Add</button>
+</form>
+</div>
+<!-- COMMENTS SECTION -->
+<div>
+<h3 class="font-title-main-mobile text-[16px] font-semibold text-on-surface mb-4">Activity</h3>
+<div data-ref="comments-list" class="flex flex-col gap-4">
+<!-- Populated by JS -->
+</div>
+</div>
+<!-- Bottom spacing for fixed input -->
+<div class="h-16"></div>
+</div> <!-- End Scrollable Content -->
+<!-- Pinned Comment Input -->
+<div class="absolute bottom-0 left-0 w-full bg-surface border-t border-outline-variant p-3 z-20">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm" data-ref="comment-avatar">?</div>
+<div class="flex-1 relative">
+<input data-ref="comment-input" class="w-full bg-surface-container-low border-none rounded-full py-2 px-4 font-body-standard text-[14px] text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary-container focus:bg-surface-container-lowest transition-colors h-10" placeholder="Add comment..." type="text"/>
+<button data-ref="btn-send-comment" class="absolute right-1 top-1 w-8 h-8 flex items-center justify-center text-primary-container rounded-full hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+(function() {
+  var _taskId = null;
+  var _task = null;
+  var _activeLogId = null;
+  var _activeStart = null;
+  var _tickInterval = null;
+
+  function formatElapsed(startIso) {
+    if (!startIso) return '00:00:00';
+    var secs = Math.max(0, Math.floor((Date.now() - new Date(startIso).getTime()) / 1000));
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    return [h, m, s].map(function(v) { return String(v).padStart(2, '0'); }).join(':');
+  }
+
+  function setTimerRunning(screen, logId, startedAt) {
+    _activeLogId = logId;
+    _activeStart = startedAt || new Date().toISOString();
+    var card    = screen.querySelector('[data-ref="timer-card"]');
+    var ring    = screen.querySelector('[data-ref="timer-pulse-ring"]');
+    var startBt = screen.querySelector('[data-ref="btn-start-timer"]');
+    var stopBt  = screen.querySelector('[data-ref="btn-stop-timer"]');
+    var display = screen.querySelector('[data-ref="timer-display"]');
+    if (card)    card.classList.remove('hidden');
+    if (ring)    ring.classList.remove('hidden');
+    if (startBt) startBt.classList.add('hidden');
+    if (stopBt)  stopBt.classList.remove('hidden');
+    if (display) display.textContent = formatElapsed(_activeStart);
+    if (_tickInterval) clearInterval(_tickInterval);
+    _tickInterval = setInterval(function() {
+      if (display) display.textContent = formatElapsed(_activeStart);
+    }, 1000);
+  }
+
+  function setTimerStopped(screen) {
+    _activeLogId = null;
+    _activeStart = null;
+    if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
+    var ring    = screen.querySelector('[data-ref="timer-pulse-ring"]');
+    var startBt = screen.querySelector('[data-ref="btn-start-timer"]');
+    var stopBt  = screen.querySelector('[data-ref="btn-stop-timer"]');
+    var display = screen.querySelector('[data-ref="timer-display"]');
+    if (ring)    ring.classList.add('hidden');
+    if (startBt) startBt.classList.remove('hidden');
+    if (stopBt)  stopBt.classList.add('hidden');
+    if (display) display.textContent = '00:00:00';
+  }
+
+  function refreshTimerState(screen) {
+    if (!_taskId) return;
+    APP.call('getActiveTimers', APP.currentUser.id).then(function(timers) {
+      var mine = (timers || []).find(function(t) { return t.taskId === _taskId; });
+      if (mine) setTimerRunning(screen, mine.logId, mine.startedAt);
+      else      setTimerStopped(screen);
+    }).catch(function() { setTimerStopped(screen); });
+  }
+
+  var PRIORITY_COLORS = {
+    'high': '#EA4335',
+    'urgent': '#EA4335',
+    'medium': '#FA7B17',
+    'low': '#34A853'
+  };
+
+  var STATUS_LABELS = {
+    'todo': 'To Do',
+    'in-progress': 'In Progress',
+    'done': 'Done',
+    'blocked': 'Blocked'
+  };
+
+  function qs(screen, ref) {
+    return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  function renderTask(screen, task) {
+    _task = task;
+
+    // Title
+    qs(screen, 'task-title').textContent = task.title || 'Untitled Task';
+
+    // Priority dot
+    var priorityColor = PRIORITY_COLORS[(task.priority || '').toLowerCase()] || '#9AA0A6';
+    qs(screen, 'priority-dot').style.backgroundColor = priorityColor;
+    qs(screen, 'meta-priority-dot').style.backgroundColor = priorityColor;
+    qs(screen, 'meta-priority').textContent = task.priority || '—';
+
+    // Assignees — backend returns task.assignees as [{id,name,avatarColor,...}]; first one shown, rest joined
+    var assignees = Array.isArray(task.assignees) ? task.assignees : [];
+    var firstAssignee = assignees[0] || null;
+    var initials = firstAssignee && firstAssignee.name ? firstAssignee.name.charAt(0).toUpperCase() : '?';
+    qs(screen, 'assignee-avatar').textContent = initials;
+    qs(screen, 'assignee-name').textContent = assignees.length
+      ? assignees.map(function(a) { return a.name; }).join(', ')
+      : 'Unassigned';
+    qs(screen, 'comment-avatar').textContent = (APP.currentUser && APP.currentUser.name ? APP.currentUser.name.charAt(0).toUpperCase() : '?');
+
+    // Meta — client and category arrive as objects after expandTask
+    var clientName = (task.client && task.client.name) ? task.client.name : (typeof task.client === 'string' ? task.client : '');
+    var categoryName = (task.category && task.category.name) ? task.category.name : (typeof task.category === 'string' ? task.category : '');
+    qs(screen, 'meta-client').textContent = clientName || '—';
+    qs(screen, 'meta-category').textContent = categoryName || '—';
+
+    // Description (if rendered in HTML)
+    var descEl = qs(screen, 'task-description');
+    if (descEl) descEl.textContent = task.description || '';
+
+    // Due date
+    var dueEl = qs(screen, 'meta-due');
+    var dueWrapper = qs(screen, 'meta-due-wrapper');
+    if (task.dueDate) {
+      var due = new Date(task.dueDate);
+      var today = new Date(); today.setHours(0,0,0,0);
+      var dueDay = new Date(due); dueDay.setHours(0,0,0,0);
+      var isOverdue = dueDay < today;
+      dueEl.textContent = due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      if (isOverdue) {
+        dueWrapper.className = dueWrapper.className.replace('bg-surface-container-lowest border border-outline-variant', 'bg-error-container/30 border border-[#ba1a1a]/30');
+        dueEl.className = 'font-body-standard text-body-standard font-medium text-[#ba1a1a] truncate';
+      }
+    } else {
+      dueEl.textContent = '—';
+    }
+
+    // Status chips — highlight active
+    ['todo', 'in-progress', 'done', 'blocked'].forEach(function(s) {
+      var btn = screen.querySelector('[data-status="' + s + '"]');
+      if (!btn) return;
+      if (task.status === s) {
+        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-[#34A853] text-white shadow-md transform scale-110 transition-transform';
+      } else {
+        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors';
+      }
+    });
+
+    // Checklist — backend field is `done` (not `checked`)
+    var checklist = task.checklist;
+    if (typeof checklist === 'string') { try { checklist = JSON.parse(checklist); } catch(e) { checklist = []; } }
+    if (!Array.isArray(checklist)) checklist = [];
+    var doneCount = checklist.filter(function(i) { return i.done; }).length;
+    qs(screen, 'checklist-counter').textContent = doneCount + '/' + checklist.length;
+    var listEl = qs(screen, 'checklist-list');
+    listEl.innerHTML = '';
+    checklist.forEach(function(item) {
+      var label = document.createElement('label');
+      label.className = 'flex items-start gap-3 cursor-pointer group';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!item.done;
+      cb.className = 'mt-0.5 w-5 h-5 rounded text-primary-container border-outline-variant focus:ring-primary-container focus:ring-offset-surface bg-surface-container-lowest';
+      cb.addEventListener('change', function() {
+        APP.call('toggleChecklistItem', _taskId, item.id, cb.checked)
+          .then(function() {
+            // Update counter optimistically
+            var checked = listEl.querySelectorAll('input[type=checkbox]:checked').length;
+            var total = listEl.querySelectorAll('input[type=checkbox]').length;
+            qs(screen, 'checklist-counter').textContent = checked + '/' + total;
+            var span = label.querySelector('span');
+            if (cb.checked) {
+              span.classList.add('line-through', 'text-on-surface-variant');
+              span.classList.remove('text-on-surface');
+            } else {
+              span.classList.remove('line-through', 'text-on-surface-variant');
+              span.classList.add('text-on-surface');
+            }
+          })
+          .catch(function(err) { APP.showError(err); cb.checked = !cb.checked; });
+      });
+      var span = document.createElement('span');
+      span.className = 'font-body-standard text-[14px] flex-1 ' + (item.done ? 'text-on-surface-variant line-through' : 'text-on-surface');
+      span.textContent = item.text || item.title || '';
+      label.appendChild(cb);
+      label.appendChild(span);
+      listEl.appendChild(label);
+    });
+
+    // Timer state — check if THIS task has an active timer for current user
+    refreshTimerState(screen);
+
+    // Activity feed — backend returns task.activity = [{action, detail, userId, createdAt}]
+    var activity = Array.isArray(task.activity) ? task.activity : (task.comments || task.notes || []);
+    var commentsEl = qs(screen, 'comments-list');
+    commentsEl.innerHTML = '';
+    if (Array.isArray(activity)) {
+      activity.forEach(function(a) {
+        // Map activity row to comment shape
+        var c = {
+          author: a.userName || a.author || a.user || (a.userId ? 'User' : 'Unknown'),
+          text: a.detail || a.text || a.comment || a.action || '',
+          timeAgo: a.timeAgo || (a.createdAt ? new Date(a.createdAt).toLocaleString() : '')
+        };
+        commentsEl.appendChild(buildCommentEl(c));
+      });
+    }
+  }
+
+  function buildCommentEl(c) {
+    var wrap = document.createElement('div');
+    wrap.className = 'flex items-start gap-3';
+    var avatar = document.createElement('div');
+    avatar.className = 'w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs flex-shrink-0 mt-0.5';
+    avatar.textContent = (c.author || c.user || '?').charAt(0).toUpperCase();
+    var inner = document.createElement('div');
+    inner.className = 'flex flex-col flex-1';
+    inner.innerHTML =
+      '<div class="flex items-baseline gap-2 mb-0.5">' +
+        '<span class="font-label-bold text-[12px] font-bold text-on-surface">' + (c.author || c.user || 'Unknown') + '</span>' +
+        '<span class="font-body-standard text-[11px] text-on-surface-variant">' + (c.timeAgo || c.timestamp || '') + '</span>' +
+      '</div>' +
+      '<p class="font-body-standard text-[13px] text-on-surface">' + (c.text || c.comment || '') + '</p>';
+    wrap.appendChild(avatar);
+    wrap.appendChild(inner);
+    return wrap;
+  }
+
+  APP.register('task-detail-sheet', {
+    mount: function(params) {
+      if (!APP.currentUser) { APP.navigate('pin-login'); return; }
+
+      var screen = document.querySelector('[data-screen="task-detail-sheet"]');
+      _taskId = params && params.taskId;
+
+      if (!_taskId) {
+        APP.showError('No task selected.');
+        APP.navigate('kanban-home');
+        return;
+      }
+
+      // Load task
+      APP.call('getTaskDetail', _taskId)
+        .then(function(task) { renderTask(screen, task); })
+        .catch(function(err) { APP.showError(err); });
+
+      // Close / back — return to the previous screen if known
+      var _returnTo = (params && params.returnTo) || 'kanban-home';
+      qs(screen, 'btn-close').addEventListener('click', function() {
+        APP.navigate(_returnTo);
+      });
+
+      // Edit button
+      qs(screen, 'btn-edit').addEventListener('click', function() {
+        APP.navigate('add-edit-task', { taskId: _taskId });
+      });
+
+      // Checklist — add item
+      var clAddForm  = qs(screen, 'checklist-add-form');
+      var clAddInput = qs(screen, 'checklist-add-input');
+      var clAddBtn   = qs(screen, 'checklist-add-btn');
+      if (clAddInput && clAddBtn) {
+        clAddInput.addEventListener('input', function() {
+          clAddBtn.disabled = !clAddInput.value.trim();
+        });
+      }
+      if (clAddForm) {
+        clAddForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var text = clAddInput.value.trim();
+          if (!text) return;
+          clAddBtn.disabled = true;
+          APP.call('addChecklistItem', _taskId, text, APP.currentUser.id)
+            .then(function(item) {
+              if (item && item.error === 'empty') return;
+              if (!_task) return;
+              _task.checklist = Array.isArray(_task.checklist) ? _task.checklist : [];
+              _task.checklist.push(item);
+              clAddInput.value = '';
+              renderTask(screen, _task);
+              clAddInput.focus();
+            })
+            .catch(function(err) { APP.showError(err); })
+            .then(function() { clAddBtn.disabled = !clAddInput.value.trim(); });
+        });
+      }
+
+      // Status toggle buttons
+      ['todo', 'in-progress', 'done', 'blocked'].forEach(function(s) {
+        var btn = screen.querySelector('[data-status="' + s + '"]');
+        if (!btn) return;
+        btn.addEventListener('click', function() {
+          APP.call('updateTaskStatus', _taskId, s)
+            .then(function() {
+              if (!_task) { APP.showSuccess('Status updated'); return; }
+              _task.status = s;
+              renderTask(screen, _task);
+              APP.showSuccess('Status updated to ' + STATUS_LABELS[s]);
+            })
+            .catch(function(err) { APP.showError(err); });
+        });
+      });
+
+      // Start timer button
+      qs(screen, 'btn-start-timer').addEventListener('click', function() {
+        // Optimistic
+        setTimerRunning(screen, 'PENDING', new Date().toISOString());
+        if (_task) {
+          _task.status = 'in-progress';
+          renderTask(screen, _task);
+        }
+        APP.call('startTimer', _taskId, APP.currentUser.id).then(function(session) {
+          if (!session || !session.logId) {
+            setTimerStopped(screen);
+            APP.showError((session && session.error) || 'Could not start timer');
+            return;
+          }
+          setTimerRunning(screen, session.logId, session.startedAt);
+          APP.showSuccess('Timer started');
+        }).catch(function(err) {
+          setTimerStopped(screen);
+          APP.showError(err);
+        });
+      });
+
+      // Stop timer button (marks task done as well)
+      qs(screen, 'btn-stop-timer').addEventListener('click', function() {
+        var logId = _activeLogId;
+        if (!logId || logId === 'PENDING') {
+          APP.showError('Timer is still starting — try again in a moment');
+          return;
+        }
+        var savedStart = _activeStart;
+        setTimerStopped(screen);
+        APP.call('stopTimer', logId, APP.currentUser.id, true /* markDone */)
+          .then(function() {
+            if (_task) { _task.status = 'done'; renderTask(screen, _task); }
+            APP.showSuccess('Timer stopped, task marked done');
+          })
+          .catch(function(err) {
+            // rollback
+            setTimerRunning(screen, logId, savedStart);
+            APP.showError(err);
+          });
+      });
+
+      // Send comment
+      function sendComment() {
+        var input = qs(screen, 'comment-input');
+        var text = input.value.trim();
+        if (!text) return;
+        APP.call('addComment', _taskId, text, APP.currentUser.id)
+          .then(function(comment) {
+            input.value = '';
+            var c = typeof comment === 'object' ? comment : { author: APP.currentUser.name, text: text, timeAgo: 'just now' };
+            qs(screen, 'comments-list').appendChild(buildCommentEl(c));
+          })
+          .catch(function(err) { APP.showError(err); });
+      }
+
+      qs(screen, 'btn-send-comment').addEventListener('click', sendComment);
+      qs(screen, 'comment-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') sendComment();
+      });
+
+      // Scrim click — close sheet
+      qs(screen, 'scrim').addEventListener('click', function() {
+        APP.navigate('kanban-home');
+      });
+    },
+
+    unmount: function() {
+      if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
+      _taskId = null;
+      _task = null;
+      _activeLogId = null;
+      _activeStart = null;
+    }
+  });
+})();
+</script>
