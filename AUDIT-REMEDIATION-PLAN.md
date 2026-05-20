@@ -113,3 +113,28 @@ SLA reads fall back to code defaults.
 - Mandatory `requiresPhoto` per-task toggle deferred (needs a task-schema column);
   photo-proof currently optional.
 - e2e scripts still contain a stale `myday-focus` reference (test-only, not the app).
+
+---
+
+## RESIDUAL REMEDIATION ROUND 2 — COMPLETE (2026-05-20)
+
+7 more commits (`c6e1a49`..`b086ff6`). Deployed `@63`. e2e: mobile-audit 11/11 pass.
+
+### Done
+- **H3** — all read endpoints token-gated; internal workers moved into an `Internal`
+  IIFE module (closes a GAS auth-bypass: `_`-prefixed functions ARE client-callable).
+- **updateUser UI** — edit-user form added to admin panel.
+- **heartbeatTimer** — wired into timer-running screens (~60s ping).
+- **requiresPhoto** — mandatory completion-photo toggle + enforcement, end-to-end.
+- **createNotification / _triggerRateLimited** isolated into the IIFE; `seedDemoData`
+  admin-gated; triggers rate-limited.
+- e2e scripts updated for token contract + deleted-screen refs.
+
+### REQUIRED manual step
+Re-run `initializeSheets()` once from the Apps Script editor — Round 2 added the
+`requires_photo` tasks column; the function idempotently backfills the header.
+
+### Remaining residuals (accepted / future)
+- **M1** — 4-digit PIN + SHA-256 (deferred by choice; breaking migration).
+- `initializeSheets` / `createTriggers` intentionally ungated (bootstrap functions).
+- Minor: a timer stopped via a non-UI path leaves a stale card until refresh.
