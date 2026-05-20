@@ -160,14 +160,14 @@ APP.register('team-board', {
     });
 
     // Load data
-    APP.call('getTeamTasks')
+    APP.call('getTeamTasks', APP.token)
       .then(function(tasks) {
         self._allTasks = tasks || [];
         self._renderBoard(screen);
       })
       .catch(function(err) { APP.showError(err); });
 
-    APP.call('getTeamPresence')
+    APP.call('getTeamPresence', APP.token)
       .then(function(presence) {
         self._renderPresence(screen, presence || []);
       })

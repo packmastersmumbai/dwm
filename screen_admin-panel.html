@@ -201,6 +201,78 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 <div class="text-center text-on-surface-variant py-4 font-body-standard">Loading users...</div>
 </div>
 </div>
+
+<!-- Edit User Bottom Sheet (shared, hidden by default) -->
+<div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
+  <!-- Scrim -->
+  <div data-ref="edit-user-scrim" class="absolute inset-0 bg-black/40 transition-opacity"></div>
+  <!-- Sheet -->
+  <div class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl shadow-xl flex flex-col max-h-[90dvh]">
+    <!-- Handle -->
+    <div class="flex justify-center pt-3 pb-1">
+      <div class="w-8 h-1 rounded-full bg-outline-variant"></div>
+    </div>
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 pb-3 pt-1 border-b border-outline-variant">
+      <h2 id="edit-user-sheet-title" class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Edit Member</h2>
+      <button data-ref="edit-user-close" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <!-- Form -->
+    <div class="overflow-y-auto flex-1 px-4 py-4 space-y-3">
+      <!-- Avatar colour swatch preview -->
+      <div class="flex items-center gap-3 mb-1">
+        <div data-ref="edit-user-avatar-preview" class="w-10 h-10 rounded-full flex items-center justify-center text-primary font-bold bg-primary-fixed border border-outline-variant"></div>
+        <span class="font-label-bold text-label-bold text-on-surface-variant">Avatar Preview</span>
+      </div>
+      <!-- Name -->
+      <div class="space-y-1">
+        <label class="font-label-bold text-label-bold text-on-surface-variant">Full Name</label>
+        <input data-ref="edit-user-name" type="text" placeholder="Full Name"
+          class="w-full h-11 bg-surface-container-low border border-outline-variant rounded-lg px-3 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+      </div>
+      <!-- Email -->
+      <div class="space-y-1">
+        <label class="font-label-bold text-label-bold text-on-surface-variant">Email (optional)</label>
+        <input data-ref="edit-user-email" type="email" placeholder="name@example.com"
+          class="w-full h-11 bg-surface-container-low border border-outline-variant rounded-lg px-3 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+      </div>
+      <!-- Role -->
+      <div class="space-y-1">
+        <label class="font-label-bold text-label-bold text-on-surface-variant">Role</label>
+        <select data-ref="edit-user-role"
+          class="w-full h-11 bg-surface-container-low border border-outline-variant rounded-lg px-3 font-body-standard text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <!-- Avatar Color -->
+      <div class="space-y-2">
+        <label class="font-label-bold text-label-bold text-on-surface-variant">Avatar Color</label>
+        <div class="flex flex-wrap gap-3">
+          <button data-color="bg-primary-fixed" class="edit-avatar-swatch w-8 h-8 rounded-full bg-primary-fixed border-2 border-transparent active:scale-95 transition-transform"></button>
+          <button data-color="bg-secondary-container" class="edit-avatar-swatch w-8 h-8 rounded-full bg-secondary-container border-2 border-transparent active:scale-95 transition-transform"></button>
+          <button data-color="bg-tertiary-fixed" class="edit-avatar-swatch w-8 h-8 rounded-full bg-tertiary-fixed border-2 border-transparent active:scale-95 transition-transform"></button>
+          <button data-color="bg-error-container" class="edit-avatar-swatch w-8 h-8 rounded-full bg-error-container border-2 border-transparent active:scale-95 transition-transform"></button>
+          <button data-color="bg-surface-container-high" class="edit-avatar-swatch w-8 h-8 rounded-full bg-surface-container-high border-2 border-transparent active:scale-95 transition-transform"></button>
+          <button data-color="bg-primary" class="edit-avatar-swatch w-8 h-8 rounded-full bg-primary border-2 border-transparent active:scale-95 transition-transform"></button>
+        </div>
+      </div>
+      <!-- Reset PIN (optional) -->
+      <div class="space-y-1">
+        <label class="font-label-bold text-label-bold text-on-surface-variant">New PIN (leave blank to keep current)</label>
+        <input data-ref="edit-user-pin" type="password" placeholder="4-digit PIN" maxlength="4"
+          class="w-full h-11 bg-surface-container-low border border-outline-variant rounded-lg px-3 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none"/>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div class="px-4 py-4 border-t border-outline-variant flex gap-3">
+      <button data-ref="edit-user-cancel" class="flex-1 h-11 border border-outline-variant rounded-lg font-label-bold text-label-bold text-on-surface hover:bg-surface-container-low active:scale-95 transition-all">Cancel</button>
+      <button data-ref="edit-user-save" class="flex-1 h-11 bg-primary text-on-primary rounded-lg font-label-bold text-label-bold hover:bg-primary/90 active:scale-95 transition-all">Save</button>
+    </div>
+  </div>
+</div>
 </main>
 
 <!-- BottomNavBar -->
@@ -342,20 +414,68 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
     }
   }
 
+  // Edit-user sheet state
+  var _editUserId = null;
+  var _editAvatarColor = 'bg-primary-fixed';
+
+  function openEditUserSheet(screen, u) {
+    _editUserId = u.id;
+    _editAvatarColor = u.avatarColor || 'bg-primary-fixed';
+
+    var sheet = qs(screen, 'edit-user-sheet');
+    qs(screen, 'edit-user-name').value  = u.name  || '';
+    qs(screen, 'edit-user-email').value = u.email || '';
+    qs(screen, 'edit-user-pin').value   = '';
+    qs(screen, 'edit-user-role').value  = u.role  || 'member';
+
+    // Avatar preview
+    var preview = qs(screen, 'edit-user-avatar-preview');
+    preview.className = 'w-10 h-10 rounded-full flex items-center justify-center text-primary font-bold border border-outline-variant ' + _editAvatarColor;
+    preview.textContent = (u.name || '?').charAt(0).toUpperCase();
+
+    // Highlight active swatch
+    sheet.querySelectorAll('.edit-avatar-swatch').forEach(function(sw) {
+      sw.classList.toggle('border-primary', sw.dataset.color === _editAvatarColor);
+      sw.classList.toggle('border-transparent', sw.dataset.color !== _editAvatarColor);
+    });
+
+    sheet.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEditUserSheet(screen) {
+    qs(screen, 'edit-user-sheet').classList.add('hidden');
+    document.body.style.overflow = '';
+    _editUserId = null;
+  }
+
   function renderUsers(screen, users) {
     var container = qs(screen, 'users-list');
     container.innerHTML = '';
     (users || []).forEach(function(u) {
       var row = document.createElement('div');
       row.className = 'bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between border border-outline-variant';
+      var avatarBg = u.avatarColor || 'bg-primary-fixed';
       row.innerHTML =
         '<div class="flex items-center gap-3">' +
-          '<div class="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold">' + (u.name || '?').charAt(0).toUpperCase() + '</div>' +
+          '<div class="w-9 h-9 rounded-full ' + avatarBg + ' flex items-center justify-center text-primary font-bold">' + (u.name || '?').charAt(0).toUpperCase() + '</div>' +
           '<div><div class="font-body-standard font-medium text-on-surface">' + (u.name || 'Unknown') + '</div>' +
           '<div class="font-label-bold text-label-bold text-on-surface-variant">' + (u.role || 'member') + '</div></div>' +
-        '</div>';
+        '</div>' +
+        '<div class="flex items-center gap-1"></div>';
+
+      var actionRow = row.querySelector('.flex.items-center.gap-1');
+
+      // Edit button
+      var editBtn = document.createElement('button');
+      editBtn.className = 'w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95';
+      editBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">edit</span>';
+      editBtn.addEventListener('click', function() { openEditUserSheet(screen, u); });
+      actionRow.appendChild(editBtn);
+
+      // Remove button
       var removeBtn = document.createElement('button');
-      removeBtn.className = 'p-2 rounded-full text-error hover:bg-error-container transition-colors';
+      removeBtn.className = 'w-11 h-11 flex items-center justify-center rounded-full text-error hover:bg-error-container transition-colors active:scale-95';
       removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_remove</span>';
       removeBtn.addEventListener('click', function() {
         if (!confirm('Remove ' + u.name + ' from the team?')) return;
@@ -366,7 +486,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
           })
           .catch(function(err) { APP.showError(err); });
       });
-      row.appendChild(removeBtn);
+      actionRow.appendChild(removeBtn);
       container.appendChild(row);
     });
     if (!users || users.length === 0) {
@@ -396,7 +516,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
       }
 
       // Load stats
-      APP.call('getAdminStats')
+      APP.call('getAdminStats', APP.token)
         .then(function(stats) {
           if (!stats) return;
           qs(screen, 'stat-active-tasks').textContent = stats.activeTasks != null ? stats.activeTasks : '—';
@@ -408,7 +528,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         .catch(function(err) { APP.showError(err); });
 
       // Load workload (default tab)
-      APP.call('getWorkloadByUser')
+      APP.call('getWorkloadByUser', APP.token)
         .then(function(data) { renderWorkload(screen, data); })
         .catch(function(err) { APP.showError(err); });
 
@@ -428,14 +548,14 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
           if (tab === 'tasks' && !LOAD_LABELS_PER_TAB.tasks) {
             LOAD_LABELS_PER_TAB.tasks = true;
-            APP.call('getTasks')
+            APP.call('getTasks', {}, APP.token)
               .then(function(tasks) { renderTasks(screen, tasks); })
               .catch(function(err) { APP.showError(err); });
           }
 
           if (tab === 'masters' && !LOAD_LABELS_PER_TAB.masters) {
             LOAD_LABELS_PER_TAB.masters = true;
-            APP.call('getUsers')
+            APP.call('getUsers', APP.token)
               .then(function(users) { renderUsers(screen, users); })
               .catch(function(err) { APP.showError(err); });
           }
@@ -498,11 +618,67 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
             qs(screen, 'new-user-pin').value = '';
             APP.showSuccess(name + ' added to the team.');
             // Refresh users list
-            APP.call('getUsers')
+            APP.call('getUsers', APP.token)
               .then(function(users) { renderUsers(screen, users); })
               .catch(function(err) { APP.showError(err); });
           })
           .catch(function(err) { APP.showError(err); });
+      });
+
+      // Edit-user sheet: close via close button, cancel, or scrim tap
+      qs(screen, 'edit-user-close').addEventListener('click', function() { closeEditUserSheet(screen); });
+      qs(screen, 'edit-user-cancel').addEventListener('click', function() { closeEditUserSheet(screen); });
+      qs(screen, 'edit-user-scrim').addEventListener('click', function() { closeEditUserSheet(screen); });
+
+      // Avatar colour swatches
+      var _sheet = qs(screen, 'edit-user-sheet');
+      _sheet.querySelectorAll('.edit-avatar-swatch').forEach(function(sw) {
+        sw.addEventListener('click', function() {
+          _editAvatarColor = sw.dataset.color;
+          _sheet.querySelectorAll('.edit-avatar-swatch').forEach(function(s) {
+            s.classList.toggle('border-primary', s.dataset.color === _editAvatarColor);
+            s.classList.toggle('border-transparent', s.dataset.color !== _editAvatarColor);
+          });
+          var preview = qs(screen, 'edit-user-avatar-preview');
+          preview.className = 'w-10 h-10 rounded-full flex items-center justify-center text-primary font-bold border border-outline-variant ' + _editAvatarColor;
+        });
+      });
+
+      // Edit-user save
+      qs(screen, 'edit-user-save').addEventListener('click', function() {
+        if (!_editUserId) return;
+        var name  = qs(screen, 'edit-user-name').value.trim();
+        var email = qs(screen, 'edit-user-email').value.trim();
+        var role  = qs(screen, 'edit-user-role').value;
+        var pin   = qs(screen, 'edit-user-pin').value.trim();
+
+        if (!name) { APP.showError('Name is required.'); return; }
+        if (pin && pin.length !== 4) { APP.showError('PIN must be exactly 4 digits.'); return; }
+
+        var fields = { name: name, role: role, avatarColor: _editAvatarColor };
+        if (email) fields.email = email;
+        if (pin)   fields.pin   = pin;
+
+        var saveBtn = qs(screen, 'edit-user-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        APP.call('updateUser', _editUserId, fields, APP.token)
+          .then(function() {
+            closeEditUserSheet(screen);
+            APP.showSuccess(name + ' updated.');
+            // Refresh list
+            APP.call('getUsers', APP.token)
+              .then(function(users) { renderUsers(screen, users); })
+              .catch(function(err) { APP.showError(err); });
+          })
+          .catch(function(err) {
+            APP.showError(err);
+          })
+          .finally(function() {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+          });
       });
 
       // Bottom nav
@@ -514,6 +690,8 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
     unmount: function() {
       LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false };
+      document.body.style.overflow = '';
+      _editUserId = null;
     }
   });
 })();

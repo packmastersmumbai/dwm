@@ -135,7 +135,7 @@ APP.register('daily-plan', {
 
     // Load plan
     var todayStr = today.toISOString().slice(0, 10);
-    APP.call('getDailyPlan', APP.currentUser.id, todayStr)
+    APP.call('getDailyPlan', APP.currentUser.id, todayStr, APP.token)
       .then(function(tasks) {
         self._tasks = tasks || [];
         self._render(screen);
@@ -206,7 +206,7 @@ APP.register('daily-plan', {
     screen.querySelectorAll('.dp-defer-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var taskId = btn.getAttribute('data-task-id');
-        APP.call('deferTask', taskId)
+        APP.call('deferTask', taskId, APP.token)
           .then(function() {
             self._tasks = self._tasks.filter(function(t) { return t.id !== taskId; });
             self._render(screen);

@@ -81,7 +81,7 @@ function include(filename) {
 }
 
 // ── initializeSheets ─────────────────────────────────────────
-
+// Intentionally ungated setup function — run from the Apps Script editor before any session exists.
 function initializeSheets() {
   var ss = getSpreadsheet();
 
@@ -170,7 +170,7 @@ function initializeSheets() {
 }
 
 // ── createTriggers (run once after deploy) ───────────────────
-
+// Intentionally ungated setup function — run from the Apps Script editor before any session exists.
 function createTriggers() {
   // Remove existing to avoid duplicates
   ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
@@ -808,14 +808,16 @@ var Internal = (function() {
       (payload.assigneeIds || []).forEach(function(uid) {
         if (uid !== payload.createdBy) {
           var creator = getUserById(payload.createdBy);
-          createNotification(uid, 'assigned', id,
+          Internal.createNotification(uid, 'assigned', id,
             (creator ? creator.name : 'Someone') + ' assigned you: ' + payload.title);
         }
       });
 
       if (payload.isShared) {
+        // Intentionally calls the IIFE-local getUsers() (with active timers), not the
+        // top-level client-facing getUsers(token). Shadow is deliberate here.
         getUsers().forEach(function(u) {
-          createNotification(u.id, 'assigned', id, 'New shared task: ' + payload.title);
+          Internal.createNotification(u.id, 'assigned', id, 'New shared task: ' + payload.title);
         });
       }
 
@@ -1108,6 +1110,58 @@ var Internal = (function() {
     });
   }
 
+  // ── triggerRateLimited ───────────────────────────────────────
+  // Kept inside Internal so it is NOT callable via google.script.run.
+  // Returns true if the named trigger ran less than minGapMs ago.
+  // Uses Script Properties for persistence across executions.
+  function triggerRateLimited(fnName, minGapMs) {
+    try {
+      var props = PropertiesService.getScriptProperties();
+      var key = fnName + '_last_run';
+      var last = props.getProperty(key);
+      var nowMs = Date.now();
+      if (last && (nowMs - parseInt(last)) < minGapMs) return true;
+      props.setProperty(key, String(nowMs));
+      return false;
+    } catch(e) {
+      return false; // fail-open: let the trigger run if properties unavailable
+    }
+  }
+
+  // ── createNotification ───────────────────────────────────────
+  // Kept inside Internal so it is NOT callable via google.script.run.
+  function createNotification(userId, type, taskId, message) {
+    try {
+      var s = getSheet('notifications');
+      if (!s) return;
+      s.appendRow([newId(), userId, type, taskId || '', message, false, now()]);
+
+      // Email notification
+      try {
+        var user = getUserById(userId);
+        if (user && user.email && user.notifyPrefs) {
+          // Map notification type to stored notifyPrefs key.
+          // Only timer_warning defaults to send when unmapped; all other unknown types default to NO email.
+          var prefKeyMap = { assigned: 'onAssign', due_soon: 'onDue', mention: 'onMention', shared: 'onShared' };
+          var prefKey = prefKeyMap[type];
+          var shouldEmail;
+          if (prefKey) {
+            shouldEmail = !!user.notifyPrefs[prefKey];
+          } else {
+            shouldEmail = (type === 'timer_warning'); // only timer_warning emails by default when unmapped
+          }
+          if (shouldEmail) {
+            MailApp.sendEmail(user.email, 'TaskFlow: ' + type, message);
+          }
+        }
+      } catch(mailErr) {
+        // Silently fail — email is non-critical
+      }
+    } catch(e) {
+      // Silently fail — notifications are non-critical
+    }
+  }
+
   return {
     getClients:                getClients,
     getCategories:             getCategories,
@@ -1123,7 +1177,9 @@ var Internal = (function() {
     getOrCreateAttachmentFolder: getOrCreateAttachmentFolder,
     getKpiData:                getKpiData,
     scheduleNextRecurrence:    scheduleNextRecurrence,
-    quickSaveTask:             quickSaveTask
+    quickSaveTask:             quickSaveTask,
+    triggerRateLimited:        triggerRateLimited,
+    createNotification:        createNotification
   };
 })();
 
@@ -1457,27 +1513,10 @@ function deferTask(taskId, token) {
   }
 }
 
-// ── FIX 3: Trigger rate-limit guard ─────────────────────────
-// Returns true if the named trigger ran less than minGapMs ago (client spam).
-// Uses Script Properties for persistence across executions.
-function _triggerRateLimited(fnName, minGapMs) {
-  try {
-    var props = PropertiesService.getScriptProperties();
-    var key = fnName + '_last_run';
-    var last = props.getProperty(key);
-    var nowMs = Date.now();
-    if (last && (nowMs - parseInt(last)) < minGapMs) return true;
-    props.setProperty(key, String(nowMs));
-    return false;
-  } catch(e) {
-    return false; // fail-open: let the trigger run if properties unavailable
-  }
-}
-
 var TRIGGER_MIN_GAP_MS = 5 * 60 * 1000; // 5 minutes
 
 function archiveOldDoneTasks() {
-  if (_triggerRateLimited('archiveOldDoneTasks', TRIGGER_MIN_GAP_MS)) return;
+  if (Internal.triggerRateLimited('archiveOldDoneTasks', TRIGGER_MIN_GAP_MS)) return;
   try {
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
@@ -1722,7 +1761,7 @@ function heartbeatTimer(logId, token) {
 }
 
 function checkTimerWarnings() {
-  if (_triggerRateLimited('checkTimerWarnings', TRIGGER_MIN_GAP_MS)) return;
+  if (Internal.triggerRateLimited('checkTimerWarnings', TRIGGER_MIN_GAP_MS)) return;
   try {
     var tl = getSheet('time_log');
     if (!tl) return;
@@ -1742,7 +1781,7 @@ function checkTimerWarnings() {
       var title = '';
       try { title = Internal.getTask(taskId).title; } catch(e) {}
 
-      createNotification(userId, 'timer_warning', taskId,
+      Internal.createNotification(userId, 'timer_warning', taskId,
         'Timer running >' + warnHours + 'h on: ' + title);
     }
   } catch(e) {
@@ -1781,7 +1820,7 @@ function claimTask(taskId, token) {
       // Notify creator
       var createdBy = data[i][8];
       var claimer2 = getUserById(uid);
-      createNotification(createdBy, 'assigned', taskId,
+      Internal.createNotification(createdBy, 'assigned', taskId,
         (claimer2 ? claimer2.name : uid) + ' claimed: ' + data[i][1]);
 
       lock.releaseLock();
@@ -2365,40 +2404,10 @@ function markAllRead(token) {
   return markAllNotificationsRead(token);
 }
 
-function createNotification(userId, type, taskId, message) {
-  try {
-    var s = getSheet('notifications');
-    if (!s) return;
-    s.appendRow([newId(), userId, type, taskId || '', message, false, now()]);
-
-    // Email notification
-    try {
-      var user = getUserById(userId);
-      if (user && user.email && user.notifyPrefs) {
-        // FIX E — map notification type to stored notifyPrefs key.
-        // Only timer_warning defaults to send when unmapped; all other unknown types (e.g. 'comment', 'timer') default to NO email.
-        var prefKeyMap = { assigned: 'onAssign', due_soon: 'onDue', mention: 'onMention', shared: 'onShared' };
-        var prefKey = prefKeyMap[type];
-        var shouldEmail;
-        if (prefKey) {
-          shouldEmail = !!user.notifyPrefs[prefKey];
-        } else {
-          shouldEmail = (type === 'timer_warning'); // only timer_warning emails by default when unmapped
-        }
-        if (shouldEmail) {
-          MailApp.sendEmail(user.email, 'TaskFlow: ' + type, message);
-        }
-      }
-    } catch(mailErr) {
-      // Silently fail — email is non-critical
-    }
-  } catch(e) {
-    // Silently fail — notifications are non-critical
-  }
-}
+// createNotification moved into Internal IIFE — use Internal.createNotification()
 
 function sendDueSoonNotifications() {
-  if (_triggerRateLimited('sendDueSoonNotifications', TRIGGER_MIN_GAP_MS)) return;
+  if (Internal.triggerRateLimited('sendDueSoonNotifications', TRIGGER_MIN_GAP_MS)) return;
   try {
     var today = todayStr();
     var tasks = Internal.getTasks({ teamView: true });
@@ -2413,7 +2422,7 @@ function sendDueSoonNotifications() {
 
       if (t.dueDate <= today) {
         (t.assigneeIds || []).forEach(function(uid) {
-          createNotification(uid, 'due_soon', t.id, msg);
+          Internal.createNotification(uid, 'due_soon', t.id, msg);
         });
       }
     });
@@ -2448,7 +2457,7 @@ function addComment(taskId, commentText, token) {
       mentions.forEach(function(name) {
         var mentioned = users.find(function(u) { return u.name.toLowerCase() === name.toLowerCase(); });
         if (mentioned) {
-          createNotification(mentioned.id, 'mention', taskId,
+          Internal.createNotification(mentioned.id, 'mention', taskId,
             userName + ' mentioned you in: ' + taskId);
         }
       });
@@ -2622,7 +2631,7 @@ function getTaskAttachments(taskId, token) {
  * typical task volumes. The value is updated atomically under ScriptLock.
  */
 function checkEscalations() {
-  if (_triggerRateLimited('checkEscalations', TRIGGER_MIN_GAP_MS)) return;
+  if (Internal.triggerRateLimited('checkEscalations', TRIGGER_MIN_GAP_MS)) return;
   try {
     var enabled = getSettingValue('escalation_enabled', 'true');
     if (enabled === false || String(enabled).toLowerCase() === 'false') return;
@@ -2676,13 +2685,13 @@ function checkEscalations() {
       var msg = 'SLA breach: "' + title + '" (' + priority + ') has been open ' + Math.round(ageHours) + 'h';
 
       assigneeIds.forEach(function(uid) {
-        createNotification(uid, 'escalation', taskId, msg);
+        Internal.createNotification(uid, 'escalation', taskId, msg);
       });
 
       // Notify all admins (avoid duplicate if admin is also assignee)
       admins.forEach(function(admin) {
         if (assigneeIds.indexOf(admin.id) === -1) {
-          createNotification(admin.id, 'escalation', taskId, msg);
+          Internal.createNotification(admin.id, 'escalation', taskId, msg);
         }
       });
 
@@ -2832,12 +2841,15 @@ function getTeamPresence(token) { return getTeamStatus(token); }
 
 // ============================================================
 //  SEED DEMO DATA
-//  MUST be invoked via `clasp run seedDemoData` only — never from
-//  a web-app request.  The WIPE_AND_SEED guard is the primary
-//  safeguard; do NOT expose this function through the web UI.
+//  Requires BOTH a valid admin session token AND the literal string
+//  'WIPE_AND_SEED' as confirmToken.  Call via:
+//    seedDemoData('WIPE_AND_SEED', adminSessionToken)
+//  Never expose through the web UI; admin gate + confirm string are
+//  dual safeguards against accidental data destruction.
 // ============================================================
 
-function seedDemoData(confirmToken) {
+function seedDemoData(confirmToken, token) {
+  requireAdmin(token);
   if (confirmToken !== 'WIPE_AND_SEED') {
     throw new Error('seedDemoData requires confirmToken === "WIPE_AND_SEED"');
   }

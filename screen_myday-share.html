@@ -127,6 +127,7 @@
   var _activeLogId = null;
   var _timerStart = null;
   var _timerInterval = null;
+  var _timerTickCount = 0;
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -234,10 +235,19 @@
   function startTimerUI(screen, task) {
     _activeTimerId = task.id;
     _timerStart = task.timerStart || new Date().toISOString();
+    _timerTickCount = 0;
     clearInterval(_timerInterval);
     _timerInterval = setInterval(function () {
       var loggedEls = screen.querySelectorAll('[data-summary-logged],[data-summary-logged-mob]');
       loggedEls.forEach(function (el) { el.textContent = formatElapsed(_timerStart); });
+      // Heartbeat: every 60 ticks (~60 seconds) keep the backend timer alive
+      _timerTickCount++;
+      if (_timerTickCount >= 60) {
+        _timerTickCount = 0;
+        if (_activeLogId && _activeLogId !== 'PENDING') {
+          APP.call('heartbeatTimer', _activeLogId, APP.token).catch(function () { /* benign */ });
+        }
+      }
     }, 1000);
     renderAll(screen);
   }
@@ -245,6 +255,7 @@
   function stopTimerUI(screen) {
     clearInterval(_timerInterval);
     _timerInterval = null;
+    _timerTickCount = 0;
     _activeTimerId = null;
     _timerStart = null;
     renderAll(screen);
@@ -308,7 +319,7 @@
       APP.call('claimTask', taskId, APP.token).then(function () {
         _poolTasks = _poolTasks.filter(function (t) { return t.id !== taskId; });
         // reload my tasks to pick up newly claimed
-        return APP.call('getMyDayTasks', APP.currentUser ? APP.currentUser.name : '');
+        return APP.call('getMyDayTasks', APP.currentUser ? APP.currentUser.name : '', APP.token);
       }).then(function (tasks) {
         _myTasks = tasks || [];
         renderAll(screen);
@@ -375,12 +386,12 @@
 
       var userName = APP.currentUser ? APP.currentUser.name : '';
 
-      APP.call('getMyDayTasks', userName).then(function (tasks) {
+      APP.call('getMyDayTasks', userName, APP.token).then(function (tasks) {
         _myTasks = tasks || [];
         renderAll(screen);
       }).catch(function (err) { APP.showError(err); });
 
-      APP.call('getSharedPoolTasks').then(function (tasks) {
+      APP.call('getSharedPoolTasks', APP.token).then(function (tasks) {
         _poolTasks = tasks || [];
         renderAll(screen);
       }).catch(function (err) { APP.showError(err); });
@@ -388,6 +399,7 @@
     unmount: function () {
       clearInterval(_timerInterval);
       _timerInterval = null;
+      _timerTickCount = 0;
       _activeTimerId = null;
       var screen = document.querySelector('[data-screen="myday-share"]');
       if (screen && screen._clickHandler) {

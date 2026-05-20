@@ -50,15 +50,14 @@ async function findFrame(page) {
 
   const navs = [
     { screen: 'daily-plan',     file: '02-daily-plan.png',     via: () => frame.evaluate(() => APP.navigate('daily-plan')) },
-    { screen: 'myday-focus',    file: '03-myday-focus.png',    via: () => frame.evaluate(() => APP.navigate('myday-focus')) },
-    { screen: 'myday-share',    file: '04-myday-share.png',    via: () => frame.evaluate(() => APP.navigate('myday-share')) },
-    { screen: 'notifications',  file: '05-notifications.png',  via: () => frame.evaluate(() => APP.navigate('notifications')) },
-    { screen: 'team-board',     file: '06-team-board.png',     via: () => frame.evaluate(() => APP.navigate('team-board')) },
-    { screen: 'team-timeline',  file: '07-team-timeline.png',  via: () => frame.evaluate(() => APP.navigate('team-timeline')) },
-    { screen: 'reports-kpi',    file: '08-reports-kpi.png',    via: () => frame.evaluate(() => APP.navigate('reports-kpi')) },
-    { screen: 'add-edit-task',  file: '09-add-edit-task.png',  via: () => frame.evaluate(() => APP.navigate('add-edit-task')) },
-    { screen: 'quick-capture',  file: '10-quick-capture.png',  via: () => frame.evaluate(() => APP.navigate('quick-capture')) },
-    { screen: 'admin-panel',    file: '11-admin-panel.png',    via: () => frame.evaluate(() => APP.navigate('admin-panel')) }
+    { screen: 'myday-share',    file: '03-myday-share.png',    via: () => frame.evaluate(() => APP.navigate('myday-share')) },
+    { screen: 'notifications',  file: '04-notifications.png',  via: () => frame.evaluate(() => APP.navigate('notifications')) },
+    { screen: 'team-board',     file: '05-team-board.png',     via: () => frame.evaluate(() => APP.navigate('team-board')) },
+    { screen: 'team-timeline',  file: '06-team-timeline.png',  via: () => frame.evaluate(() => APP.navigate('team-timeline')) },
+    { screen: 'reports-kpi',    file: '07-reports-kpi.png',    via: () => frame.evaluate(() => APP.navigate('reports-kpi')) },
+    { screen: 'add-edit-task',  file: '08-add-edit-task.png',  via: () => frame.evaluate(() => APP.navigate('add-edit-task')) },
+    { screen: 'quick-capture',  file: '09-quick-capture.png',  via: () => frame.evaluate(() => APP.navigate('quick-capture')) },
+    { screen: 'admin-panel',    file: '10-admin-panel.png',    via: () => frame.evaluate(() => APP.navigate('admin-panel')) }
   ];
   for (const n of navs) {
     try {

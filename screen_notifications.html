@@ -169,7 +169,7 @@
       qs(screen, 'user-avatar').textContent = APP.currentUser.name ? APP.currentUser.name.charAt(0).toUpperCase() : '?';
 
       // Load notifications (backend returns {notifications:[],unreadCount:N})
-      APP.call('getNotifications', APP.currentUser.id || APP.currentUser.name)
+      APP.call('getNotifications', APP.currentUser.id || APP.currentUser.name, APP.token)
         .then(function(result) {
           qs(screen, 'loading-state').remove();
           var list = Array.isArray(result) ? result : (result && result.notifications) || [];

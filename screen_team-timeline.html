@@ -141,7 +141,7 @@ APP.register('team-timeline', {
     self._weekOffset = (params && params.weekOffset) ? params.weekOffset : 0;
     self._loadTimeline(screen);
 
-    APP.call('getTeamPresence')
+    APP.call('getTeamPresence', APP.token)
       .then(function(presence) {
         self._presenceData = presence || [];
         self._renderPresence(screen);
@@ -165,7 +165,7 @@ APP.register('team-timeline', {
 
     self._updateDateLabel(screen, refDate);
 
-    APP.call('getTeamTimeline', dateStr)
+    APP.call('getTeamTimeline', dateStr, APP.token)
       .then(function(rows) {
         self._timelineData = rows || [];
         self._renderTimeline(screen);

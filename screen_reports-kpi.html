@@ -267,7 +267,7 @@
 
   function loadData(screen, period) {
     // KPI summary (filtered by period)
-    APP.call('getKpiByFilter', period).then(function (kpi) {
+    APP.call('getKpiByFilter', period, APP.token).then(function (kpi) {
       renderKpi(screen, kpi || {});
       // If KPI response includes category breakdown, use it
       if (kpi && kpi.categoryBreakdown && kpi.categoryBreakdown.length) {
@@ -275,17 +275,17 @@
       }
     }).catch(function (err) { APP.showError(err); });
 
-    APP.call('getHoursByClient').then(function (clientHours) {
+    APP.call('getHoursByClient', APP.token).then(function (clientHours) {
       renderClientChart(screen, clientHours || []);
     }).catch(function (err) { APP.showError(err); });
 
-    APP.call('getTeamProductivity').then(function (memberStats) {
+    APP.call('getTeamProductivity', APP.token).then(function (memberStats) {
       renderTeamChart(screen, memberStats || []);
       renderTopPerformers(screen, memberStats || []);
     }).catch(function (err) { APP.showError(err); });
 
     // Load tasks to derive category breakdown if backend doesn't provide it
-    APP.call('getTasks').then(function(tasks) {
+    APP.call('getTasks', APP.token).then(function(tasks) {
       // Only use task-derived data if not already populated by KPI response
       var area = screen.querySelector('[data-area="chart-category-split"]');
       if (area && area.querySelector('.tf-skeleton')) {

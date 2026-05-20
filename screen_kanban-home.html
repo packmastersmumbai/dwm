@@ -141,6 +141,7 @@
 <script>
 (function () {
   var _timerInterval = null;
+  var _timerTickCount = 0; // counts ticks for 60-second heartbeat
   var _allTasks = [];
   var _activeFilter = 'today';
   // Multi-timer state: map of taskId → { logId, startedAt }
@@ -315,16 +316,29 @@
   // Each `[data-live-timer]` carries its own `data-start` ISO timestamp.
   function ensureTickerRunning() {
     if (_timerInterval) return;
+    _timerTickCount = 0;
     _timerInterval = setInterval(function () {
       var liveEls = document.querySelectorAll('[data-live-timer]');
       if (!liveEls.length) {
         clearInterval(_timerInterval); _timerInterval = null;
+        _timerTickCount = 0;
         return;
       }
       liveEls.forEach(function (el) {
         var s = el.getAttribute('data-start');
         if (s) el.textContent = '● REC ' + formatElapsed(s);
       });
+      // Heartbeat: every 60 ticks (~60 seconds) ping backend for each running timer
+      _timerTickCount++;
+      if (_timerTickCount >= 60) {
+        _timerTickCount = 0;
+        Object.keys(_activeTimers).forEach(function (taskId) {
+          var session = _activeTimers[taskId];
+          if (session && session.logId && session.logId !== 'PENDING') {
+            APP.call('heartbeatTimer', session.logId, APP.token).catch(function () { /* benign */ });
+          }
+        });
+      }
     }, 1000);
   }
 
@@ -337,14 +351,14 @@
   }
 
   function loadTasks(screen) {
-    APP.call('getTasks').then(function (tasks) {
+    APP.call('getTasks', null, APP.token).then(function (tasks) {
       _allTasks = tasks || [];
       renderTasks(screen, applyFilter(_allTasks, _activeFilter));
       ensureTickerRunning();
     }).catch(function (err) { APP.showError(err); });
 
     // Hydrate ALL active timers for current user (multi-timer)
-    APP.call('getActiveTimers', APP.currentUser.id).then(function (sessions) {
+    APP.call('getActiveTimers', APP.currentUser.id, APP.token).then(function (sessions) {
       _activeTimers = {};
       (sessions || []).forEach(function (s) {
         if (s && s.taskId && s.logId) {
@@ -378,7 +392,7 @@
         return;
       }
       results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">Searching…</p>';
-      APP.call('searchTasks', q, APP.currentUser.id).then(function(tasks) {
+      APP.call('searchTasks', q, APP.token).then(function(tasks) {
         if (!tasks || tasks.length === 0) {
           results.innerHTML = '<p class="text-on-surface-variant text-sm text-center mt-8">No tasks found for “' + q + '”</p>';
           return;
@@ -594,6 +608,7 @@
     unmount: function () {
       clearInterval(_timerInterval);
       _timerInterval = null;
+      _timerTickCount = 0;
       var screen = document.querySelector('[data-screen="kanban-home"]');
       if (screen && screen._clickHandler) {
         screen.removeEventListener('click', screen._clickHandler);

@@ -389,8 +389,8 @@ APP.register('quick-capture', {
     });
 
     // Load clients + members in parallel
-    var clientsP = APP.call('getClients').catch(function() { return []; });
-    var membersP = APP.call('getTeamMembers').catch(function() { return []; });
+    var clientsP = APP.call('getClients', APP.token).catch(function() { return []; });
+    var membersP = APP.call('getTeamMembers', APP.token).catch(function() { return []; });
 
     Promise.all([clientsP, membersP]).then(function(results) {
       self._clients = results[0] || [];
