@@ -22,18 +22,9 @@
     #tf-toast.show { opacity: 1; }
     #tf-toast.success { background: #22c55e; color: #fff; }
     #tf-toast.error { background: #ef4444; color: #fff; }
-    /* Loading overlay */
-    #tf-loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8);
-      display: flex; align-items: center; justify-content: center; z-index: 9998; display: none; }
   </style>
 </head>
 <body>
-
-<!-- Loading overlay -->
-<div id="tf-loading">
-  <div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-</div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- Toast -->
 <div id="tf-toast"></div>
@@ -151,9 +142,6 @@ var APP = (function() {
   }
   function showError(msg) { _toast(msg || 'Something went wrong', 'error'); }
   function showSuccess(msg) { _toast(msg || 'Done!', 'success'); }
-  function showLoading() { document.getElementById('tf-loading').style.display = 'flex'; }
-  function hideLoading() { document.getElementById('tf-loading').style.display = 'none'; }
-
   return {
     register: register,
     navigate: navigate,
@@ -161,8 +149,6 @@ var APP = (function() {
     invalidate: invalidate,
     showError: showError,
     showSuccess: showSuccess,
-    showLoading: showLoading,
-    hideLoading: hideLoading,
     state: state,
     get currentUser() { return currentUser; },
     set currentUser(u) { currentUser = u; },

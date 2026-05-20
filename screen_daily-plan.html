@@ -66,10 +66,14 @@ Skip <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
     <span class="material-symbols-outlined">settings</span>
     <span class="font-label-bold text-label-bold mt-0.5">Admin</span>
   </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-dp-nav="reports-kpi">
+    <span class="material-symbols-outlined">bar_chart</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Reports</span>
+  </button>
 </nav>
 
 <!-- Bottom Action Bar (Sticky) — sits above bottom nav -->
-<div class="fixed bottom-nav-height w-full bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 z-40 flex items-center justify-between max-w-3xl left-1/2 -translate-x-1/2">
+<div class="fixed w-full bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 z-40 flex items-center justify-between max-w-3xl left-1/2 -translate-x-1/2" style="bottom:56px">
 <div id="dp-task-count-label" class="text-[13px] text-[#5F6368] font-medium flex items-center gap-2">
 <span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
 Loading…
@@ -119,13 +123,13 @@ APP.register('daily-plan', {
 
     // Skip button
     screen.querySelector('#dp-skip').addEventListener('click', function() {
-      APP.navigate('myday-focus');
+      APP.navigate('myday-share');
     });
 
     // Begin My Day button
     screen.querySelector('#dp-begin-btn').addEventListener('click', function() {
       APP.call('beginMyDay', APP.token)
-        .then(function() { APP.navigate('myday-focus'); })
+        .then(function() { APP.navigate('myday-share'); })
         .catch(function(err) { APP.showError(err); });
     });
 
@@ -216,7 +220,7 @@ APP.register('daily-plan', {
       btn.addEventListener('click', function() {
         var taskId = btn.getAttribute('data-task-id');
         APP.call('startTimer', taskId, APP.token)
-          .then(function() { APP.navigate('myday-focus'); })
+          .then(function() { APP.navigate('myday-share'); })
           .catch(function(err) { APP.showError(err); });
       });
     });
