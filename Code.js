@@ -2380,17 +2380,36 @@ var ALLOWED_PHOTO_MIME_TYPES = ['image/jpeg','image/png','image/gif','image/webp
 // Guard: base64-encoded payload must not exceed ~10 MB (base64 ≈ 4/3 raw)
 var MAX_ATTACHMENT_B64_CHARS = 14000000; // ~10 MB raw
 
+// FIX 5 — wrap read-then-create in ScriptLock to prevent concurrent duplicate folders;
+// log a warning when a stored folder ID is no longer accessible.
 function _getOrCreateAttachmentFolder() {
-  var folderId = getSettingValue('attachment_folder_id', '');
-  if (folderId) {
-    try { return DriveApp.getFolderById(folderId); } catch(e) {}
+  var lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    var folderId = getSettingValue('attachment_folder_id', '');
+    if (folderId) {
+      try { return DriveApp.getFolderById(folderId); } catch(e) {
+        console.error('_getOrCreateAttachmentFolder: stored folder ' + folderId + ' is inaccessible (' + e + '); creating replacement');
+      }
+    }
+    // Create folder
+    var folder = DriveApp.createFolder('TaskFlow Attachments');
+    // Persist folder id to settings
+    var s = getSheet('settings');
+    var sData = s.getDataRange().getValues();
+    var found = false;
+    for (var si = 1; si < sData.length; si++) {
+      if (sData[si][0] === 'attachment_folder_id') {
+        s.getRange(si + 1, 2).setValue(folder.getId());
+        found = true;
+        break;
+      }
+    }
+    if (!found) s.appendRow(['attachment_folder_id', folder.getId()]);
+    return folder;
+  } finally {
+    lock.releaseLock();
   }
-  // Create folder
-  var folder = DriveApp.createFolder('TaskFlow Attachments');
-  // Persist folder id to settings
-  var s = getSheet('settings');
-  s.appendRow(['attachment_folder_id', folder.getId()]);
-  return folder;
 }
 
 function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
@@ -2404,7 +2423,18 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
       throw new Error('Payload missing or too large');
     }
 
-    var ext = mimeType.split('/')[1] || 'jpg';
+    // FIX 4 — verify caller relationship to the task (throws if task not found)
+    var task = getTask(taskId);
+    var isAdmin = sess.role === 'admin';
+    var isCreator = task.createdBy === sess.userId;
+    var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
+    if (!isAdmin && !isCreator && !isAssignee) {
+      throw new Error('Not authorized to upload to this task');
+    }
+
+    // FIX 6 — server-side MIME→extension map (ignore client-supplied extension)
+    var EXT_MAP = {'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','image/heic':'heic'};
+    var ext = EXT_MAP[mimeType] || 'jpg';
     var fileName = 'photo_' + taskId + '_' + newId() + '.' + ext;
 
     var bytes = Utilities.base64Decode(base64Data);
@@ -2413,7 +2443,7 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
     var folder = _getOrCreateAttachmentFolder();
     var file = folder.createFile(blob);
 
-    // Set anyone-with-link view access
+    // Deliberate: ANYONE_WITH_LINK is required so photos are viewable in-app without re-auth.
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     var fileUrl = 'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing';
@@ -2431,8 +2461,18 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
   }
 }
 
-function getTaskAttachments(taskId) {
+// FIX 3 — require session + task-relationship check before returning attachment URLs
+function getTaskAttachments(taskId, token) {
   try {
+    var sess = requireSession(token);
+    // Load the task — throws 'Task not found' if missing
+    var task = getTask(taskId);
+    var isAdmin = sess.role === 'admin';
+    var isCreator = task.createdBy === sess.userId;
+    var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
+    if (!isAdmin && !isCreator && !isAssignee) {
+      throw new Error('Not authorized to view attachments for this task');
+    }
     var s = getSheet('attachments');
     if (!s) return [];
     var data = s.getDataRange().getValues();
@@ -2510,7 +2550,8 @@ function checkEscalations() {
 
       // Escalate: notify assignees
       var assigneeIds = parseAssigneeIds(row[7]);
-      var title = row[1] || taskId;
+      // FIX 8 — sanitize user-supplied title before embedding in notification message
+      var title = String(row[1] || taskId).replace(/[<>]/g, '');
       var msg = 'SLA breach: "' + title + '" (' + priority + ') has been open ' + Math.round(ageHours) + 'h';
 
       assigneeIds.forEach(function(uid) {
@@ -2539,6 +2580,19 @@ function checkEscalations() {
         newlyEscalated.forEach(function(id) {
           if (fresh.indexOf(id) === -1) fresh.push(id);
         });
+
+        // FIX 9 — prune IDs of tasks that are no longer open so the blob cannot grow unbounded
+        var openStatusSet = { 'todo': true, 'in-progress': true, 'blocked': true };
+        var taskIdToStatus = {};
+        for (var pi = 1; pi < taskData.length; pi++) {
+          if (taskData[pi][0]) taskIdToStatus[taskData[pi][0]] = taskData[pi][6];
+        }
+        fresh = fresh.filter(function(id) {
+          var s = taskIdToStatus[id];
+          // Keep only if the task is still open (not found == may be deleted — prune it too)
+          return s && openStatusSet[s];
+        });
+
         var settingsSheet = getSheet('settings');
         var sData = settingsSheet.getDataRange().getValues();
         var found = false;
@@ -2555,7 +2609,9 @@ function checkEscalations() {
       }
     }
   } catch(e) {
-    // Silent — time-driven trigger
+    // FIX 2 — log trigger failures so they are visible in Apps Script execution log
+    console.error('checkEscalations failed: ' + e);
+    logActivity('', '', 'escalation_error', String(e));
   }
 }
 
@@ -2563,9 +2619,10 @@ function checkEscalations() {
 //  SHIFT HANDOVER
 // ============================================================
 
+// FIX 7 — admin-only gate; single client map built before loop; corrected counts
 function getShiftHandover(token) {
   try {
-    var sess = requireSession(token);
+    var sess = requireAdmin(token); // shift handover is a supervisor function
     var tasksSheet = getSheet('tasks');
     if (!tasksSheet) throw new Error('tasks sheet missing');
     var taskData = tasksSheet.getDataRange().getValues();
@@ -2576,21 +2633,21 @@ function getShiftHandover(token) {
     var userMap = {};
     allUsers.forEach(function(u) { userMap[u.id] = u.name; });
 
+    // Build client name map once (avoid calling getClients() per task)
+    var clientMap = {};
+    getClients().forEach(function(c) { clientMap[c.id] = c.name; });
+
     function resolveAssigneeNames(assigneeIds) {
       return (assigneeIds || []).map(function(uid) { return userMap[uid] || uid; });
     }
 
     function clientNameForId(clientId) {
-      if (!clientId) return '';
-      var clients = getClients();
-      var c = clients.filter(function(x) { return x.id === clientId; })[0];
-      return c ? c.name : clientId;
+      return clientId ? (clientMap[clientId] || clientId) : '';
     }
 
     var completedToday = [];
     var stillOpen = [];
     var blocked = [];
-    var counts = { completedToday: 0, stillOpen: 0, blocked: 0, total: 0 };
 
     for (var i = 1; i < taskData.length; i++) {
       var row = taskData[i];
@@ -2598,7 +2655,6 @@ function getShiftHandover(token) {
       var status = row[6];
       if (status === 'deleted' || status === 'archived') continue;
 
-      counts.total++;
       var assigneeIds = parseAssigneeIds(row[7]);
       var taskSummary = {
         id: row[0],
@@ -2613,16 +2669,22 @@ function getShiftHandover(token) {
         var updatedAt = row[18] ? row[18].toString().substring(0, 10) : '';
         if (updatedAt === today) {
           completedToday.push(taskSummary);
-          counts.completedToday++;
         }
+        // done-but-not-today tasks are not placed in any bucket — do not count them
       } else if (status === 'blocked') {
         blocked.push(taskSummary);
-        counts.blocked++;
       } else if (status === 'todo' || status === 'in-progress') {
         stillOpen.push(taskSummary);
-        counts.stillOpen++;
       }
     }
+
+    // counts.total = sum of the three buckets only (consistent with what is returned)
+    var counts = {
+      completedToday: completedToday.length,
+      stillOpen: stillOpen.length,
+      blocked: blocked.length,
+      total: completedToday.length + stillOpen.length + blocked.length
+    };
 
     return {
       generatedBy: sess.name,
@@ -2642,6 +2704,10 @@ function getShiftHandover(token) {
 // ============================================================
 
 // Removed myFunction() and testPing() — debug scaffolding.
+
+// FIX 1 — Restore aliases called by frontend screens and manifest.json
+function getTeamMembers() { return getUsers(); }
+function getTeamPresence() { return getTeamStatus(); }
 
 // ============================================================
 //  SEED DEMO DATA
