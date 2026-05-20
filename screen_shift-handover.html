@@ -98,6 +98,12 @@
     low:    'bg-secondary-container text-on-secondary-container'
   };
 
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
   }
@@ -105,19 +111,20 @@
   function priorityChip(priority) {
     var p = (priority || 'low').toLowerCase();
     var cls = PRIORITY_STYLES[p] || PRIORITY_STYLES.low;
-    return '<span class="text-[10px] font-label-bold px-2 py-0.5 rounded-full ' + cls + ' shrink-0">' + (priority || 'low') + '</span>';
+    return '<span class="text-[10px] font-label-bold px-2 py-0.5 rounded-full ' + cls + ' shrink-0">' + escHtml(priority || 'low') + '</span>';
   }
 
   function buildTaskRow(task) {
-    var assignees = Array.isArray(task.assigneeNames) ? task.assigneeNames.join(', ') : (task.assigneeNames || '');
+    var assigneeNames = Array.isArray(task.assigneeNames) ? task.assigneeNames : (task.assigneeNames ? [task.assigneeNames] : []);
+    var assignees = assigneeNames.map(escHtml).join(', ');
     var row = document.createElement('div');
     row.className = 'bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-3 flex items-start gap-3';
     row.innerHTML =
       '<div class="flex-1 min-w-0">' +
-        '<div class="font-body-standard text-body-standard font-medium text-on-surface leading-snug">' + (task.title || 'Untitled') + '</div>' +
+        '<div class="font-body-standard text-body-standard font-medium text-on-surface leading-snug">' + escHtml(task.title || 'Untitled') + '</div>' +
         '<div class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">' +
-          (task.client ? task.client + (assignees ? ' · ' : '') : '') +
-          (assignees || '') +
+          (task.client ? escHtml(task.client) + (assignees ? ' · ' : '') : '') +
+          assignees +
         '</div>' +
       '</div>' +
       priorityChip(task.priority);
@@ -215,6 +222,8 @@
     window.open(url, '_blank');
   }
 
+  var _listenersAttached = false;
+
   APP.register('shift-handover', {
     mount: function(params) {
       if (!APP.currentUser) { APP.navigate('pin-login'); return; }
@@ -229,24 +238,31 @@
 
       loadHandover(screen);
 
-      qs(screen, 'btn-back').addEventListener('click', function() {
-        APP.navigate('admin-panel');
-      });
+      if (!_listenersAttached) {
+        _listenersAttached = true;
 
-      qs(screen, 'btn-whatsapp').addEventListener('click', function() {
-        openWhatsApp(screen);
-      });
+        qs(screen, 'btn-back').addEventListener('click', function() {
+          APP.navigate('admin-panel');
+        });
 
-      qs(screen, 'btn-whatsapp-bottom').addEventListener('click', function() {
-        openWhatsApp(screen);
-      });
+        qs(screen, 'btn-whatsapp').addEventListener('click', function() {
+          openWhatsApp(screen);
+        });
 
-      qs(screen, 'btn-retry').addEventListener('click', function() {
-        loadHandover(screen);
-      });
+        qs(screen, 'btn-whatsapp-bottom').addEventListener('click', function() {
+          openWhatsApp(screen);
+        });
+
+        qs(screen, 'btn-retry').addEventListener('click', function() {
+          loadHandover(screen);
+        });
+      }
     },
 
-    unmount: function() {}
+    unmount: function() {
+      var screen = document.querySelector('[data-screen="shift-handover"]');
+      if (screen) screen._handoverData = null;
+    }
   });
 })();
 </script>

@@ -208,6 +208,12 @@ Share via WhatsApp
 
 <script>
 (function() {
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   var _taskId = null;
   var _task = null;
   var _activeLogId = null;
@@ -416,10 +422,10 @@ Share via WhatsApp
     inner.className = 'flex flex-col flex-1';
     inner.innerHTML =
       '<div class="flex items-baseline gap-2 mb-0.5">' +
-        '<span class="font-label-bold text-[12px] font-bold text-on-surface">' + (c.author || c.user || 'Unknown') + '</span>' +
-        '<span class="font-body-standard text-[11px] text-on-surface-variant">' + (c.timeAgo || c.timestamp || '') + '</span>' +
+        '<span class="font-label-bold text-[12px] font-bold text-on-surface">' + escHtml(c.author || c.user || 'Unknown') + '</span>' +
+        '<span class="font-body-standard text-[11px] text-on-surface-variant">' + escHtml(c.timeAgo || c.timestamp || '') + '</span>' +
       '</div>' +
-      '<p class="font-body-standard text-[13px] text-on-surface">' + (c.text || c.comment || '') + '</p>';
+      '<p class="font-body-standard text-[13px] text-on-surface">' + escHtml(c.text || c.comment || '') + '</p>';
     wrap.appendChild(avatar);
     wrap.appendChild(inner);
     return wrap;
@@ -446,7 +452,11 @@ Share via WhatsApp
       btn.type = 'button';
       btn.className = 'relative w-full aspect-square rounded-lg overflow-hidden bg-surface-container-high border border-outline-variant hover:opacity-90 transition-opacity';
       btn.setAttribute('aria-label', 'View attachment');
-      btn.innerHTML = '<img src="' + att.fileUrl + '" alt="Attachment" class="w-full h-full object-cover"/>';
+      var thumb = document.createElement('img');
+      thumb.src = att.fileUrl;
+      thumb.alt = 'Attachment';
+      thumb.className = 'w-full h-full object-cover';
+      btn.appendChild(thumb);
       btn.addEventListener('click', function() { openLightbox(screen, att.fileUrl); });
       grid.appendChild(btn);
     });
@@ -492,6 +502,12 @@ Share via WhatsApp
           APP.showError(err);
         });
     };
+    reader.onerror = function() {
+      prog.classList.add('hidden');
+      label.removeAttribute('aria-disabled');
+      label.style.pointerEvents = '';
+      APP.showError('Failed to read file. Please try again.');
+    };
     reader.readAsDataURL(file);
   }
 
@@ -525,10 +541,10 @@ Share via WhatsApp
         btn.type = 'button';
         btn.className = 'w-full flex items-center gap-3 px-4 text-left hover:bg-surface-container-low transition-colors text-on-surface font-body-standard text-[14px]';
         btn.style.minHeight = '44px';
-        var initials = (m.name || '?').charAt(0).toUpperCase();
+        var initials = escHtml((m.name || '?').charAt(0).toUpperCase());
         btn.innerHTML =
           '<div class="w-7 h-7 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">' + initials + '</div>' +
-          '<span class="flex-1">' + (m.name || '') + '</span>';
+          '<span class="flex-1">' + escHtml(m.name || '') + '</span>';
         btn.addEventListener('mousedown', function(e) {
           e.preventDefault(); // keep focus on input
           insertMention(m.name, atIdx);

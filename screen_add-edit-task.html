@@ -189,6 +189,12 @@
   var _selectedSchedule = 'morning';
   var _selectedFrequency = 'daily';
 
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
   }
@@ -253,9 +259,13 @@
         var initials = (item.name || '?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
         btn.className = 'flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative transition-all ' +
           (isSelected ? 'border-2 border-primary-container' : 'border-2 border-transparent hover:opacity-80');
+        var imgEl = document.createElement('img');
+        imgEl.src = item.avatar || '';
+        imgEl.alt = item.name || 'User';
+        imgEl.className = 'w-full h-full object-cover';
         var innerImg = item.avatar
-          ? '<img alt="' + (item.name || 'User') + '" class="w-full h-full object-cover" src="' + item.avatar + '"/>'
-          : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + initials + '</div>';
+          ? imgEl.outerHTML
+          : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + escHtml(initials) + '</div>';
         btn.innerHTML = innerImg +
           (isSelected
             ? '<div class="absolute inset-0 bg-primary-container/20 flex items-center justify-center">' +
@@ -547,6 +557,7 @@
             return;
           }
           _recog = new SpeechRecognition();
+          micBtn._recog = _recog;
           _recog.lang = 'en-IN';
           _recog.interimResults = false;
           _recog.maxAlternatives = 1;
@@ -565,6 +576,7 @@
           };
           _recog.onend = function() {
             _listening = false;
+            micBtn._recog = null;
             micBtn.classList.remove('bg-error-container', 'text-error');
             micBtn.removeAttribute('aria-pressed');
             micBtn.querySelector('.material-symbols-outlined').textContent = 'mic';

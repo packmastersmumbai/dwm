@@ -68,7 +68,7 @@
 <div id="qc-scan-preview" class="hidden mb-4 relative rounded-xl overflow-hidden bg-black">
   <video id="qc-scan-video" class="w-full rounded-xl" autoplay muted playsinline style="max-height:200px;object-fit:cover;"></video>
   <button id="qc-scan-cancel" type="button"
-    class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
+    class="absolute top-2 right-2 w-[44px] h-[44px] flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
     <span class="material-symbols-outlined text-[18px]">close</span>
   </button>
   <div class="absolute bottom-2 left-0 right-0 flex justify-center">
@@ -166,6 +166,12 @@ Add Task
 </div>
 
 <script>
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 APP.register('quick-capture', {
   _selectedClientId: null,
   _selectedPriority: 'medium',
@@ -293,9 +299,11 @@ APP.register('quick-capture', {
               var val = barcodes[0].rawValue;
               stopCamera();
               var inp = screen.querySelector('#qc-title-input');
-              inp.value = 'Asset: ' + val;
+              var MAX = inp.maxLength > 0 ? inp.maxLength : 100;
+              var raw = 'Asset: ' + val;
+              inp.value = raw.length > MAX ? raw.slice(0, MAX) : raw;
               var len = inp.value.length;
-              screen.querySelector('#qc-char-count').textContent = Math.min(len, 100) + '/100';
+              screen.querySelector('#qc-char-count').textContent = len + '/100';
               if (len > 0) screen.querySelector('#qc-title-error').classList.add('hidden');
             } else {
               _scanFrame = requestAnimationFrame(scanLoop);
@@ -461,7 +469,7 @@ APP.register('quick-capture', {
 
     container.innerHTML = self._clients.map(function(c, i) {
       var colorClass = colors[i % colors.length];
-      return '<button class="qc-client-chip px-3 py-1 rounded-full font-label-bold text-label-bold shrink-0 ' + colorClass + '" data-client-id="' + c.id + '">' + c.name + '</button>';
+      return '<button class="qc-client-chip px-3 py-1 rounded-full font-label-bold text-label-bold shrink-0 ' + colorClass + '" data-client-id="' + escHtml(c.id) + '">' + escHtml(c.name) + '</button>';
     }).join('') +
     '<button class="px-3 py-1 rounded-full border border-dashed border-outline-variant text-on-surface-variant font-label-bold text-label-bold shrink-0 flex items-center gap-1">' +
       '<span class="material-symbols-outlined text-[14px]">add</span> New' +
@@ -496,9 +504,13 @@ APP.register('quick-capture', {
       btn.type = 'button';
       btn.className = 'flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative transition-all ' +
         (isSelected ? 'border-2 border-primary-container' : 'border-2 border-transparent hover:opacity-80');
+      var mImgEl = document.createElement('img');
+      mImgEl.src = m.avatar || '';
+      mImgEl.alt = m.name || 'User';
+      mImgEl.className = 'w-full h-full object-cover';
       var innerImg = m.avatar
-        ? '<img alt="' + (m.name || 'User') + '" class="w-full h-full object-cover" src="' + m.avatar + '"/>'
-        : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + initials + '</div>';
+        ? mImgEl.outerHTML
+        : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + escHtml(initials) + '</div>';
       btn.innerHTML = innerImg +
         (isSelected
           ? '<div class="absolute inset-0 bg-primary-container/20 flex items-center justify-center">' +
