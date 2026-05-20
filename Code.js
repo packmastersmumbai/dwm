@@ -80,11 +80,6 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function testPing() {
-  return 'pong';
-}
-
-
 // ── initializeSheets ─────────────────────────────────────────
 
 function initializeSheets() {
@@ -102,7 +97,8 @@ function initializeSheets() {
     time_log: ['id','task_id','user_id','started_at','stopped_at','duration_seconds','last_heartbeat'],
     activity: ['id','task_id','user_id','action','detail','created_at'],
     notifications: ['id','user_id','type','task_id','message','is_read','created_at'],
-    settings: ['key','value']
+    settings: ['key','value'],
+    attachments: ['id','task_id','user_id','file_id','file_url','kind','created_at']
   };
 
   Object.keys(schemas).forEach(function(name) {
@@ -122,9 +118,31 @@ function initializeSheets() {
       ['working_end','20'],
       ['archive_after_days','3'],
       ['timer_warning_hours','3'],
-      ['auto_archive','TRUE']
+      ['auto_archive','TRUE'],
+      ['sla_urgent_hours','4'],
+      ['sla_high_hours','24'],
+      ['sla_medium_hours','72'],
+      ['sla_low_hours','168'],
+      ['escalation_enabled','true']
     ];
     defaults.forEach(function(row) { settings.appendRow(row); });
+  } else {
+    // Ensure SLA/escalation keys exist if settings were already bootstrapped
+    var existingSettings = settings.getDataRange().getValues();
+    var existingKeys = {};
+    for (var si = 1; si < existingSettings.length; si++) {
+      existingKeys[existingSettings[si][0]] = true;
+    }
+    var slaDefaults = [
+      ['sla_urgent_hours','4'],
+      ['sla_high_hours','24'],
+      ['sla_medium_hours','72'],
+      ['sla_low_hours','168'],
+      ['escalation_enabled','true']
+    ];
+    slaDefaults.forEach(function(row) {
+      if (!existingKeys[row[0]]) settings.appendRow(row);
+    });
   }
 
   // Bootstrap admin user if users sheet is empty
@@ -149,6 +167,7 @@ function createTriggers() {
   ScriptApp.newTrigger('archiveOldDoneTasks').timeBased().everyDays(1).atHour(2).create();
   ScriptApp.newTrigger('sendDueSoonNotifications').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('checkTimerWarnings').timeBased().everyMinutes(30).create();
+  ScriptApp.newTrigger('checkEscalations').timeBased().everyHours(1).create();
 }
 
 // ============================================================
@@ -685,10 +704,6 @@ function updateCategory(id, fields) {
   } catch(e) {
     throw new Error('updateCategory: ' + e.message);
   }
-}
-
-function getTeamMembers() {
-  return getUsers();
 }
 
 // ============================================================
@@ -1664,9 +1679,6 @@ function getTeamStatus() {
   }
 }
 
-// Alias used in manifest
-function getTeamPresence() { return getTeamStatus(); }
-
 function getTeamTasks(options) {
   try {
     options = options || {};
@@ -1740,17 +1752,28 @@ function getTeamTimeline(date) {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
+    // Build index keyed by "taskId|userId" for O(1) lookup — avoids O(n²) inner scan
+    // Value: first matching log entry for (task, user) on targetDate
+    var tlIndex = {};        // key: taskId+'|'+userId → log row object
+    var taskHasLog = {};     // key: taskId+'|'+userId → true (for fast hasLogToday check)
+    for (var j = 1; j < tlData.length; j++) {
+      var logDate = tlData[j][3] ? tlData[j][3].toString().substring(0, 10) : '';
+      if (logDate !== targetDate) continue;
+      var key = tlData[j][1] + '|' + tlData[j][2];
+      taskHasLog[key] = true;
+      if (!tlIndex[key]) {
+        tlIndex[key] = {
+          startedAt: tlData[j][3] ? tlData[j][3].toString() : null,
+          stoppedAt: tlData[j][4] ? tlData[j][4].toString() : null,
+          isRunning: !tlData[j][4]
+        };
+      }
+    }
+
     var result = users.map(function(u) {
       var userTasks = tasks.filter(function(t) {
-        var isDueToday = t.dueDate === targetDate;
-        var hasLogToday = false;
-        for (var j = 1; j < tlData.length; j++) {
-          if (tlData[j][1] === t.id && tlData[j][2] === u.id) {
-            var logDate = tlData[j][3] ? tlData[j][3].toString().substring(0, 10) : '';
-            if (logDate === targetDate) { hasLogToday = true; break; }
-          }
-        }
-        return (t.assigneeIds && t.assigneeIds.indexOf(u.id) !== -1) && (isDueToday || hasLogToday);
+        if (!t.assigneeIds || t.assigneeIds.indexOf(u.id) === -1) return false;
+        return t.dueDate === targetDate || taskHasLog[t.id + '|' + u.id];
       });
 
       return {
@@ -1758,25 +1781,14 @@ function getTeamTimeline(date) {
         name: u.name,
         avatarColor: u.avatarColor,
         tasks: userTasks.map(function(t) {
-          // Find time log for this user+task on this date
-          var actualStart = null, actualEnd = null, isRunning = false;
-          for (var j = 1; j < tlData.length; j++) {
-            if (tlData[j][1] === t.id && tlData[j][2] === u.id) {
-              var logDate = tlData[j][3] ? tlData[j][3].toString().substring(0, 10) : '';
-              if (logDate === targetDate) {
-                actualStart = tlData[j][3] ? tlData[j][3].toString() : null;
-                actualEnd = tlData[j][4] ? tlData[j][4].toString() : null;
-                isRunning = !tlData[j][4];
-                break;
-              }
-            }
-          }
+          var entry = tlIndex[t.id + '|' + u.id] || null;
           return {
             taskId: t.id, title: t.title, clientId: t.clientId,
             priority: t.priority, status: t.status,
-            actualStart: actualStart, actualEnd: actualEnd,
+            actualStart: entry ? entry.startedAt : null,
+            actualEnd: entry ? entry.stoppedAt : null,
             estimatedMinutes: t.estimatedMinutes, scheduledTime: t.scheduledTime,
-            isRunning: isRunning
+            isRunning: entry ? entry.isRunning : false
           };
         })
       };
@@ -1846,8 +1858,6 @@ function getKpiData(options) {
     throw new Error('getKpiData: ' + e.message);
   }
 }
-
-function getKpiSummary() { return getKpiData(); }
 
 function getKpiByFilter(period) {
   var now2 = new Date();
@@ -2162,9 +2172,6 @@ function markAllRead(token) {
   return markAllNotificationsRead(token);
 }
 
-// Deprecated — now takes token, not userName
-function markAllNotificationsReadByName(token) { return markAllNotificationsRead(token); }
-
 function createNotification(userId, type, taskId, message) {
   try {
     var s = getSheet('notifications');
@@ -2366,10 +2373,275 @@ function shareToWhatsApp(taskId) {
 }
 
 // ============================================================
+//  PHOTO ATTACHMENTS (Google Drive)
+// ============================================================
+
+var ALLOWED_PHOTO_MIME_TYPES = ['image/jpeg','image/png','image/gif','image/webp','image/heic'];
+// Guard: base64-encoded payload must not exceed ~10 MB (base64 ≈ 4/3 raw)
+var MAX_ATTACHMENT_B64_CHARS = 14000000; // ~10 MB raw
+
+function _getOrCreateAttachmentFolder() {
+  var folderId = getSettingValue('attachment_folder_id', '');
+  if (folderId) {
+    try { return DriveApp.getFolderById(folderId); } catch(e) {}
+  }
+  // Create folder
+  var folder = DriveApp.createFolder('TaskFlow Attachments');
+  // Persist folder id to settings
+  var s = getSheet('settings');
+  s.appendRow(['attachment_folder_id', folder.getId()]);
+  return folder;
+}
+
+function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
+  try {
+    var sess = requireSession(token);
+    if (!taskId) throw new Error('taskId required');
+    if (ALLOWED_PHOTO_MIME_TYPES.indexOf(mimeType) === -1) {
+      throw new Error('Unsupported file type');
+    }
+    if (!base64Data || base64Data.length > MAX_ATTACHMENT_B64_CHARS) {
+      throw new Error('Payload missing or too large');
+    }
+
+    var ext = mimeType.split('/')[1] || 'jpg';
+    var fileName = 'photo_' + taskId + '_' + newId() + '.' + ext;
+
+    var bytes = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(bytes, mimeType, fileName);
+
+    var folder = _getOrCreateAttachmentFolder();
+    var file = folder.createFile(blob);
+
+    // Set anyone-with-link view access
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    var fileUrl = 'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing';
+
+    var id = newId();
+    var s = getSheet('attachments');
+    if (!s) throw new Error('attachments sheet missing — run initializeSheets()');
+    s.appendRow([id, taskId, sess.userId, file.getId(), fileUrl, 'photo', now()]);
+
+    logActivity(taskId, sess.userId, 'photo_uploaded', fileName);
+
+    return { id: id, fileUrl: fileUrl };
+  } catch(e) {
+    throw new Error('uploadTaskPhoto: ' + e.message);
+  }
+}
+
+function getTaskAttachments(taskId) {
+  try {
+    var s = getSheet('attachments');
+    if (!s) return [];
+    var data = s.getDataRange().getValues();
+    var result = [];
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][1] !== taskId) continue;
+      result.push({
+        id: data[i][0], taskId: data[i][1], userId: data[i][2],
+        fileId: data[i][3], fileUrl: data[i][4], kind: data[i][5],
+        createdAt: data[i][6] ? data[i][6].toString() : ''
+      });
+    }
+    return result;
+  } catch(e) {
+    throw new Error('getTaskAttachments: ' + e.message);
+  }
+}
+
+// ============================================================
+//  SLA ESCALATION
+// ============================================================
+
+/**
+ * Escalation tracking strategy: we store escalated task IDs in a settings key
+ * ('escalated_task_ids') as a JSON array. This avoids adding a new column to
+ * the tasks sheet (no schema migration needed) and is O(1) to read/write for
+ * typical task volumes. The value is updated atomically under ScriptLock.
+ */
+function checkEscalations() {
+  try {
+    var enabled = getSettingValue('escalation_enabled', 'true');
+    if (enabled === false || String(enabled).toLowerCase() === 'false') return;
+
+    var slaHours = {
+      urgent: parseFloat(getSettingValue('sla_urgent_hours', 4)),
+      high:   parseFloat(getSettingValue('sla_high_hours',   24)),
+      medium: parseFloat(getSettingValue('sla_medium_hours', 72)),
+      low:    parseFloat(getSettingValue('sla_low_hours',   168))
+    };
+
+    // Load escalated-ids set
+    var escalatedRaw = getSettingValue('escalated_task_ids', '[]');
+    var escalatedArr = safeParseJson(escalatedRaw, []);
+    var escalatedSet = {};
+    escalatedArr.forEach(function(id) { escalatedSet[id] = true; });
+
+    var nowDate = new Date();
+    var tasksSheet = getSheet('tasks');
+    if (!tasksSheet) return;
+    var taskData = tasksSheet.getDataRange().getValues();
+
+    var openStatuses = ['todo', 'in-progress', 'blocked'];
+    var allUsers = getUsersStatic();
+    var admins = allUsers.filter(function(u) { return u.role === 'admin'; });
+
+    var newlyEscalated = [];
+
+    for (var i = 1; i < taskData.length; i++) {
+      var row = taskData[i];
+      if (!row[0]) continue;
+      var status = row[6];
+      if (openStatuses.indexOf(status) === -1) continue;
+
+      var taskId = row[0];
+      if (escalatedSet[taskId]) continue; // already escalated
+
+      var createdAt = row[9] ? new Date(row[9]) : null;
+      if (!createdAt) continue;
+      var ageHours = (nowDate - createdAt) / 3600000;
+
+      var priority = (row[5] || 'medium').toLowerCase();
+      var threshold = slaHours[priority] || slaHours.medium;
+
+      if (ageHours < threshold) continue;
+
+      // Escalate: notify assignees
+      var assigneeIds = parseAssigneeIds(row[7]);
+      var title = row[1] || taskId;
+      var msg = 'SLA breach: "' + title + '" (' + priority + ') has been open ' + Math.round(ageHours) + 'h';
+
+      assigneeIds.forEach(function(uid) {
+        createNotification(uid, 'escalation', taskId, msg);
+      });
+
+      // Notify all admins (avoid duplicate if admin is also assignee)
+      admins.forEach(function(admin) {
+        if (assigneeIds.indexOf(admin.id) === -1) {
+          createNotification(admin.id, 'escalation', taskId, msg);
+        }
+      });
+
+      logActivity(taskId, '', 'escalated', Math.round(ageHours) + 'h');
+      newlyEscalated.push(taskId);
+      escalatedSet[taskId] = true;
+    }
+
+    // Persist updated escalated set
+    if (newlyEscalated.length > 0) {
+      var lock = LockService.getScriptLock();
+      lock.waitLock(5000);
+      try {
+        // Re-read to avoid race; merge
+        var fresh = safeParseJson(getSettingValue('escalated_task_ids', '[]'), []);
+        newlyEscalated.forEach(function(id) {
+          if (fresh.indexOf(id) === -1) fresh.push(id);
+        });
+        var settingsSheet = getSheet('settings');
+        var sData = settingsSheet.getDataRange().getValues();
+        var found = false;
+        for (var si = 1; si < sData.length; si++) {
+          if (sData[si][0] === 'escalated_task_ids') {
+            settingsSheet.getRange(si + 1, 2).setValue(JSON.stringify(fresh));
+            found = true;
+            break;
+          }
+        }
+        if (!found) settingsSheet.appendRow(['escalated_task_ids', JSON.stringify(fresh)]);
+      } finally {
+        lock.releaseLock();
+      }
+    }
+  } catch(e) {
+    // Silent — time-driven trigger
+  }
+}
+
+// ============================================================
+//  SHIFT HANDOVER
+// ============================================================
+
+function getShiftHandover(token) {
+  try {
+    var sess = requireSession(token);
+    var tasksSheet = getSheet('tasks');
+    if (!tasksSheet) throw new Error('tasks sheet missing');
+    var taskData = tasksSheet.getDataRange().getValues();
+    var today = todayStr();
+    var allUsers = getUsersStatic();
+
+    // Build user name map once
+    var userMap = {};
+    allUsers.forEach(function(u) { userMap[u.id] = u.name; });
+
+    function resolveAssigneeNames(assigneeIds) {
+      return (assigneeIds || []).map(function(uid) { return userMap[uid] || uid; });
+    }
+
+    function clientNameForId(clientId) {
+      if (!clientId) return '';
+      var clients = getClients();
+      var c = clients.filter(function(x) { return x.id === clientId; })[0];
+      return c ? c.name : clientId;
+    }
+
+    var completedToday = [];
+    var stillOpen = [];
+    var blocked = [];
+    var counts = { completedToday: 0, stillOpen: 0, blocked: 0, total: 0 };
+
+    for (var i = 1; i < taskData.length; i++) {
+      var row = taskData[i];
+      if (!row[0]) continue;
+      var status = row[6];
+      if (status === 'deleted' || status === 'archived') continue;
+
+      counts.total++;
+      var assigneeIds = parseAssigneeIds(row[7]);
+      var taskSummary = {
+        id: row[0],
+        title: row[1],
+        priority: row[5],
+        client: clientNameForId(row[3]),
+        assigneeNames: resolveAssigneeNames(assigneeIds),
+        status: status
+      };
+
+      if (status === 'done') {
+        var updatedAt = row[18] ? row[18].toString().substring(0, 10) : '';
+        if (updatedAt === today) {
+          completedToday.push(taskSummary);
+          counts.completedToday++;
+        }
+      } else if (status === 'blocked') {
+        blocked.push(taskSummary);
+        counts.blocked++;
+      } else if (status === 'todo' || status === 'in-progress') {
+        stillOpen.push(taskSummary);
+        counts.stillOpen++;
+      }
+    }
+
+    return {
+      generatedBy: sess.name,
+      generatedAt: now(),
+      completedToday: completedToday,
+      stillOpen: stillOpen,
+      blocked: blocked,
+      counts: counts
+    };
+  } catch(e) {
+    throw new Error('getShiftHandover: ' + e.message);
+  }
+}
+
+// ============================================================
 //  LEGACY / COMPAT aliases (keep stubs from original file)
 // ============================================================
 
-// Removed myFunction() per spec — only testPing() is kept (defined above).
+// Removed myFunction() and testPing() — debug scaffolding.
 
 // ============================================================
 //  SEED DEMO DATA
