@@ -247,7 +247,7 @@ APP.register('team-timeline', {
         var endHour = task.endHour || 9;
         var left = Math.max(0, (startHour - 8) * 70);
         var width = Math.max(35, (endHour - startHour) * 70);
-        var isRunning = task.status === 'inprogress';
+        var isRunning = task.status === 'in-progress';
         var cardClass = isRunning
           ? 'bg-primary text-on-primary rounded-lg shadow-md ring-2 ring-primary ring-offset-2 ring-offset-surface p-2 flex items-center gap-1 z-20'
           : (task.planned
