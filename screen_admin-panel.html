@@ -5,9 +5,6 @@
 <div data-ref="user-avatar" class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm border border-outline-variant">A</div>
 </div>
 <div class="font-title-main-mobile text-title-main-mobile font-bold text-primary">TaskFlow</div>
-<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 transition-transform p-2 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
-</button>
 </header>
 <main class="p-margin-edge space-y-6">
 <!-- Page Title & Context -->
@@ -85,7 +82,6 @@
   Workload
   <span data-ref="workload-badge" class="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-error"></span>
 </button>
-<button data-tab="reports" data-ref="tab-reports" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Reports</button>
 <button data-tab="masters" data-ref="tab-masters" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Masters</button>
 <button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
 </div>
@@ -110,11 +106,6 @@
 <div data-ref="tasks-list" class="space-y-2">
 <div class="space-y-2"><div class="tf-skeleton h-[56px] w-full"></div><div class="tf-skeleton h-[56px] w-full opacity-80"></div><div class="tf-skeleton h-[56px] w-full opacity-60"></div></div>
 </div>
-</div>
-
-<!-- Tab: Reports (hidden by default) -->
-<div data-ref="panel-reports" class="hidden">
-<div class="text-center text-on-surface-variant py-16 font-body-standard">Reports coming soon.</div>
 </div>
 
 <!-- Tab: SLA (hidden by default) -->
@@ -302,7 +293,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false };
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false }; // reports tab removed
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
@@ -345,7 +336,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   }
 
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'reports', 'masters', 'sla'];
+    var tabs = ['tasks', 'workload', 'masters', 'sla'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -542,7 +533,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
       }
 
       // Tab switching
-      ['tasks', 'workload', 'reports', 'masters', 'sla'].forEach(function(tab) {
+      ['tasks', 'workload', 'masters', 'sla'].forEach(function(tab) {
         qs(screen, 'tab-' + tab).addEventListener('click', function() {
           setActiveTab(screen, tab);
 
@@ -689,7 +680,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
     },
 
     unmount: function() {
-      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false };
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false }; // reports tab removed
       document.body.style.overflow = '';
       _editUserId = null;
     }
