@@ -327,8 +327,19 @@ function validatePin(userId, pin) {
   }
 }
 
-function createUser(payload) {
+function createUser(payload, requestingUserId) {
   try {
+    // Require an existing active admin to create users
+    var requester = requestingUserId ? getUserById(requestingUserId) : null;
+    if (!requester || requester.role !== 'admin') {
+      throw new Error('Only an admin can create users');
+    }
+    // Prevent privilege escalation: non-admins cannot grant admin role (guard is redundant here
+    // since only admins reach this point, but kept explicit for clarity)
+    var assignedRole = payload.role || 'member';
+    if (requester.role !== 'admin' && assignedRole === 'admin') {
+      throw new Error('Cannot assign admin role without admin privileges');
+    }
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -337,13 +348,13 @@ function createUser(payload) {
       var id = newId();
       var s = getSheet('users');
       s.appendRow([
-        id, payload.name, hash, salt, payload.role || 'user',
+        id, payload.name, hash, salt, assignedRole,
         payload.avatarColor || '#5F6368', payload.email || '',
         JSON.stringify(payload.notifyPrefs || {onAssign:true, onDue:true, onMention:true, onShared:true}),
         true, now(), 0, ''
       ]);
       cacheBust('users');
-      return { userId: id, name: payload.name, role: payload.role || 'user' };
+      return { userId: id, name: payload.name, role: assignedRole };
     } finally {
       lock.releaseLock();
     }
@@ -387,8 +398,12 @@ function updateUser(userId, fields, requestingUserId) {
   }
 }
 
-function removeUser(userId) {
+function removeUser(userId, requestingUserId) {
   try {
+    var requester = requestingUserId ? getUserById(requestingUserId) : null;
+    if (!requester || requester.role !== 'admin') {
+      throw new Error('Only an admin can remove users');
+    }
     // Prevent removing last admin
     var admins = getUsers().filter(function(u) { return u.role === 'admin'; });
     var target = getUserById(userId);
@@ -800,7 +815,7 @@ function getTask(taskId) {
 // Aliases used in manifest and screens
 function getTaskDetail(taskId) { return getTask(taskId); }
 function getTaskById(taskId) { return getTask(taskId); }
-function addUser(payload) { return createUser(payload); }
+function addUser(payload, requestingUserId) { return createUser(payload, requestingUserId); }
 
 // ── Write functions ─────────────────────────────────────────
 
@@ -808,6 +823,11 @@ function createTask(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
+    var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+    var taskStatus = payload.status || 'todo';
+    if (VALID_STATUSES.indexOf(taskStatus) === -1) {
+      throw new Error('Invalid status: ' + taskStatus);
+    }
     var id = newId();
     var ts = now();
     var s = getSheet('tasks');
@@ -818,7 +838,7 @@ function createTask(payload) {
       payload.clientId || '',
       payload.categoryId || '',
       payload.priority || 'medium',
-      payload.status || 'todo',
+      taskStatus,
       (payload.assigneeIds || []).join(','),
       payload.createdBy || '',
       ts,
@@ -855,7 +875,7 @@ function createTask(payload) {
     return expandTask(rowToTask([
       id, payload.title, payload.description || '',
       payload.clientId || '', payload.categoryId || '',
-      payload.priority || 'medium', payload.status || 'todo',
+      payload.priority || 'medium', taskStatus,
       (payload.assigneeIds || []).join(','), payload.createdBy || '',
       ts, payload.dueDate || '', payload.scheduledTime || '',
       payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
@@ -897,6 +917,7 @@ function quickAddTask(payload) {
       clientId: payload.clientId || '',
       priority: payload.priority || 'medium',
       status: 'todo',
+      dueDate: payload.dueDate || '',
       scheduledTime: payload.scheduledTime || '',
       isShared: payload.isShared || false,
       createdBy: payload.createdBy || Session.getActiveUser().getEmail() || 'system',
@@ -918,10 +939,28 @@ function updateTask(taskId, fields, requestingUserId) {
     var data = s.getDataRange().getValues();
     var userId = requestingUserId || Session.getActiveUser().getEmail() || 'system';
 
+    // Known valid status values
+    var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] !== taskId) continue;
       var oldRow = data[i];
       var oldStatus = oldRow[6];
+
+      // Authorization: requester must be creator, an assignee, or an admin
+      var requester = getUserById(userId);
+      var isAdmin = requester && requester.role === 'admin';
+      var isCreator = oldRow[8] === userId;
+      var existingAssignees = parseAssigneeIds(oldRow[7]);
+      var isAssignee = existingAssignees.indexOf(userId) !== -1;
+      if (!isAdmin && !isCreator && !isAssignee) {
+        throw new Error('Not authorized to update this task');
+      }
+
+      // Validate status if provided
+      if (fields.status !== undefined && VALID_STATUSES.indexOf(fields.status) === -1) {
+        throw new Error('Invalid status: ' + fields.status);
+      }
 
       var colMap = {
         title: 2, description: 3, clientId: 4, categoryId: 5,
@@ -989,6 +1028,8 @@ function markTaskDone(taskId) {
 function deleteTask(taskId, userId) {
   try {
     var uid = userId || Session.getActiveUser().getEmail() || 'system';
+    // Authorization check: must be creator, assignee, or admin
+    // updateTask enforces this — calling it with the uid triggers the check
     var result = updateTask(taskId, { status: 'deleted' }, uid);
     logActivity(taskId, uid, 'deleted', '');
     return { success: true };
@@ -1044,17 +1085,24 @@ function archiveOldDoneTasks() {
 
 // ── My Day ──────────────────────────────────────────────────
 
-function getMyDayTasks(userName) {
+function getMyDayTasks(userIdOrName) {
   try {
     var today = todayStr();
+    // Resolve to a user: try by ID first, then by name
+    var resolvedUser = getUserById(userIdOrName);
+    if (!resolvedUser) {
+      var allUsers = getUsersStatic();
+      resolvedUser = allUsers.filter(function(u) {
+        return u.name === userIdOrName;
+      })[0] || null;
+    }
+    var resolvedId = resolvedUser ? resolvedUser.id : null;
     var allTasks = getTasks({});
     return allTasks.filter(function(t) {
       if (t.status === 'done' || t.status === 'deleted' || t.status === 'archived') return false;
-      var isAssigned = t.assigneeIds && t.assigneeIds.length > 0
-        ? t.assigneeIds.some(function(uid) {
-            var u = getUserById(uid);
-            return u && u.name === userName;
-          })
+      var ids = parseAssigneeIds(t.assigneeIds ? JSON.stringify(t.assigneeIds) : '');
+      var isAssigned = resolvedId
+        ? ids.indexOf(resolvedId) !== -1
         : false;
       if (!isAssigned) return false;
       return !t.dueDate || t.dueDate <= today;
@@ -1467,7 +1515,7 @@ function getTeamStatus() {
 
       var today = todayStr();
       var inProgress = tasks.filter(function(t) {
-        return t.assigneeIds && t.assigneeIds.indexOf(u.id) !== -1 && t.status === 'inprogress';
+        return t.assigneeIds && t.assigneeIds.indexOf(u.id) !== -1 && t.status === 'in-progress';
       });
       var doneToday = tasks.filter(function(t) {
         return t.assigneeIds && t.assigneeIds.indexOf(u.id) !== -1
@@ -1545,7 +1593,7 @@ function getTeamBoard() {
         name: u.name,
         avatarColor: u.avatarColor,
         todo: myTasks.filter(function(t) { return t.status === 'todo'; }).length,
-        inProgress: myTasks.filter(function(t) { return t.status === 'inprogress'; }).length,
+        inProgress: myTasks.filter(function(t) { return t.status === 'in-progress'; }).length,
         done: myTasks.filter(function(t) { return t.status === 'done'; }).length,
         tasks: myTasks
       };
@@ -1699,7 +1747,7 @@ function getTeamStats() {
     var tasks = getTasks({ teamView: true });
     var today = todayStr();
 
-    var byStatus = { todo: 0, inprogress: 0, done: 0 };
+    var byStatus = { todo: 0, 'in-progress': 0, done: 0 };
     var overdueCount = 0;
     tasks.forEach(function(t) {
       if (byStatus[t.status] !== undefined) byStatus[t.status]++;
@@ -1726,7 +1774,7 @@ function getAdminStats() {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
-    var active = tasks.filter(function(t) { return t.status === 'inprogress'; }).length;
+    var active = tasks.filter(function(t) { return t.status === 'in-progress'; }).length;
     var dueToday = tasks.filter(function(t) { return t.dueDate === today && t.status !== 'done'; }).length;
     var overdue = tasks.filter(function(t) {
       return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
@@ -1999,8 +2047,15 @@ function createNotification(userId, type, taskId, message) {
     // Email notification
     try {
       var user = getUserById(userId);
-      if (user && user.email && user.notifyPrefs && user.notifyPrefs[type]) {
-        MailApp.sendEmail(user.email, 'TaskFlow: ' + type, message);
+      if (user && user.email && user.notifyPrefs) {
+        // Map notification type to the stored notifyPrefs key
+        var prefKeyMap = { assigned: 'onAssign', due_soon: 'onDue', mention: 'onMention', shared: 'onShared' };
+        var prefKey = prefKeyMap[type];
+        // For timer_warning (no stored pref) default to sending; for others check the mapped key
+        var shouldEmail = prefKey ? !!user.notifyPrefs[prefKey] : true;
+        if (shouldEmail) {
+          MailApp.sendEmail(user.email, 'TaskFlow: ' + type, message);
+        }
       }
     } catch(mailErr) {
       // Silently fail — email is non-critical
@@ -2185,7 +2240,10 @@ function shareToWhatsApp(taskId) {
 //  SEED DEMO DATA  (run once via clasp run seedDemoData)
 // ============================================================
 
-function seedDemoData() {
+function seedDemoData(confirmToken) {
+  if (confirmToken !== 'WIPE_AND_SEED') {
+    throw new Error('seedDemoData requires confirmToken === "WIPE_AND_SEED"');
+  }
   try {
     cacheBustAll(); // ensure fresh reads after wholesale rewrite
     var ss = getSpreadsheet();
