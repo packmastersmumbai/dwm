@@ -86,3 +86,30 @@ screen_daily-plan.html, screen_reports-kpi.html, screen_notifications.html
 - 6.2 Run e2e-mobile-audit.js + e2e-timer-debug.js
 - 6.3 Final full code-reviewer pass
 - **GATE 6:** e2e green, screenshots reviewed.
+
+---
+
+## EXECUTION STATUS — COMPLETE (2026-05-20)
+
+All 6 waves executed. 13 commits on top of baseline `d78df60`. Every gate passed
+(code-reviewer + security-reviewer between waves; 5 blocking findings caught and fixed).
+Deployed to production GAS deployment `AKfycbxG3...` @62.
+e2e: e2e-mobile-audit.js (12/12 screens) + e2e-timer-debug.js — both PASS live.
+
+### REQUIRED manual post-deploy step
+`clasp run` needs interactive re-auth under clasp v3, so run these ONCE from the
+Apps Script editor (Run menu):
+1. `initializeSheets()` — creates the new `attachments` sheet + seeds SLA settings.
+2. `createTriggers()` — registers the hourly `checkEscalations` trigger.
+Until then: photo upload fails (no attachments sheet); escalation trigger inactive;
+SLA reads fall back to code defaults.
+
+### Documented residual risks (future hardening pass)
+- H3: read endpoints (getTasks/getUsers/getNotifications/getActiveTimers...) still
+  accept unauthenticated calls — token-gate them later.
+- M1: 4-digit PIN + SHA-256 — consider 6-digit + Script-Properties pepper.
+- `updateUser` backend exists and is admin-guarded but has no admin-panel UI.
+- `heartbeatTimer` exists but frontend never calls it (checkTimerWarnings relies on it).
+- Mandatory `requiresPhoto` per-task toggle deferred (needs a task-schema column);
+  photo-proof currently optional.
+- e2e scripts still contain a stale `myday-focus` reference (test-only, not the app).
