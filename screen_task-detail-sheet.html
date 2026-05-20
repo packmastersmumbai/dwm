@@ -274,6 +274,7 @@ Share via WhatsApp
     _activeLogId = null;
     _activeStart = null;
     if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
+    if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
     var ring     = screen.querySelector('[data-ref="timer-pulse-ring"]');
     var startBt  = screen.querySelector('[data-ref="btn-start-timer"]');
     var stopArea = screen.querySelector('[data-ref="stop-timer-area"]');
@@ -950,12 +951,15 @@ Share via WhatsApp
 
     unmount: function() {
       if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
+      if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
       _taskId = null;
       _task = null;
       _activeLogId = null;
       _activeStart = null;
       _teamMembers = [];
       _completionPhotoFile = null;
+      _requiresPhoto = false;
+      _attachmentCount = 0;
     }
   });
 })();

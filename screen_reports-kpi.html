@@ -285,7 +285,7 @@
     }).catch(function (err) { APP.showError(err); });
 
     // Load tasks to derive category breakdown if backend doesn't provide it
-    APP.call('getTasks', APP.token).then(function(tasks) {
+    APP.call('getTasks', null, APP.token).then(function(tasks) {
       // Only use task-derived data if not already populated by KPI response
       var area = screen.querySelector('[data-area="chart-category-split"]');
       if (area && area.querySelector('.tf-skeleton')) {
