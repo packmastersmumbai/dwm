@@ -239,6 +239,11 @@ function loginUser(name, pin) {
       var row = data[i];
       if (row[1].toString().toLowerCase() !== name.toString().toLowerCase()) continue;
 
+      // Check is_active (index 8) — do not reveal deactivated status
+      var activeVal = row[8];
+      var isActive = (activeVal === true || activeVal === 1 || String(activeVal).toUpperCase() === 'TRUE');
+      if (!isActive) return { error: 'user_not_found' };
+
       // Check lock
       var lockedUntil = row[11] ? new Date(row[11]) : null;
       if (lockedUntil && lockedUntil > nowDate) {
@@ -298,6 +303,11 @@ function validatePin(userId, pin) {
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       if (row[0] !== userId) continue;
+
+      // Check is_active (index 8) — do not reveal deactivated status
+      var activeVal = row[8];
+      var isActive = (activeVal === true || activeVal === 1 || String(activeVal).toUpperCase() === 'TRUE');
+      if (!isActive) return { error: 'user_not_found' };
 
       var lockedUntil = row[11] ? new Date(row[11]) : null;
       if (lockedUntil && lockedUntil > nowDate) {
@@ -531,6 +541,8 @@ function getSession(token) {
       cache.remove(key);
       return null;
     }
+    // Refresh role from live user so mid-session role changes take effect
+    sess.role = user.role;
     // Refresh sliding expiry
     cache.put(key, JSON.stringify(sess), 21600);
     return sess;
@@ -1117,7 +1129,6 @@ function updateTask(taskId, fields, token) {
 // Client-facing updateTaskStatus: token in place of userId.
 function updateTaskStatus(taskId, newStatus, token) {
   try {
-    requireSession(token);
     return updateTask(taskId, { status: newStatus }, token);
   } catch(e) {
     throw new Error('updateTaskStatus: ' + e.message);
@@ -2112,11 +2123,13 @@ function getNotifications(userId) {
 
 function markNotificationRead(notifId, token) {
   try {
-    requireSession(token);
+    var sess = requireSession(token);
     var s = getSheet('notifications');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] === notifId) {
+        // Ownership check: notification must belong to the session user
+        if (data[i][1] !== sess.userId) return { success: false };
         s.getRange(i + 1, 6).setValue(true);
         return { success: true };
       }
