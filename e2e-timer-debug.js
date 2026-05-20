@@ -39,9 +39,9 @@ async function findFrame(page) {
   // Stop any existing timers via the new getActiveTimers
   const cleanup = await frame.evaluate(() => {
     return new Promise(r => {
-      APP.call('getActiveTimers', APP.currentUser.id).then(timers => {
+      APP.call('getActiveTimers', APP.currentUser.id, APP.token).then(timers => {
         if (!timers || !timers.length) return r({ stopped: 0 });
-        Promise.all(timers.map(t => APP.call('stopTimer', t.logId, APP.currentUser.id)))
+        Promise.all(timers.map(t => APP.call('stopTimer', t.logId, APP.token)))
           .then(() => r({ stopped: timers.length }))
           .catch(e => r({ partial: e && e.message }));
       });
@@ -96,7 +96,7 @@ async function findFrame(page) {
 
   // Server-side check
   const serverActive = await frame.evaluate(() => {
-    return new Promise(r => APP.call('getActiveTimers', APP.currentUser.id).then(r));
+    return new Promise(r => APP.call('getActiveTimers', APP.currentUser.id, APP.token).then(r));
   });
   console.log('Server active timers:', (serverActive || []).length, JSON.stringify(serverActive));
 
