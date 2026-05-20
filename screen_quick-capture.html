@@ -33,7 +33,7 @@
 <div id="qc-overlay" class="fixed inset-0 bg-black/40 z-40 transition-opacity"></div>
 
 <!-- Bottom Sheet -->
-<div id="qc-sheet" class="fixed bottom-0 left-0 w-full h-[320px] bg-surface-container-lowest rounded-t-[24px] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] z-50 flex flex-col transition-transform" style="max-height:90vh;">
+<div id="qc-sheet" class="fixed bottom-0 left-0 w-full bg-surface-container-lowest rounded-t-[24px] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] z-50 flex flex-col transition-transform" style="max-height:90vh;">
 <!-- Drag Handle -->
 <div class="w-full h-8 flex items-center justify-center pt-2 pb-1 shrink-0">
 <div class="w-8 h-1 bg-outline-variant rounded-full"></div>
@@ -62,15 +62,46 @@
 </div>
 </div>
 
+<!-- Due Date Row -->
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">calendar_today</span>
+<div id="qc-date-chips" class="flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center">
+  <button type="button" class="qc-date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-primary-container bg-primary-fixed text-on-primary-fixed transition-colors shrink-0" data-date-chip="today">Today</button>
+  <button type="button" class="qc-date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0" data-date-chip="tomorrow">Tomorrow</button>
+  <button type="button" class="qc-date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0" data-date-chip="plus3">+3 Days</button>
+  <button type="button" class="qc-date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0" data-date-chip="eow">End of Week</button>
+</div>
+</div>
+
+<!-- Assignee Row -->
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">group</span>
+<div id="qc-assignee-chips" class="flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center">
+  <div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant text-[11px] font-bold animate-pulse">…</div>
+</div>
+</div>
+
 <!-- Priority & Shared Toggle Row -->
 <div class="flex items-center justify-between mb-4">
 <div class="flex items-center gap-3">
 <span class="material-symbols-outlined text-on-surface-variant text-[20px]">e911_emergency</span>
 <div class="flex gap-2" id="qc-priority-btns">
-<button aria-label="Urgent" class="qc-priority-btn w-8 h-8 rounded-full shrink-0 transition-all" data-priority="urgent" style="background:#EA4335;" title="Urgent"></button>
-<button aria-label="High"   class="qc-priority-btn w-8 h-8 rounded-full shrink-0 transition-all" data-priority="high"   style="background:#FA7B17;" title="High"></button>
-<button aria-label="Medium" class="qc-priority-btn w-8 h-8 rounded-full shrink-0 transition-all ring-2 ring-white ring-inset shadow-sm" data-priority="medium" style="background:#FBBC04;" title="Medium"></button>
-<button aria-label="Low"    class="qc-priority-btn w-8 h-8 rounded-full shrink-0 transition-all" data-priority="low"    style="background:#34A853;" title="Low"></button>
+  <button aria-label="Urgent" class="qc-priority-btn w-[44px] h-[44px] rounded-full shrink-0 transition-all flex flex-col items-center justify-center gap-[2px]" data-priority="urgent" style="background:#EA4335;" title="Urgent">
+    <span class="text-white font-bold text-[10px] leading-none">U</span>
+    <span class="text-white text-[9px] leading-none opacity-90">Urgent</span>
+  </button>
+  <button aria-label="High" class="qc-priority-btn w-[44px] h-[44px] rounded-full shrink-0 transition-all flex flex-col items-center justify-center gap-[2px]" data-priority="high" style="background:#FA7B17;" title="High">
+    <span class="text-white font-bold text-[10px] leading-none">H</span>
+    <span class="text-white text-[9px] leading-none opacity-90">High</span>
+  </button>
+  <button aria-label="Medium" class="qc-priority-btn w-[44px] h-[44px] rounded-full shrink-0 transition-all flex flex-col items-center justify-center gap-[2px] ring-2 ring-white ring-inset shadow-sm" data-priority="medium" style="background:#FBBC04;" title="Medium">
+    <span class="text-white font-bold text-[10px] leading-none">M</span>
+    <span class="text-white text-[9px] leading-none opacity-90">Med</span>
+  </button>
+  <button aria-label="Low" class="qc-priority-btn w-[44px] h-[44px] rounded-full shrink-0 transition-all flex flex-col items-center justify-center gap-[2px]" data-priority="low" style="background:#34A853;" title="Low">
+    <span class="text-white font-bold text-[10px] leading-none">L</span>
+    <span class="text-white text-[9px] leading-none opacity-90">Low</span>
+  </button>
 </div>
 </div>
 <div class="flex items-center gap-2 border-l border-outline-variant pl-4">
@@ -83,7 +114,7 @@
 </div>
 
 <!-- Schedule Row -->
-<div class="flex items-center gap-3 mb-6">
+<div class="flex items-center gap-3 mb-4">
 <span class="material-symbols-outlined text-on-surface-variant text-[20px]">schedule</span>
 <div class="flex gap-2 w-full" id="qc-schedule-btns">
 <button class="qc-schedule-btn flex-1 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-bold text-label-bold flex items-center justify-center gap-1 bg-surface-container-lowest" data-schedule="morning">
@@ -116,12 +147,29 @@ APP.register('quick-capture', {
   _selectedClientId: null,
   _selectedPriority: 'medium',
   _selectedSchedule: 'afternoon',
+  _selectedDueDate: null,   // YYYY-MM-DD string
+  _selectedAssigneeIds: [],
   _clients: [],
+  _members: [],
 
   mount: function(params) {
     if (!APP.currentUser) { APP.navigate('pin-login'); return; }
     var self = this;
     var screen = document.querySelector('[data-screen="quick-capture"]');
+
+    // Reset state
+    self._selectedClientId  = null;
+    self._selectedPriority  = 'medium';
+    self._selectedSchedule  = 'afternoon';
+    self._selectedAssigneeIds = APP.currentUser ? [APP.currentUser.id || APP.currentUser.name] : [];
+    self._clients = [];
+    self._members = [];
+
+    // Default due date = today
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    self._selectedDueDate = self._dateToStr(today);
+    self._syncDateChips(screen, self._selectedDueDate);
 
     // Focus title input immediately
     setTimeout(function() {
@@ -170,9 +218,28 @@ APP.register('quick-capture', {
       });
     });
 
-    // More details → navigate to full add-edit form
+    // Date chip selection
+    screen.querySelectorAll('.qc-date-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var chipKey = btn.getAttribute('data-date-chip');
+        self._selectedDueDate = self._dateToStr(self._getChipDate(chipKey));
+        self._syncDateChips(screen, self._selectedDueDate);
+      });
+    });
+
+    // More details → navigate to full form with prefill
     screen.querySelector('#qc-more-details-btn').addEventListener('click', function() {
-      APP.navigate('add-edit-task');
+      var title = screen.querySelector('#qc-title-input').value.trim();
+      APP.navigate('add-edit-task', {
+        prefill: {
+          title:         title,
+          clientId:      self._selectedClientId,
+          priority:      self._selectedPriority,
+          scheduledTime: self._selectedSchedule,
+          dueDate:       self._selectedDueDate,
+          assigneeIds:   self._selectedAssigneeIds.slice()
+        }
+      });
     });
 
     // Submit
@@ -185,22 +252,66 @@ APP.register('quick-capture', {
       if (e.key === 'Enter') self._submit(screen);
     });
 
-    // Load clients
-    APP.call('getClients')
-      .then(function(clients) {
-        self._clients = clients || [];
-        self._renderClients(screen);
-      })
-      .catch(function(err) { APP.showError(err); });
+    // Load clients + members in parallel
+    var clientsP = APP.call('getClients').catch(function() { return []; });
+    var membersP = APP.call('getTeamMembers').catch(function() { return []; });
+
+    Promise.all([clientsP, membersP]).then(function(results) {
+      self._clients = results[0] || [];
+      self._members = results[1] || [];
+      self._renderClients(screen);
+      self._renderAssignees(screen);
+    }).catch(function(err) { APP.showError(err); });
   },
 
   unmount: function() {
-    this._selectedClientId = null;
-    this._selectedPriority = 'medium';
-    this._selectedSchedule = 'afternoon';
+    this._selectedClientId  = null;
+    this._selectedPriority  = 'medium';
+    this._selectedSchedule  = 'afternoon';
+    this._selectedDueDate   = null;
+    this._selectedAssigneeIds = [];
     this._clients = [];
+    this._members = [];
   },
 
+  /* ── Date helpers ──────────────────────────────────────── */
+  _dateToStr: function(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  },
+
+  _getChipDate: function(chip) {
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    switch (chip) {
+      case 'today':    return new Date(today);
+      case 'tomorrow': var t = new Date(today); t.setDate(t.getDate() + 1); return t;
+      case 'plus3':    var t3 = new Date(today); t3.setDate(t3.getDate() + 3); return t3;
+      case 'eow': {
+        var eow = new Date(today);
+        var d = eow.getDay();
+        eow.setDate(eow.getDate() + (d === 0 ? 6 : 6 - d));
+        return eow;
+      }
+      default: return new Date(today);
+    }
+  },
+
+  _syncDateChips: function(screen, currentVal) {
+    var self = this;
+    screen.querySelectorAll('.qc-date-chip').forEach(function(btn) {
+      var chipKey = btn.getAttribute('data-date-chip');
+      var isActive = self._dateToStr(self._getChipDate(chipKey)) === currentVal;
+      btn.className = 'qc-date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border transition-colors shrink-0 ' +
+        (isActive
+          ? 'border-primary-container bg-primary-fixed text-on-primary-fixed'
+          : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low');
+    });
+  },
+
+  /* ── Render clients ────────────────────────────────────── */
   _renderClients: function(screen) {
     var self = this;
     var container = screen.querySelector('#qc-client-chips');
@@ -236,6 +347,43 @@ APP.register('quick-capture', {
     });
   },
 
+  /* ── Render assignees (avatar-chip pattern) ────────────── */
+  _renderAssignees: function(screen) {
+    var self = this;
+    var container = screen.querySelector('#qc-assignee-chips');
+    if (!self._members.length) {
+      container.innerHTML = '<span class="text-xs text-on-surface-variant opacity-60">No members</span>';
+      return;
+    }
+    container.innerHTML = '';
+    self._members.forEach(function(m) {
+      var memberId = m.id || m.name;
+      var isSelected = self._selectedAssigneeIds.indexOf(memberId) > -1;
+      var initials = (m.name || '?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0, 2);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative transition-all ' +
+        (isSelected ? 'border-2 border-primary-container' : 'border-2 border-transparent hover:opacity-80');
+      var innerImg = m.avatar
+        ? '<img alt="' + (m.name || 'User') + '" class="w-full h-full object-cover" src="' + m.avatar + '"/>'
+        : '<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface-variant text-[12px] font-bold">' + initials + '</div>';
+      btn.innerHTML = innerImg +
+        (isSelected
+          ? '<div class="absolute inset-0 bg-primary-container/20 flex items-center justify-center">' +
+              '<span class="material-symbols-outlined text-white text-[20px]">check</span>' +
+            '</div>'
+          : '');
+      btn.addEventListener('click', function() {
+        var idx = self._selectedAssigneeIds.indexOf(memberId);
+        if (idx > -1) self._selectedAssigneeIds.splice(idx, 1);
+        else self._selectedAssigneeIds.push(memberId);
+        self._renderAssignees(screen);
+      });
+      container.appendChild(btn);
+    });
+  },
+
+  /* ── Submit ────────────────────────────────────────────── */
   _submit: function(screen) {
     var self = this;
     var titleInput = screen.querySelector('#qc-title-input');
@@ -252,15 +400,16 @@ APP.register('quick-capture', {
     submitBtn.textContent = 'Adding…';
 
     var payload = {
-      title: title,
-      priority: self._selectedPriority,
-      schedule: self._selectedSchedule,
-      clientId: self._selectedClientId,
-      isShared: screen.querySelector('#qc-shared-toggle').checked,
-      assignee: APP.currentUser.name
+      title:         title,
+      priority:      self._selectedPriority,
+      scheduledTime: self._selectedSchedule,
+      clientId:      self._selectedClientId,
+      dueDate:       self._selectedDueDate,
+      assigneeIds:   self._selectedAssigneeIds.slice(),
+      isShared:      screen.querySelector('#qc-shared-toggle').checked
     };
 
-    APP.call('quickSaveTask', payload.title, payload.clientId, payload.priority, payload.schedule, payload.isShared)
+    APP.call('quickAddTask', payload, APP.token)
       .then(function() {
         APP.showSuccess('Task added');
         self._close();

@@ -10,24 +10,6 @@
 </button>
 </header>
 
-<!-- Content Mockup (Behind Backdrop) -->
-<main class="p-margin-edge pt-[80px] opacity-40 pointer-events-none select-none">
-<div class="bg-surface rounded-xl shadow-sm p-4 mb-4 border-l-4 border-primary">
-<div class="flex items-center gap-3 mb-2">
-<span class="material-symbols-outlined text-outline">description</span>
-<h3 class="font-title-main-mobile text-title-main-mobile">Prepare Q3 Report</h3>
-</div>
-<p class="text-on-surface-variant font-label-bold">Project Alpha</p>
-</div>
-<div class="bg-surface rounded-xl shadow-sm p-4 border-l-4 border-error">
-<div class="flex items-center gap-3 mb-2">
-<span class="material-symbols-outlined text-outline">warning</span>
-<h3 class="font-title-main-mobile text-title-main-mobile">Server Maintenance</h3>
-</div>
-<p class="text-on-surface-variant font-label-bold">Infrastructure</p>
-</div>
-</main>
-
 <!-- Bottom Nav Bar -->
 <nav class="flex justify-around items-center w-full h-nav-height px-2 bg-surface border-t border-outline-variant shadow-lg fixed bottom-0 z-50">
 <button data-ref="nav-home" class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high rounded-xl active:scale-90 transition-all duration-200">
@@ -99,19 +81,25 @@
   function buildNotifRow(notif) {
     var meta = getIconMeta(notif.type);
     var isUnread = !notif.isRead && !notif.read;
+    var isTaskRelated = !!(notif.taskId);
 
     var row = document.createElement('div');
     row.className = 'flex items-start px-4 min-h-[56px] border-b border-surface-variant bg-surface hover:bg-surface-container-lowest transition-colors cursor-pointer relative py-2' + (isUnread ? '' : ' opacity-70');
     row.dataset.notifId = notif.id;
 
+    var viewBtn = isTaskRelated
+      ? '<button class="notif-view-btn shrink-0 ml-2 min-h-[44px] min-w-[56px] px-3 text-[12px] font-semibold text-primary bg-primary-container rounded-lg flex items-center justify-center hover:bg-primary-fixed transition-colors" data-task-id="' + notif.taskId + '" aria-label="View task">View</button>'
+      : '';
+
     row.innerHTML =
-      '<div class="w-[32px] h-[32px] rounded-full flex items-center justify-center shrink-0 mr-3" style="background-color:' + meta.color + '">' +
+      '<div class="w-[32px] h-[32px] rounded-full flex items-center justify-center shrink-0 mr-3 mt-1" style="background-color:' + meta.color + '">' +
         '<span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:\'FILL\' 1;">' + meta.icon + '</span>' +
       '</div>' +
-      '<div class="flex-1 min-w-0 flex flex-col justify-center h-full">' +
+      '<div class="flex-1 min-w-0 flex flex-col justify-center">' +
         '<p class="text-[13px] leading-[18px] text-on-surface font-medium truncate">' + (notif.message || notif.text || '') + '</p>' +
         '<p class="text-[11px] text-on-surface-variant mt-0.5">' + (notif.timeAgo || notif.timestamp || '') + '</p>' +
       '</div>' +
+      viewBtn +
       (isUnread ? '<div class="w-[8px] h-[8px] rounded-full bg-[#1A73E8] shrink-0 mt-2 ml-2 self-start"></div>' : '');
 
     return row;
@@ -128,17 +116,32 @@
     list.innerHTML = '';
 
     if (!notifications || notifications.length === 0) {
-      list.innerHTML = '<div class="text-center text-on-surface-variant py-12 font-body-standard">You\'re all caught up!</div>';
+      list.innerHTML =
+        '<div class="flex flex-col items-center justify-center py-16 gap-3 text-on-surface-variant">' +
+          '<span class="material-symbols-outlined text-[48px] opacity-30">notifications_off</span>' +
+          '<p class="font-body-standard text-body-standard">You\'re all caught up!</p>' +
+          '<p class="text-[12px] opacity-60">No new notifications</p>' +
+        '</div>';
       return;
     }
 
     notifications.forEach(function(notif) {
       var row = buildNotifRow(notif);
 
-      row.addEventListener('click', function() {
+      // "View" inline button — navigate without marking read (row click handles mark-read)
+      var viewBtn = row.querySelector('.notif-view-btn');
+      if (viewBtn) {
+        viewBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          APP.navigate('task-detail-sheet', { taskId: viewBtn.getAttribute('data-task-id') });
+        });
+      }
+
+      row.addEventListener('click', function(e) {
+        if (e.target.closest('.notif-view-btn')) return;
         if (!notif.read) {
           notif.read = true;
-          APP.call('markNotificationRead', notif.id)
+          APP.call('markNotificationRead', notif.id, APP.token)
             .then(function() { markRowRead(row); })
             .catch(function(err) { APP.showError(err); });
         }
@@ -180,7 +183,7 @@
 
       // Mark all read
       qs(screen, 'btn-mark-all').addEventListener('click', function() {
-        APP.call('markAllNotificationsRead', APP.currentUser.id || APP.currentUser.name)
+        APP.call('markAllNotificationsRead', APP.token)
           .then(function() {
             var list = qs(screen, 'notifications-list');
             list.querySelectorAll('[data-notif-id]').forEach(function(row) {

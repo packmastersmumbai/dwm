@@ -42,7 +42,7 @@
   <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="week">This Week</button>
   <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="all">All</button>
   <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap flex items-center gap-1 cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="overdue">
-    Overdue <span class="bg-error text-on-error px-1.5 py-0.5 rounded-full text-[10px] leading-none" data-overdue-count>3</span>
+    Overdue <span class="bg-error text-on-error px-1.5 py-0.5 rounded-full text-[10px] leading-none hidden" data-overdue-count></span>
   </button>
 </div>
 
@@ -57,7 +57,7 @@
         <h2 class="text-[13px] font-semibold text-on-surface">To Do</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="todo">0</span>
       </div>
-      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="todo" aria-label="Add task to To Do">
+      <button class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="todo" aria-label="Add task to To Do">
         <span class="material-symbols-outlined text-[18px]">add</span>
       </button>
     </div>
@@ -72,7 +72,7 @@
         <h2 class="text-[13px] font-semibold text-on-surface">In Progress</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="in-progress">0</span>
       </div>
-      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="in-progress" aria-label="Add task to In Progress">
+      <button class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="in-progress" aria-label="Add task to In Progress">
         <span class="material-symbols-outlined text-[18px]">add</span>
       </button>
     </div>
@@ -87,7 +87,7 @@
         <h2 class="text-[13px] font-semibold text-on-surface">Blocked</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="blocked">0</span>
       </div>
-      <button class="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="blocked" aria-label="Add task to Blocked">
+      <button class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="blocked" aria-label="Add task to Blocked">
         <span class="material-symbols-outlined text-[18px]">add</span>
       </button>
     </div>
@@ -293,10 +293,18 @@
       if (countEl) countEl.textContent = col.length;
     });
 
-    // overdue badge
-    var overdueCount = tasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; }).length;
+    // overdue badge — computed from ALL loaded tasks (not the filtered subset)
+    var overdueCount = _allTasks.filter(function (t) {
+      var s = t.status;
+      return t.dueDate && new Date(t.dueDate) < new Date() &&
+             s !== 'done' && s !== 'deleted' && s !== 'archived';
+    }).length;
     var badge = screen.querySelector('[data-overdue-count]');
-    if (badge) badge.textContent = overdueCount;
+    if (badge) {
+      badge.textContent = overdueCount;
+      if (overdueCount > 0) badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }
   }
 
   // Single interval ticks ALL active per-card timer pills.
@@ -459,7 +467,7 @@
       if (localTask) localTask.status = 'in-progress';
       renderTasks(screen, applyFilter(_allTasks, _activeFilter));
 
-      APP.call('startTimer', taskId, APP.currentUser.id).then(function (session) {
+      APP.call('startTimer', taskId, APP.token).then(function (session) {
         if (!session || !session.logId) {
           deactivateTimer(taskId);
           if (localTask) localTask.status = 'todo';
@@ -497,7 +505,7 @@
       deactivateTimer(taskId);
       renderTasks(screen, applyFilter(_allTasks, _activeFilter));
 
-      APP.call('stopTimer', session.logId, APP.currentUser.id).then(function () {
+      APP.call('stopTimer', session.logId, APP.token).then(function () {
         loadTasks(screen);
       }).catch(function (err) {
         // Roll back optimistic stop
@@ -541,7 +549,7 @@
         var task = _allTasks.find(function (t) { return t.id === taskId; });
         if (task && task.status !== newStatus) {
           task.status = newStatus;
-          APP.call('updateTaskStatus', taskId, newStatus).then(function () {
+          APP.call('updateTaskStatus', taskId, newStatus, APP.token).then(function () {
             renderTasks(screen, applyFilter(_allTasks, _activeFilter));
           }).catch(function (err) { APP.showError(err); });
         }

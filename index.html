@@ -50,6 +50,7 @@ var APP = (function() {
   var _params = {};
   var state = {};
   var currentUser = null;
+  var _token = null;
 
   function register(slug, handlers) { _screens[slug] = handlers; }
 
@@ -123,7 +124,16 @@ var APP = (function() {
             if (_invalidateMap[fnName]) invalidate(_invalidateMap[fnName]);
             resolve(result);
           })
-          .withFailureHandler(function(err) { reject(err && err.message ? err : new Error(String(err))); });
+          .withFailureHandler(function(err) {
+            var msg = (err && (err.message || String(err))) || '';
+            if (msg.indexOf('Session expired') !== -1) {
+              _token = null;
+              currentUser = null;
+              try { sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
+              navigate('pin-login');
+            }
+            reject(err && err.message ? err : new Error(msg));
+          });
         runner[fnName].apply(runner, args);
       } catch(e) {
         reject(new Error('APP.call failed [' + fnName + ']: ' + e.message));
@@ -155,7 +165,9 @@ var APP = (function() {
     hideLoading: hideLoading,
     state: state,
     get currentUser() { return currentUser; },
-    set currentUser(u) { currentUser = u; }
+    set currentUser(u) { currentUser = u; },
+    get token() { return _token; },
+    set token(t) { _token = t; }
   };
 })();
 </script>
@@ -163,12 +175,10 @@ var APP = (function() {
 <!-- All 14 screens included here — each registers itself via APP.register() -->
 <div class="tf-screen" id="screen-pin-login"><?!= include('screen_pin-login') ?></div>
 <div class="tf-screen" id="screen-kanban-home"><?!= include('screen_kanban-home') ?></div>
-<div class="tf-screen" id="screen-task-detail-whatsapp"><?!= include('screen_task-detail-whatsapp') ?></div>
 <div class="tf-screen" id="screen-reports-kpi"><?!= include('screen_reports-kpi') ?></div>
 <div class="tf-screen" id="screen-myday-share"><?!= include('screen_myday-share') ?></div>
 <div class="tf-screen" id="screen-task-detail-sheet"><?!= include('screen_task-detail-sheet') ?></div>
 <div class="tf-screen" id="screen-admin-panel"><?!= include('screen_admin-panel') ?></div>
-<div class="tf-screen" id="screen-myday-focus"><?!= include('screen_myday-focus') ?></div>
 <div class="tf-screen" id="screen-notifications"><?!= include('screen_notifications') ?></div>
 <div class="tf-screen" id="screen-add-edit-task"><?!= include('screen_add-edit-task') ?></div>
 <div class="tf-screen" id="screen-team-timeline"><?!= include('screen_team-timeline') ?></div>
@@ -180,6 +190,17 @@ var APP = (function() {
 <!-- Init: runs after all screen IIFEs have registered via APP.register() -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Attempt to restore session from sessionStorage (survives accidental reload)
+  try {
+    var storedToken = sessionStorage.getItem('tf_token');
+    var storedUser  = sessionStorage.getItem('tf_user');
+    if (storedToken && storedUser) {
+      APP.token = storedToken;
+      APP.currentUser = JSON.parse(storedUser);
+      APP.navigate('kanban-home');
+      return;
+    }
+  } catch(e) { /* ignore storage errors */ }
   APP.navigate('pin-login');
 });
 </script>

@@ -60,6 +60,13 @@
       <span class="material-symbols-outlined text-[18px]">calendar_today</span>
       <span class="font-label-bold text-label-bold uppercase tracking-wider">Due Date</span>
     </div>
+    <!-- Quick-pick date chips -->
+    <div data-ref="date-chips" class="flex gap-2 overflow-x-auto hide-scrollbar -mx-margin-edge px-margin-edge pb-1">
+      <button data-date-chip="today"    type="button" class="date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0">Today</button>
+      <button data-date-chip="tomorrow" type="button" class="date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0">Tomorrow</button>
+      <button data-date-chip="plus3"    type="button" class="date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0">+3 Days</button>
+      <button data-date-chip="eow"      type="button" class="date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors shrink-0">End of Week</button>
+    </div>
     <button data-ref="field-due-date-btn" type="button" class="w-full flex justify-between items-center bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 hover:bg-surface-container-low transition-colors">
       <span data-ref="field-due-date-label" class="text-on-surface font-body-standard">Select date</span>
       <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
@@ -110,16 +117,26 @@
       </label>
     </div>
     <!-- Recurring -->
-    <div class="flex justify-between items-center p-4 border-b border-outline-variant">
-      <div class="flex items-center gap-3 text-on-surface">
-        <span class="material-symbols-outlined text-on-surface-variant">repeat</span>
-        <span class="font-body-standard">Recurring</span>
+    <div class="border-b border-outline-variant">
+      <div class="flex justify-between items-center p-4">
+        <div class="flex items-center gap-3 text-on-surface">
+          <span class="material-symbols-outlined text-on-surface-variant">repeat</span>
+          <span class="font-body-standard">Recurring</span>
+        </div>
+        <label class="relative inline-block w-12 h-6 cursor-pointer">
+          <input data-ref="toggle-recurring" type="checkbox" class="toggle-checkbox opacity-0 w-0 h-0 peer absolute"/>
+          <span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
+          <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+        </label>
       </div>
-      <label class="relative inline-block w-12 h-6 cursor-pointer">
-        <input data-ref="toggle-recurring" type="checkbox" class="toggle-checkbox opacity-0 w-0 h-0 peer absolute"/>
-        <span class="toggle-label absolute cursor-pointer inset-0 bg-outline-variant rounded-full peer-focus:ring-2 peer-focus:ring-primary-container peer-focus:ring-offset-2"></span>
-        <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
-      </label>
+      <!-- Frequency picker — revealed when recurring is ON -->
+      <div data-ref="recurrence-picker" class="hidden px-4 pb-4">
+        <div class="flex gap-2">
+          <button data-freq="daily"   data-ref="freq-daily"   type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold transition-colors">Daily</button>
+          <button data-freq="weekly"  data-ref="freq-weekly"  type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Weekly</button>
+          <button data-freq="monthly" data-ref="freq-monthly" type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Monthly</button>
+        </div>
+      </div>
     </div>
     <!-- Checklist -->
     <div class="flex justify-between items-center p-4">
@@ -164,9 +181,58 @@
   var _selectedAssignees = [];
   var _selectedPriority = 'medium';
   var _selectedSchedule = 'morning';
+  var _selectedFrequency = 'daily';
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  /* ── Date helpers ──────────────────────────────────────── */
+  function dateToInputVal(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function getChipDate(chip) {
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    switch (chip) {
+      case 'today':    return new Date(today);
+      case 'tomorrow': var t = new Date(today); t.setDate(t.getDate() + 1); return t;
+      case 'plus3':    var t3 = new Date(today); t3.setDate(t3.getDate() + 3); return t3;
+      case 'eow': {
+        var eow = new Date(today);
+        var day = eow.getDay(); // 0=Sun,6=Sat
+        var diff = day === 0 ? 6 : (6 - day);
+        eow.setDate(eow.getDate() + diff);
+        return eow;
+      }
+      default: return new Date(today);
+    }
+  }
+
+  function setDueDate(screen, dateObj) {
+    var val = dateToInputVal(dateObj);
+    qs(screen, 'field-due-date').value = val;
+    qs(screen, 'field-due-date-label').textContent = dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  }
+
+  function syncDateChipActive(screen, val) {
+    // Determine which chip, if any, matches the current date value
+    var chips = ['today', 'tomorrow', 'plus3', 'eow'];
+    var matchChip = null;
+    chips.forEach(function(c) {
+      if (dateToInputVal(getChipDate(c)) === val) matchChip = c;
+    });
+    screen.querySelectorAll('.date-chip').forEach(function(btn) {
+      var isActive = btn.getAttribute('data-date-chip') === matchChip;
+      btn.className = 'date-chip whitespace-nowrap px-3 h-[36px] rounded-full font-label-bold text-label-bold border transition-colors shrink-0 ' +
+        (isActive
+          ? 'border-primary-container bg-primary-fixed text-on-primary-fixed'
+          : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low');
+    });
   }
 
   /* ── Chip builders ─────────────────────────────────────── */
@@ -178,7 +244,6 @@
       btn.type = 'button';
       btn.dataset.chipId = item.id;
       if (asAvatar) {
-        // Circular avatar button with check overlay on selected (per Stitch reference)
         var initials = (item.name || '?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
         btn.className = 'flex-shrink-0 w-10 h-10 rounded-full overflow-hidden relative transition-all ' +
           (isSelected ? 'border-2 border-primary-container' : 'border-2 border-transparent hover:opacity-80');
@@ -242,6 +307,24 @@
     });
   }
 
+  /* ── Recurrence frequency picker ──────────────────────── */
+  function setFrequency(screen, freq) {
+    _selectedFrequency = freq;
+    ['daily', 'weekly', 'monthly'].forEach(function(f) {
+      var btn = qs(screen, 'freq-' + f);
+      if (!btn) return;
+      if (f === freq) {
+        btn.className = 'freq-btn flex-1 h-[44px] rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold transition-colors';
+      } else {
+        btn.className = 'freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors';
+      }
+    });
+  }
+
+  function toggleRecurrencePicker(screen, show) {
+    qs(screen, 'recurrence-picker').classList.toggle('hidden', !show);
+  }
+
   /* ── Populate form from existing task ─────────────────── */
   function populateForm(screen, task, clients, categories, members) {
     qs(screen, 'page-title').textContent = 'Edit Task';
@@ -249,17 +332,24 @@
     qs(screen, 'field-notes').value = task.notes || '';
 
     if (task.dueDate) {
-      qs(screen, 'field-due-date').value = task.dueDate.substring(0, 10);
-      var _d = new Date(task.dueDate.substring(0, 10) + 'T00:00:00');
-      qs(screen, 'field-due-date-label').textContent = isNaN(_d) ? task.dueDate.substring(0, 10) : _d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      var dueDateVal = task.dueDate.substring(0, 10);
+      qs(screen, 'field-due-date').value = dueDateVal;
+      var _d = new Date(dueDateVal + 'T00:00:00');
+      qs(screen, 'field-due-date-label').textContent = isNaN(_d) ? dueDateVal : _d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      syncDateChipActive(screen, dueDateVal);
     }
 
     setPriority(screen, task.priority || 'medium');
     setSchedule(screen, task.schedule || 'morning');
 
     if (task.shared)    qs(screen, 'toggle-shared').checked    = true;
-    if (task.recurring) qs(screen, 'toggle-recurring').checked = true;
     if (task.checklist && task.checklist.length) qs(screen, 'toggle-checklist').checked = true;
+
+    if (task.recurrence && task.recurrence.type) {
+      qs(screen, 'toggle-recurring').checked = true;
+      toggleRecurrencePicker(screen, true);
+      setFrequency(screen, task.recurrence.type);
+    }
 
     // Pre-select client
     if (task.clientId) {
@@ -275,6 +365,31 @@
     renderChipSections(screen, clients, categories, members);
   }
 
+  /* ── Prefill from params ───────────────────────────────── */
+  function applyPrefill(screen, prefill, clients, categories, members) {
+    if (!prefill) return;
+
+    if (prefill.title) qs(screen, 'field-title').value = prefill.title;
+
+    if (prefill.dueDate) {
+      var dv = prefill.dueDate.substring(0, 10);
+      qs(screen, 'field-due-date').value = dv;
+      var pd = new Date(dv + 'T00:00:00');
+      qs(screen, 'field-due-date-label').textContent = isNaN(pd) ? dv : pd.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      syncDateChipActive(screen, dv);
+    }
+
+    if (prefill.priority) setPriority(screen, prefill.priority);
+    if (prefill.scheduledTime) setSchedule(screen, prefill.scheduledTime);
+
+    if (prefill.clientId) _selectedClientId = prefill.clientId;
+    if (prefill.assigneeIds && prefill.assigneeIds.length) {
+      _selectedAssignees = prefill.assigneeIds.slice();
+    }
+
+    renderChipSections(screen, clients, categories, members);
+  }
+
   function renderChipSections(screen, clients, categories, members) {
     var clientSel = _selectedClientId ? [_selectedClientId] : [];
     buildChips(qs(screen, 'client-chips'), clients || [], clientSel, function() {
@@ -286,7 +401,6 @@
       _selectedCategoryId = catSel[0] || null;
     }, false);
 
-    // Assignees: members as objects with id = name for simplicity
     var memberItems = (members || []).map(function(m) { return { id: m.id || m.name, name: m.name }; });
     buildChips(qs(screen, 'assignee-chips'), memberItems, _selectedAssignees, function() {}, true, true);
   }
@@ -309,6 +423,7 @@
 
   /* ── Collect task data ─────────────────────────────────── */
   function collectTaskData(screen) {
+    var isRecurring = qs(screen, 'toggle-recurring').checked;
     return {
       id:           _taskId || undefined,
       title:        qs(screen, 'field-title').value.trim(),
@@ -319,10 +434,9 @@
       scheduledTime: _selectedSchedule,
       assigneeIds:  _selectedAssignees.slice(),
       isShared:     qs(screen, 'toggle-shared').checked,
-      recurrence:   qs(screen, 'toggle-recurring').checked ? { every: 'day' } : null,
+      recurrence:   isRecurring ? { type: _selectedFrequency } : null,
       checklist:    qs(screen, 'toggle-checklist').checked ? [] : null,
-      description:  qs(screen, 'field-notes').value.trim(),
-      createdBy:    APP.currentUser && APP.currentUser.id || ''
+      description:  qs(screen, 'field-notes').value.trim()
     };
   }
 
@@ -340,12 +454,23 @@
       _selectedAssignees  = [];
       _selectedPriority   = 'medium';
       _selectedSchedule   = 'morning';
+      _selectedFrequency  = 'daily';
 
-      // Set today as default due date
+      // Default due date = today
       var today = new Date();
-      var todayStr = today.toISOString().substring(0, 10);
-      qs(screen, 'field-due-date').value = todayStr;
-      qs(screen, 'field-due-date-label').textContent = today.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      today.setHours(0, 0, 0, 0);
+      setDueDate(screen, today);
+      syncDateChipActive(screen, dateToInputVal(today));
+
+      // Date chip click handlers
+      screen.querySelectorAll('.date-chip').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var chipKey = btn.getAttribute('data-date-chip');
+          var d = getChipDate(chipKey);
+          setDueDate(screen, d);
+          syncDateChipActive(screen, dateToInputVal(d));
+        });
+      });
 
       // Styled date button opens hidden input
       qs(screen, 'field-due-date-btn').addEventListener('click', function() {
@@ -355,6 +480,7 @@
       qs(screen, 'field-due-date').addEventListener('change', function() {
         var d = new Date(this.value + 'T00:00:00');
         qs(screen, 'field-due-date-label').textContent = isNaN(d) ? this.value : d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+        syncDateChipActive(screen, this.value);
       });
 
       // Priority buttons
@@ -368,6 +494,17 @@
         qs(screen, 'sch-' + s).addEventListener('click', function() { setSchedule(screen, s); });
       });
       setSchedule(screen, 'morning');
+
+      // Recurring toggle
+      qs(screen, 'toggle-recurring').addEventListener('change', function() {
+        toggleRecurrencePicker(screen, this.checked);
+      });
+
+      // Frequency buttons
+      ['daily', 'weekly', 'monthly'].forEach(function(f) {
+        qs(screen, 'freq-' + f).addEventListener('click', function() { setFrequency(screen, f); });
+      });
+      setFrequency(screen, 'daily');
 
       // Load dropdown data in parallel
       var clientsP    = APP.call('getClients').catch(function() { return []; });
@@ -383,6 +520,8 @@
           APP.call('getTaskById', _taskId)
             .then(function(task) { populateForm(screen, task, clients, categories, members); })
             .catch(function(err) { APP.showError(err); renderChipSections(screen, clients, categories, members); });
+        } else if (params && params.prefill) {
+          applyPrefill(screen, params.prefill, clients, categories, members);
         } else {
           renderChipSections(screen, clients, categories, members);
         }
@@ -402,7 +541,7 @@
         saveBtn.disabled = true;
         saveBtn.textContent = _editMode ? 'Saving...' : 'Creating...';
 
-        APP.call('saveTask', taskData)
+        APP.call('saveTask', taskData, APP.token)
           .then(function() {
             APP.showSuccess(_editMode ? 'Task updated.' : 'Task created.');
             APP.navigate('kanban-home');
@@ -423,6 +562,7 @@
       _selectedAssignees  = [];
       _selectedPriority   = 'medium';
       _selectedSchedule   = 'morning';
+      _selectedFrequency  = 'daily';
     }
   });
 })();

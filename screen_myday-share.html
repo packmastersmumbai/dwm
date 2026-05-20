@@ -5,10 +5,13 @@
 <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm border border-outline-variant" data-user-avatar>?</div>
 <h1 class="font-title-main-mobile text-title-main-mobile font-bold text-primary dark:text-primary-fixed-dim">My Day</h1>
 </div>
-<div class="flex items-center gap-4 text-on-surface-variant dark:text-surface-variant">
+<div class="flex items-center gap-2 text-on-surface-variant dark:text-surface-variant">
 <span class="font-label-bold text-label-bold text-on-surface-variant" data-today-label></span>
-<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-primary dark:text-primary-fixed-dim">
-<span class="material-symbols-outlined">search</span>
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-[#34A853]" data-action="share-day" aria-label="Share day summary on WhatsApp">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-on-surface-variant" data-action="sign-out" aria-label="Sign out">
+<span class="material-symbols-outlined">logout</span>
 </button>
 </div>
 </header>
@@ -261,6 +264,16 @@
     var action = btn.dataset.action;
     var taskId = btn.dataset.taskId;
 
+    if (action === 'sign-out') {
+      APP.call('logout', APP.token).catch(function() {}).then(function() {
+        APP.token = null;
+        APP.currentUser = null;
+        try { sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
+        APP.navigate('pin-login');
+      });
+      return;
+    }
+
     if (action === 'add-task') { APP.navigate('add-edit-task'); return; }
 
     if (action === 'open-task') {
@@ -269,7 +282,7 @@
     }
 
     if (action === 'start-timer') {
-      APP.call('startTimer', taskId, APP.currentUser.id).then(function (session) {
+      APP.call('startTimer', taskId, APP.token).then(function (session) {
         if (session && session.logId) _activeLogId = session.logId;
         var task = _myTasks.find(function (t) { return t.id === taskId; }) || { id: taskId, title: '' };
         task.status = 'in-progress';
@@ -280,7 +293,7 @@
 
     if (action === 'stop-timer') {
       var logId = _activeLogId || taskId; // fallback: backend resolves taskId too
-      APP.call('stopTimer', logId, APP.currentUser.id).then(function () {
+      APP.call('stopTimer', logId, APP.token).then(function () {
         _activeLogId = null;
         stopTimerUI(screen);
       }).catch(function (err) { APP.showError(err); });
@@ -288,7 +301,7 @@
     }
 
     if (action === 'claim-task') {
-      APP.call('claimTask', taskId, APP.currentUser ? APP.currentUser.id : '').then(function () {
+      APP.call('claimTask', taskId, APP.token).then(function () {
         _poolTasks = _poolTasks.filter(function (t) { return t.id !== taskId; });
         // reload my tasks to pick up newly claimed
         return APP.call('getMyDayTasks', APP.currentUser ? APP.currentUser.name : '');

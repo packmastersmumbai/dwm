@@ -48,7 +48,7 @@
 <main class="flex-1 overflow-x-auto bg-surface-container-lowest flex items-start gap-4 px-margin-edge pt-4 pb-[80px]">
 <!-- In Progress Column -->
 <div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-primary-fixed-dim/20 p-2 h-full max-h-full overflow-hidden">
-<div class="flex items-center justify-between px-2 py-1">
+<div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
 <span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">In Progress</span>
 <span id="tb-inprogress-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
 </div>
@@ -56,7 +56,7 @@
 </div>
 <!-- To Do Column -->
 <div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-surface-container-low p-2 h-full max-h-full overflow-hidden">
-<div class="flex items-center justify-between px-2 py-1">
+<div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
 <span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">To Do</span>
 <span id="tb-todo-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
 </div>
@@ -64,11 +64,19 @@
 </div>
 <!-- Blocked Column -->
 <div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-error-container/30 p-2 h-full max-h-full overflow-hidden">
-<div class="flex items-center justify-between px-2 py-1">
+<div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
 <span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">Blocked</span>
 <span id="tb-blocked-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
 </div>
 <div id="tb-col-blocked" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
+</div>
+<!-- Done Column -->
+<div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-col-done p-2 h-full max-h-full overflow-hidden" style="background-color:rgba(52,168,83,0.08)">
+<div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
+<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">Done</span>
+<span id="tb-done-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
+</div>
+<div id="tb-col-done" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
 </div>
 </main>
 
@@ -203,10 +211,12 @@ APP.register('team-board', {
     var inprogress = tasks.filter(function(t) { return t.status === 'in-progress' || t.status === 'inprogress'; });
     var todo = tasks.filter(function(t) { return t.status === 'todo'; });
     var blocked = tasks.filter(function(t) { return t.status === 'blocked'; });
+    var done = tasks.filter(function(t) { return t.status === 'done'; });
 
     screen.querySelector('#tb-inprogress-count').textContent = inprogress.length;
     screen.querySelector('#tb-todo-count').textContent = todo.length;
     screen.querySelector('#tb-blocked-count').textContent = blocked.length;
+    screen.querySelector('#tb-done-count').textContent = done.length;
 
     screen.querySelector('#tb-col-inprogress').innerHTML = inprogress.map(function(t) {
       return self._taskCard(t, 'inprogress');
@@ -218,6 +228,10 @@ APP.register('team-board', {
 
     screen.querySelector('#tb-col-blocked').innerHTML = blocked.map(function(t) {
       return self._taskCard(t, 'blocked');
+    }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
+
+    screen.querySelector('#tb-col-done').innerHTML = done.map(function(t) {
+      return self._taskCard(t, 'done');
     }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
 
     // Bind events
@@ -233,7 +247,7 @@ APP.register('team-board', {
         e.stopPropagation();
         var taskId = btn.getAttribute('data-task-id');
         var logId = btn.getAttribute('data-log-id') || taskId; // use logId if stored, fallback backend resolves
-        APP.call('stopTimer', logId, APP.currentUser.id)
+        APP.call('stopTimer', logId, APP.token)
           .then(function() {
             var t = self._allTasks.find(function(x) { return x.id === taskId; });
             if (t) t.status = 'todo';
@@ -247,7 +261,7 @@ APP.register('team-board', {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var taskId = btn.getAttribute('data-task-id');
-        APP.call('startTimer', taskId, APP.currentUser.id)
+        APP.call('startTimer', taskId, APP.token)
           .then(function(session) {
             // Store logId on the corresponding stop button for accurate stopTimer call
             var stopBtn = screen.querySelector('.tb-stop-btn[data-task-id="' + taskId + '"]');
@@ -283,10 +297,12 @@ APP.register('team-board', {
     var metaMargin = isRunning ? 'mt-2' : 'mt-1';
 
     var actionHtml = colType === 'inprogress'
-      ? '<button class="tb-stop-btn tb-action-btn w-8 h-8 rounded-full bg-error text-on-error flex items-center justify-center" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">stop</span></button>'
+      ? '<button class="tb-stop-btn tb-action-btn w-11 h-11 rounded-full bg-error text-on-error flex items-center justify-center" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">stop</span></button>'
       : (colType === 'todo'
-          ? '<button class="tb-play-btn tb-action-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-secondary hover:text-on-secondary transition-colors" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">play_arrow</span></button>'
-          : '<button class="tb-action-btn w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant" data-task-id="' + task.id + '"><span class="material-symbols-outlined" style="font-size:20px;">visibility</span></button>');
+          ? '<button class="tb-play-btn tb-action-btn w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-secondary hover:text-on-secondary transition-colors" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">play_arrow</span></button>'
+          : (colType === 'done'
+              ? ''
+              : '<button class="tb-action-btn w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant" data-task-id="' + task.id + '" aria-label="View task"><span class="material-symbols-outlined" style="font-size:20px;">visibility</span></button>'));
 
     var metaHtml = colType === 'inprogress' && task.timerDisplay
       ? '<div class="flex items-center gap-1 bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold tracking-wider"><span class="w-2 h-2 rounded-full bg-error"></span> REC ' + task.timerDisplay + '</div>'

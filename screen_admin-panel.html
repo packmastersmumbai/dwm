@@ -238,7 +238,7 @@
       removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_remove</span>';
       removeBtn.addEventListener('click', function() {
         if (!confirm('Remove ' + u.name + ' from the team?')) return;
-        APP.call('removeUser', u.id)
+        APP.call('removeUser', u.id, APP.token)
           .then(function() {
             row.remove();
             APP.showSuccess(u.name + ' removed.');
@@ -321,7 +321,7 @@
           APP.showError('Please provide a name and a 4-digit PIN.');
           return;
         }
-        APP.call('addUser', { name: name, pin: pin, role: role })
+        APP.call('addUser', { name: name, pin: pin, role: role }, APP.token)
           .then(function(newUser) {
             qs(screen, 'new-user-name').value = '';
             qs(screen, 'new-user-pin').value = '';

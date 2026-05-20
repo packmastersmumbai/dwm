@@ -189,6 +189,14 @@
         id:   (result && result.userId) || _selectedUserId,
         avatarColor: (result && result.avatarColor) || ''
       };
+      APP.token = (result && result.token) || null;
+      // Persist session so an accidental reload restores state
+      try {
+        if (APP.token) {
+          sessionStorage.setItem('tf_token', APP.token);
+          sessionStorage.setItem('tf_user', JSON.stringify(APP.currentUser));
+        }
+      } catch(se) {}
       _pin = [];
       _attempts = 0;
       APP.navigate('kanban-home');

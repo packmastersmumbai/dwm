@@ -45,11 +45,31 @@ Skip <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
 <div class="tf-skeleton h-[72px] w-full opacity-40"></div>
 </div>
 </section>
-<!-- Bottom spacing for fixed bar -->
-<div class="h-16"></div>
+<!-- Bottom spacing for fixed action bar + bottom nav -->
+<div class="h-28"></div>
 </main>
-<!-- Bottom Action Bar (Sticky) -->
-<div class="fixed bottom-0 w-full bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 z-50 flex items-center justify-between max-w-3xl left-1/2 -translate-x-1/2">
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-nav-height z-50 border-t border-outline-variant shadow-lg flex justify-around items-center px-2 bg-surface">
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-dp-nav="kanban-home">
+    <span class="material-symbols-outlined">home</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Home</span>
+  </button>
+  <button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1 cursor-pointer active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-primary" data-dp-nav="myday-share">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+    <span class="font-label-bold text-label-bold mt-0.5">My Day</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-dp-nav="team-board">
+    <span class="material-symbols-outlined">group</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Team</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-dp-nav="admin-panel">
+    <span class="material-symbols-outlined">settings</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Admin</span>
+  </button>
+</nav>
+
+<!-- Bottom Action Bar (Sticky) — sits above bottom nav -->
+<div class="fixed bottom-nav-height w-full bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 z-40 flex items-center justify-between max-w-3xl left-1/2 -translate-x-1/2">
 <div id="dp-task-count-label" class="text-[13px] text-[#5F6368] font-medium flex items-center gap-2">
 <span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
 Loading…
@@ -90,6 +110,13 @@ APP.register('daily-plan', {
       }
     }
 
+    // Bottom nav
+    screen.querySelectorAll('[data-dp-nav]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        APP.navigate(btn.getAttribute('data-dp-nav'));
+      });
+    });
+
     // Skip button
     screen.querySelector('#dp-skip').addEventListener('click', function() {
       APP.navigate('myday-focus');
@@ -97,7 +124,7 @@ APP.register('daily-plan', {
 
     // Begin My Day button
     screen.querySelector('#dp-begin-btn').addEventListener('click', function() {
-      APP.call('beginMyDay')
+      APP.call('beginMyDay', APP.token)
         .then(function() { APP.navigate('myday-focus'); })
         .catch(function(err) { APP.showError(err); });
     });
@@ -188,7 +215,7 @@ APP.register('daily-plan', {
     screen.querySelectorAll('.dp-start-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var taskId = btn.getAttribute('data-task-id');
-        APP.call('startTimer', taskId, APP.currentUser.id)
+        APP.call('startTimer', taskId, APP.token)
           .then(function() { APP.navigate('myday-focus'); })
           .catch(function(err) { APP.showError(err); });
       });
@@ -197,7 +224,7 @@ APP.register('daily-plan', {
     screen.querySelectorAll('.dp-done-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var taskId = btn.getAttribute('data-task-id');
-        APP.call('markTaskDone', taskId)
+        APP.call('markTaskDone', taskId, APP.token)
           .then(function() {
             self._tasks = self._tasks.filter(function(t) { return t.id !== taskId; });
             self._render(screen);
