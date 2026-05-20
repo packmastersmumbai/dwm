@@ -89,7 +89,7 @@ function initializeSheets() {
     tasks: ['id','title','description','client_id','category_id','priority','status',
             'assignee_ids','created_by','created_at','due_date','scheduled_time',
             'is_shared','claimed_by','claimed_at','estimated_minutes','checklist',
-            'recurrence','updated_at','archived_at'],
+            'recurrence','updated_at','archived_at','requires_photo'],
     users: ['id','name','pin_hash','salt','role','avatar_color','email',
             'notify_prefs','is_active','last_seen_at','failed_attempts','locked_until'],
     clients: ['id','name','color_hex','is_active'],
@@ -108,6 +108,17 @@ function initializeSheets() {
       sheet.appendRow(schemas[name]);
     }
   });
+
+  // Idempotent backfill: add requires_photo header to existing tasks sheet if missing
+  (function() {
+    var tasksSheet = ss.getSheetByName('tasks');
+    if (!tasksSheet) return;
+    var headerRow = tasksSheet.getRange(1, 1, 1, tasksSheet.getLastColumn()).getValues()[0];
+    if (headerRow.indexOf('requires_photo') === -1) {
+      var nextCol = tasksSheet.getLastColumn() + 1;
+      tasksSheet.getRange(1, nextCol).setValue('requires_photo');
+    }
+  })();
 
   // Default settings
   var settings = ss.getSheetByName('settings');
@@ -231,8 +242,10 @@ function getUsersStatic() {
   });
 }
 
-// Full user list — adds live activeTimer per user (NOT cached, since timer changes constantly)
-function getUsers() {
+// Internal worker — no auth. Called by updateUser, removeUser, getTeamStatus,
+// getTeamBoard, getTeamTimeline, getKpiData, getTeamStats, getTeamProductivity,
+// getTimeReport, addComment, _createTask (shared-pool notifications), expandTask.
+function _getUsers() {
   try {
     var users = getUsersStatic().map(function(u) { return Object.assign({}, u); });
     var tl = getSheet('time_log');
@@ -244,8 +257,14 @@ function getUsers() {
     users.forEach(function(u) { u.activeTimer = byUid[u.id] || null; });
     return users;
   } catch(e) {
-    throw new Error('getUsers: ' + e.message);
+    throw new Error('_getUsers: ' + e.message);
   }
+}
+
+// Full user list — adds live activeTimer per user (NOT cached, since timer changes constantly)
+function getUsers(token) {
+  requireSession(token);
+  return _getUsers();
 }
 
 function loginUser(name, pin) {
@@ -408,7 +427,7 @@ function updateUser(userId, fields, token) {
     if (fields.role !== undefined && fields.role !== 'admin') {
       var target = getUserById(userId);
       if (target && target.role === 'admin') {
-        var admins = getUsers().filter(function(u) { return u.role === 'admin'; });
+        var admins = _getUsers().filter(function(u) { return u.role === 'admin'; });
         if (admins.length <= 1) {
           throw new Error('Cannot remove the last admin');
         }
@@ -448,7 +467,7 @@ function removeUser(userId, token) {
   try {
     requireAdmin(token);
     // Prevent removing last admin
-    var admins = getUsers().filter(function(u) { return u.role === 'admin'; });
+    var admins = _getUsers().filter(function(u) { return u.role === 'admin'; });
     var target = getUserById(userId);
     if (target && target.role === 'admin' && admins.length <= 1) {
       throw new Error('Cannot remove the last admin');
@@ -598,7 +617,9 @@ function logout(token) {
   return { ok: true };
 }
 
-function getClients() {
+// Internal worker — no auth. Called by expandTask, getShiftHandover, getTimeReport,
+// getHoursByClient, searchTasks, and the client-facing getClients.
+function _getClients() {
   return cachedRead('clients', 600, function() {
     try {
       var s = getSheet('clients');
@@ -611,9 +632,14 @@ function getClients() {
       }
       return result;
     } catch(e) {
-      throw new Error('getClients: ' + e.message);
+      throw new Error('_getClients: ' + e.message);
     }
   });
+}
+
+function getClients(token) {
+  requireSession(token);
+  return _getClients();
 }
 
 function createClient(payload) {
@@ -652,7 +678,8 @@ function updateClient(id, fields) {
   }
 }
 
-function getCategories() {
+// Internal worker — no auth. Called by expandTask and searchTasks.
+function _getCategories() {
   return cachedRead('categories', 600, function() {
     try {
       var s = getSheet('categories');
@@ -665,9 +692,14 @@ function getCategories() {
       }
       return result;
     } catch(e) {
-      throw new Error('getCategories: ' + e.message);
+      throw new Error('_getCategories: ' + e.message);
     }
   });
+}
+
+function getCategories(token) {
+  requireSession(token);
+  return _getCategories();
 }
 
 function createCategory(payload) {
@@ -713,7 +745,7 @@ function updateCategory(id, fields) {
 // cols: id(0) title(1) description(2) client_id(3) category_id(4) priority(5) status(6)
 //       assignee_ids(7) created_by(8) created_at(9) due_date(10) scheduled_time(11)
 //       is_shared(12) claimed_by(13) claimed_at(14) estimated_minutes(15) checklist(16)
-//       recurrence(17) updated_at(18) archived_at(19)
+//       recurrence(17) updated_at(18) archived_at(19) requires_photo(20)
 
 function rowToTask(row) {
   return {
@@ -736,7 +768,8 @@ function rowToTask(row) {
     checklist: safeParseJson(row[16], []),
     recurrence: safeParseJson(row[17], null),
     updatedAt: row[18] ? row[18].toString() : '',
-    archivedAt: row[19] ? row[19].toString() : ''
+    archivedAt: row[19] ? row[19].toString() : '',
+    requiresPhoto: row[20] === true || row[20] === 'TRUE'
   };
 }
 
@@ -763,15 +796,15 @@ function parseAssigneeIds(val) {
 
 function expandTask(task) {
   // Expand client
-  var clients = getClients();
+  var clients = _getClients();
   task.client = clients.find(function(c) { return c.id === task.clientId; }) || null;
 
   // Expand category
-  var cats = getCategories();
+  var cats = _getCategories();
   task.category = cats.find(function(c) { return c.id === task.categoryId; }) || null;
 
   // Expand assignees (id+name+avatar+avatarColor+status — needed for presence dot)
-  var allUsers = getUsers();
+  var allUsers = _getUsers();
   task.assignees = (task.assigneeIds || []).map(function(uid) {
     var u = allUsers.find(function(x) { return x.id === uid; });
     return u ? {
@@ -793,7 +826,12 @@ function priorityRank(p) {
 
 // ── Read functions ──────────────────────────────────────────
 
-function getTasks(filters) {
+// Internal worker — no auth. Called by getMyDayTasks, getSharedPoolTasks, getDailyPlan,
+// getTeamStatus, getTeamTasks, filterTeamTasks, getTeamBoard, getTeamTimeline, getKpiData,
+// getTeamStats, getAdminStats, getWorkloadByUser, getHoursByClient, getTeamProductivity,
+// getTimeReport, searchTasks, sendDueSoonNotifications, checkTimerWarnings (via _getTask),
+// scheduleNextRecurrence (via _getTask).
+function _getTasks(filters) {
   try {
     filters = filters || {};
     var s = getSheet('tasks');
@@ -801,8 +839,8 @@ function getTasks(filters) {
     var tasks = [];
 
     // Pre-load lookup tables ONCE — cached via CacheService for 600s
-    var clients = getClients();
-    var cats = getCategories();
+    var clients = _getClients();
+    var cats = _getCategories();
     var allUsers = getUsersStatic();
 
     function expandFast(task) {
@@ -867,11 +905,19 @@ function getTasks(filters) {
 
     return tasks;
   } catch(e) {
-    throw new Error('getTasks: ' + e.message);
+    throw new Error('_getTasks: ' + e.message);
   }
 }
 
-function getTask(taskId) {
+function getTasks(filters, token) {
+  requireSession(token);
+  return _getTasks(filters);
+}
+
+// Internal worker — no auth. Called by getActiveTimer, checkTimerWarnings,
+// scheduleNextRecurrence, toggleChecklistItem, addChecklistItem, deleteChecklistItem,
+// uploadTaskPhoto, getTaskAttachments, shareToWhatsApp.
+function _getTask(taskId) {
   try {
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
@@ -914,13 +960,18 @@ function getTask(taskId) {
     }
     throw new Error('Task not found');
   } catch(e) {
-    throw new Error('getTask: ' + e.message);
+    throw new Error('_getTask: ' + e.message);
   }
 }
 
+function getTask(taskId, token) {
+  requireSession(token);
+  return _getTask(taskId);
+}
+
 // Aliases used in manifest and screens
-function getTaskDetail(taskId) { return getTask(taskId); }
-function getTaskById(taskId) { return getTask(taskId); }
+function getTaskDetail(taskId, token) { return getTask(taskId, token); }
+function getTaskById(taskId, token) { return getTask(taskId, token); }
 function addUser(payload, token) { return createUser(payload, token); }
 
 // ── Write functions ─────────────────────────────────────────
@@ -959,7 +1010,8 @@ function _createTask(payload) {
       payload.checklist ? JSON.stringify(payload.checklist) : '',
       payload.recurrence ? JSON.stringify(payload.recurrence) : '',
       ts,  // updated_at
-      ''   // archived_at
+      '',  // archived_at
+      payload.requiresPhoto ? true : false  // requires_photo
     ]);
 
     logActivity(id, payload.createdBy, 'created', payload.title);
@@ -975,7 +1027,7 @@ function _createTask(payload) {
 
     // Notify all active users if shared
     if (payload.isShared) {
-      getUsers().forEach(function(u) {
+      _getUsers().forEach(function(u) {
         createNotification(u.id, 'assigned', id, 'New shared task: ' + payload.title);
       });
     }
@@ -989,7 +1041,7 @@ function _createTask(payload) {
       payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
       payload.checklist ? JSON.stringify(payload.checklist) : '',
       payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-      ts, ''
+      ts, '', payload.requiresPhoto ? true : false
     ]));
   } catch(e) {
     throw new Error('_createTask: ' + e.message);
@@ -1074,7 +1126,26 @@ function _updateTaskFields(taskId, fields) {
       // id=1, title=2, description=3, client_id=4, category_id=5, priority=6, status=7,
       // assignee_ids=8, created_by=9, created_at=10, due_date=11, scheduled_time=12,
       // is_shared=13, claimed_by=14, claimed_at=15, estimated_minutes=16, checklist=17,
-      // recurrence=18, updated_at=19, archived_at=20
+      // recurrence=18, updated_at=19, archived_at=20, requires_photo=21
+
+      // requiresPhoto enforcement chokepoint: all done-transitions pass through here.
+      if (fields.status === 'done' && oldStatus !== 'done') {
+        var requiresPhoto = oldRow[20] === true || oldRow[20] === 'TRUE';
+        if (requiresPhoto) {
+          var attSheet = getSheet('attachments');
+          var attData = attSheet ? attSheet.getDataRange().getValues() : [[]];
+          var hasImage = false;
+          for (var ai = 1; ai < attData.length; ai++) {
+            if (attData[ai][1] === taskId) {
+              var kind = String(attData[ai][5] || '').toLowerCase();
+              if (kind === 'photo' || kind === 'image') { hasImage = true; break; }
+            }
+          }
+          if (!hasImage) {
+            throw new Error('A completion photo is required before marking this task done');
+          }
+        }
+      }
 
       if (fields.title !== undefined) s.getRange(i + 1, 2).setValue(fields.title);
       if (fields.description !== undefined) s.getRange(i + 1, 3).setValue(fields.description);
@@ -1099,10 +1170,11 @@ function _updateTaskFields(taskId, fields) {
       if (fields.estimatedMinutes !== undefined) s.getRange(i + 1, 16).setValue(fields.estimatedMinutes);
       if (fields.checklist !== undefined) s.getRange(i + 1, 17).setValue(JSON.stringify(fields.checklist));
       if (fields.recurrence !== undefined) s.getRange(i + 1, 18).setValue(fields.recurrence ? JSON.stringify(fields.recurrence) : '');
+      if (fields.requiresPhoto !== undefined) s.getRange(i + 1, 21).setValue(fields.requiresPhoto ? true : false);
 
       s.getRange(i + 1, 19).setValue(now()); // updated_at
 
-      return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 20).getValues()[0]));
+      return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 21).getValues()[0]));
     }
     throw new Error('Task not found: ' + taskId);
   } catch(e) {
@@ -1214,7 +1286,7 @@ function archiveOldDoneTasks() {
 
 // ── My Day ──────────────────────────────────────────────────
 
-function getMyDayTasks(userIdOrName) {
+function _getMyDayTasks(userIdOrName) {
   try {
     var today = todayStr();
     // Resolve to a user: try by ID first, then by name
@@ -1226,7 +1298,7 @@ function getMyDayTasks(userIdOrName) {
       })[0] || null;
     }
     var resolvedId = resolvedUser ? resolvedUser.id : null;
-    var allTasks = getTasks({});
+    var allTasks = _getTasks({});
     return allTasks.filter(function(t) {
       if (t.status === 'done' || t.status === 'deleted' || t.status === 'archived') return false;
       var ids = t.assigneeIds || []; // FIX F — already a parsed array from rowToTask; no re-serialization needed
@@ -1237,39 +1309,54 @@ function getMyDayTasks(userIdOrName) {
       return !t.dueDate || t.dueDate <= today;
     });
   } catch(e) {
-    throw new Error('getMyDayTasks: ' + e.message);
+    throw new Error('_getMyDayTasks: ' + e.message);
   }
 }
 
-function getSharedPoolTasks() {
+function getMyDayTasks(userIdOrName, token) {
+  requireSession(token);
+  return _getMyDayTasks(userIdOrName);
+}
+
+function _getSharedPoolTasks() {
   try {
-    return getTasks({ isShared: true }).filter(function(t) {
+    return _getTasks({ isShared: true }).filter(function(t) {
       return t.status !== 'done' && t.status !== 'deleted' && t.status !== 'archived' && !t.claimedBy;
     });
   } catch(e) {
-    throw new Error('getSharedPoolTasks: ' + e.message);
+    throw new Error('_getSharedPoolTasks: ' + e.message);
   }
+}
+
+function getSharedPoolTasks(token) {
+  requireSession(token);
+  return _getSharedPoolTasks();
 }
 
 // ── Daily Plan ───────────────────────────────────────────────
 
-function getDailyPlan(userId, date) {
+function _getDailyPlan(userId, date) {
   try {
     var planDate = date || todayStr();
-    var allTasks = getTasks({ userId: userId });
+    var allTasks = _getTasks({ userId: userId });
     var today = todayStr();
     return allTasks.filter(function(t) {
       if (t.status === 'deleted' || t.status === 'archived') return false;
       return !t.dueDate || t.dueDate <= planDate;
     });
   } catch(e) {
-    throw new Error('getDailyPlan: ' + e.message);
+    throw new Error('_getDailyPlan: ' + e.message);
   }
+}
+
+function getDailyPlan(userId, date, token) {
+  requireSession(token);
+  return _getDailyPlan(userId, date);
 }
 
 // Alias for manifest
 function getDailyPlanForScreen() {
-  return getDailyPlan(Session.getActiveUser().getEmail(), todayStr());
+  return _getDailyPlan(Session.getActiveUser().getEmail(), todayStr());
 }
 
 function beginMyDay(token) {
@@ -1370,7 +1457,8 @@ function startTimer(taskId, token) {
 }
 
 // Return ALL open timers for the user — supports multi-timer rendering
-function getActiveTimers(userId) {
+function getActiveTimers(userId, token) {
+  requireSession(token);
   var uid = userId || Session.getActiveUser().getEmail();
   var tl = getSheet('time_log');
   var data = tl.getDataRange().getValues();
@@ -1438,7 +1526,8 @@ function stopTimer(logId, token, markDone) {
   }
 }
 
-function getActiveTimer(userId) {
+function getActiveTimer(userId, token) {
+  requireSession(token);
   try {
     var uid = userId || Session.getActiveUser().getEmail();
     var tl = getSheet('time_log');
@@ -1466,7 +1555,7 @@ function getActiveTimer(userId) {
       // Get task title
       var title = '';
       try {
-        var t = getTask(taskId);
+        var t = _getTask(taskId);
         title = t.title;
       } catch(ex) {}
 
@@ -1521,7 +1610,7 @@ function checkTimerWarnings() {
       var userId = tlData[i][2];
       var taskId = tlData[i][1];
       var title = '';
-      try { title = getTask(taskId).title; } catch(e) {}
+      try { title = _getTask(taskId).title; } catch(e) {}
 
       createNotification(userId, 'timer_warning', taskId,
         'Timer running >' + warnHours + 'h on: ' + title);
@@ -1621,9 +1710,10 @@ function unclaimTask(taskId, token) {
 //  TEAM
 // ============================================================
 
-function getTeamStatus() {
+function getTeamStatus(token) {
+  requireSession(token);
   try {
-    var users = getUsers();
+    var users = _getUsers();
     var nowDate = new Date();
     var twoMin = 2 * 60 * 1000;
     var tenMin = 10 * 60 * 1000;
@@ -1631,7 +1721,7 @@ function getTeamStatus() {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
-    var tasks = getTasks({ teamView: true });
+    var tasks = _getTasks({ teamView: true });
 
     return users.map(function(u) {
       var lastSeen = u.lastSeenAt ? new Date(u.lastSeenAt) : null;
@@ -1679,10 +1769,11 @@ function getTeamStatus() {
   }
 }
 
-function getTeamTasks(options) {
+function getTeamTasks(options, token) {
+  requireSession(token);
   try {
     options = options || {};
-    var tasks = getTasks({ teamView: true });
+    var tasks = _getTasks({ teamView: true });
 
     if (options.weekOffset !== undefined) {
       var base = new Date();
@@ -1704,9 +1795,10 @@ function getTeamTasks(options) {
   }
 }
 
-function filterTeamTasks(filter) {
+function filterTeamTasks(filter, token) {
+  requireSession(token);
   try {
-    var all = getTasks({ teamView: true });
+    var all = _getTasks({ teamView: true });
     if (!filter || filter === 'all') return all;
     return all.filter(function(t) {
       if (filter === 'shared') return t.isShared;
@@ -1720,10 +1812,11 @@ function filterTeamTasks(filter) {
   }
 }
 
-function getTeamBoard() {
+function getTeamBoard(token) {
+  requireSession(token);
   try {
-    var users = getUsers();
-    var tasks = getTasks({ teamView: true });
+    var users = _getUsers();
+    var tasks = _getTasks({ teamView: true });
 
     var members = users.map(function(u) {
       var myTasks = tasks.filter(function(t) {
@@ -1744,11 +1837,12 @@ function getTeamBoard() {
   }
 }
 
-function getTeamTimeline(date) {
+function getTeamTimeline(date, token) {
+  requireSession(token);
   try {
     var targetDate = date || todayStr();
-    var tasks = getTasks({ teamView: true });
-    var users = getUsers();
+    var tasks = _getTasks({ teamView: true });
+    var users = _getUsers();
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
@@ -1807,10 +1901,11 @@ function getTeamTimeline(date) {
 //  KPI & REPORTS
 // ============================================================
 
-function getKpiData(options) {
+function getKpiData(options, token) {
+  requireSession(token);
   try {
     options = options || {};
-    var tasks = getTasks({ teamView: true });
+    var tasks = _getTasks({ teamView: true });
 
     var filtered = tasks;
     if (options.from) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate >= options.from; });
@@ -1835,7 +1930,7 @@ function getKpiData(options) {
       if (byPriority[t.priority] !== undefined) byPriority[t.priority]++;
     });
 
-    var users = getUsers();
+    var users = _getUsers();
     var byAssigneeArr = Object.keys(byAssignee).map(function(uid) {
       var u = users.find(function(x) { return x.id === uid; });
       return {
@@ -1859,7 +1954,8 @@ function getKpiData(options) {
   }
 }
 
-function getKpiByFilter(period) {
+function getKpiByFilter(period, token) {
+  requireSession(token);
   var now2 = new Date();
   var from, to;
   to = todayStr();
@@ -1876,13 +1972,44 @@ function getKpiByFilter(period) {
     from = null;
   }
 
-  return getKpiData({ from: from, to: to });
+  return _getKpiDataInternal({ from: from, to: to });
 }
 
-function getTeamStats() {
+function _getKpiDataInternal(options) {
+  options = options || {};
+  var tasks = _getTasks({ teamView: true });
+  var filtered = tasks;
+  if (options.from) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate >= options.from; });
+  if (options.to) filtered = filtered.filter(function(t) { return !t.dueDate || t.dueDate <= options.to; });
+  var today = todayStr();
+  var total = filtered.length;
+  var done = filtered.filter(function(t) { return t.status === 'done' || t.status === 'archived'; }).length;
+  var overdue = filtered.filter(function(t) {
+    return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
+  }).length;
+  var byAssignee = {};
+  var byPriority = { urgent: 0, high: 0, medium: 0, low: 0 };
+  filtered.forEach(function(t) {
+    (t.assigneeIds || []).forEach(function(uid) {
+      if (!byAssignee[uid]) byAssignee[uid] = { total: 0, done: 0 };
+      byAssignee[uid].total++;
+      if (t.status === 'done') byAssignee[uid].done++;
+    });
+    if (byPriority[t.priority] !== undefined) byPriority[t.priority]++;
+  });
+  var users = _getUsers();
+  var byAssigneeArr = Object.keys(byAssignee).map(function(uid) {
+    var u = users.find(function(x) { return x.id === uid; });
+    return { userId: uid, name: u ? u.name : uid, total: byAssignee[uid].total, done: byAssignee[uid].done };
+  });
+  return { totalTasks: total, doneTasks: done, overdueTasks: overdue, byAssignee: byAssigneeArr, byPriority: byPriority, completionRate: total > 0 ? Math.round((done / total) * 100) : 0 };
+}
+
+function getTeamStats(token) {
+  requireSession(token);
   try {
-    var users = getUsers();
-    var tasks = getTasks({ teamView: true });
+    var users = _getUsers();
+    var tasks = _getTasks({ teamView: true });
     var today = todayStr();
 
     var byStatus = { todo: 0, 'in-progress': 0, done: 0 };
@@ -1905,9 +2032,10 @@ function getTeamStats() {
   }
 }
 
-function getAdminStats() {
+function getAdminStats(token) {
+  requireSession(token);
   try {
-    var tasks = getTasks({ teamView: true });
+    var tasks = _getTasks({ teamView: true });
     var today = todayStr();
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
@@ -1928,10 +2056,11 @@ function getAdminStats() {
   }
 }
 
-function getWorkloadByUser() {
+function getWorkloadByUser(token) {
+  requireSession(token);
   try {
-    var users = getUsers();
-    var tasks = getTasks({ teamView: true });
+    var users = _getUsers();
+    var tasks = _getTasks({ teamView: true });
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
 
@@ -1965,12 +2094,13 @@ function getWorkloadByUser() {
   }
 }
 
-function getHoursByClient() {
+function getHoursByClient(token) {
+  requireSession(token);
   try {
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
-    var tasks = getTasks({ teamView: true });
-    var clients = getClients();
+    var tasks = _getTasks({ teamView: true });
+    var clients = _getClients();
 
     var byClient = {};
     for (var j = 1; j < tlData.length; j++) {
@@ -1994,10 +2124,11 @@ function getHoursByClient() {
   }
 }
 
-function getTeamProductivity() {
+function getTeamProductivity(token) {
+  requireSession(token);
   try {
-    var users = getUsers();
-    var tasks = getTasks({ teamView: true });
+    var users = _getUsers();
+    var tasks = _getTasks({ teamView: true });
     var today = todayStr();
 
     return users.map(function(u) {
@@ -2017,14 +2148,15 @@ function getTeamProductivity() {
   }
 }
 
-function getTimeReport(filters) {
+function getTimeReport(filters, token) {
+  requireSession(token);
   try {
     filters = filters || {};
     var tl = getSheet('time_log');
     var tlData = tl ? tl.getDataRange().getValues() : [[]];
-    var tasks = getTasks({ teamView: true, includeArchived: true });
-    var clients = getClients();
-    var users = getUsers();
+    var tasks = _getTasks({ teamView: true, includeArchived: true });
+    var clients = _getClients();
+    var users = _getUsers();
 
     var logs = [];
     for (var j = 1; j < tlData.length; j++) {
@@ -2079,12 +2211,13 @@ function getTimeReport(filters) {
   }
 }
 
-function searchTasks(query, userId) {
+function searchTasks(query, token) {
+  requireSession(token);
   try {
     var q = (query || '').toLowerCase();
-    var tasks = getTasks({ teamView: true });
-    var clients = getClients();
-    var cats = getCategories();
+    var tasks = _getTasks({ teamView: true });
+    var clients = _getClients();
+    var cats = _getCategories();
 
     return tasks.filter(function(t) {
       if (t.title && t.title.toLowerCase().indexOf(q) !== -1) return true;
@@ -2103,7 +2236,8 @@ function searchTasks(query, userId) {
 //  NOTIFICATIONS
 // ============================================================
 
-function getNotifications(userId) {
+function getNotifications(userId, token) {
+  requireSession(token);
   try {
     var uid = userId || Session.getActiveUser().getEmail();
     var s = getSheet('notifications');
@@ -2207,7 +2341,7 @@ function createNotification(userId, type, taskId, message) {
 function sendDueSoonNotifications() {
   try {
     var today = todayStr();
-    var tasks = getTasks({ teamView: true });
+    var tasks = _getTasks({ teamView: true });
 
     tasks.forEach(function(t) {
       if (t.status === 'done' || t.status === 'archived' || t.status === 'deleted') return;
@@ -2250,7 +2384,7 @@ function addComment(taskId, commentText, token) {
     }
 
     if (mentions.length > 0) {
-      var users = getUsers();
+      var users = _getUsers();
       mentions.forEach(function(name) {
         var mentioned = users.find(function(u) { return u.name.toLowerCase() === name.toLowerCase(); });
         if (mentioned) {
@@ -2269,7 +2403,7 @@ function addComment(taskId, commentText, token) {
 function toggleChecklistItem(taskId, itemId, checked, token) {
   try {
     requireSession(token);
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var checklist = task.checklist || [];
     checklist = checklist.map(function(item) {
       if (item.id === itemId) item.done = checked;
@@ -2284,7 +2418,7 @@ function toggleChecklistItem(taskId, itemId, checked, token) {
 function addChecklistItem(taskId, text, token) {
   try {
     requireSession(token);
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var checklist = Array.isArray(task.checklist) ? task.checklist.slice() : [];
     var item = { id: newId(), text: String(text || '').trim(), done: false };
     if (!item.text) return { error: 'empty' };
@@ -2299,7 +2433,7 @@ function addChecklistItem(taskId, text, token) {
 function deleteChecklistItem(taskId, itemId, token) {
   try {
     requireSession(token);
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var checklist = (task.checklist || []).filter(function(i) { return i.id !== itemId; });
     return updateTask(taskId, { checklist: checklist }, token);
   } catch(e) {
@@ -2313,7 +2447,7 @@ function deleteChecklistItem(taskId, itemId, token) {
 
 function scheduleNextRecurrence(taskId) {
   try {
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     if (!task.recurrence) return;
     var rec = task.recurrence;
     var currentDue = task.dueDate ? new Date(task.dueDate) : new Date();
@@ -2361,7 +2495,7 @@ function scheduleNextRecurrence(taskId) {
 
 function shareToWhatsApp(taskId) {
   try {
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var text = '📋 *' + task.title + '*\n';
     if (task.dueDate) text += '📅 Due: ' + task.dueDate + '\n';
     if (task.priority) text += '🚨 Priority: ' + task.priority + '\n';
@@ -2424,7 +2558,7 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
     }
 
     // FIX 4 — verify caller relationship to the task (throws if task not found)
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var isAdmin = sess.role === 'admin';
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
@@ -2466,7 +2600,7 @@ function getTaskAttachments(taskId, token) {
   try {
     var sess = requireSession(token);
     // Load the task — throws 'Task not found' if missing
-    var task = getTask(taskId);
+    var task = _getTask(taskId);
     var isAdmin = sess.role === 'admin';
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
@@ -2633,9 +2767,9 @@ function getShiftHandover(token) {
     var userMap = {};
     allUsers.forEach(function(u) { userMap[u.id] = u.name; });
 
-    // Build client name map once (avoid calling getClients() per task)
+    // Build client name map once (avoid calling _getClients() per task)
     var clientMap = {};
-    getClients().forEach(function(c) { clientMap[c.id] = c.name; });
+    _getClients().forEach(function(c) { clientMap[c.id] = c.name; });
 
     function resolveAssigneeNames(assigneeIds) {
       return (assigneeIds || []).map(function(uid) { return userMap[uid] || uid; });
@@ -2706,8 +2840,8 @@ function getShiftHandover(token) {
 // Removed myFunction() and testPing() — debug scaffolding.
 
 // FIX 1 — Restore aliases called by frontend screens and manifest.json
-function getTeamMembers() { return getUsers(); }
-function getTeamPresence() { return getTeamStatus(); }
+function getTeamMembers(token) { requireSession(token); return _getUsers(); }
+function getTeamPresence(token) { return getTeamStatus(token); }
 
 // ============================================================
 //  SEED DEMO DATA
