@@ -608,7 +608,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         var name = qs(screen, 'new-user-name').value.trim();
         var pin = qs(screen, 'new-user-pin').value.trim();
         var role = qs(screen, 'new-user-role').value;
-        if (!name || !pin || pin.length !== 4) {
+        if (!name || !pin || !/^\d{4}$/.test(pin)) {
           APP.showError('Please provide a name and a 4-digit PIN.');
           return;
         }
@@ -653,7 +653,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         var pin   = qs(screen, 'edit-user-pin').value.trim();
 
         if (!name) { APP.showError('Name is required.'); return; }
-        if (pin && pin.length !== 4) { APP.showError('PIN must be exactly 4 digits.'); return; }
+        if (pin && !/^\d{4}$/.test(pin)) { APP.showError('PIN must be exactly 4 digits (numbers only).'); return; }
 
         var fields = { name: name, role: role, avatarColor: _editAvatarColor };
         if (email) fields.email = email;

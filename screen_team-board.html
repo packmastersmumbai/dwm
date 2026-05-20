@@ -160,7 +160,7 @@ APP.register('team-board', {
     });
 
     // Load data
-    APP.call('getTeamTasks', APP.token)
+    APP.call('getTeamTasks', {}, APP.token)
       .then(function(tasks) {
         self._allTasks = tasks || [];
         self._renderBoard(screen);
