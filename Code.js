@@ -334,12 +334,8 @@ function createUser(payload, requestingUserId) {
     if (!requester || requester.role !== 'admin') {
       throw new Error('Only an admin can create users');
     }
-    // Prevent privilege escalation: non-admins cannot grant admin role (guard is redundant here
-    // since only admins reach this point, but kept explicit for clarity)
+    // FIX D — removed dead privilege-escalation block (unreachable: non-admins already threw above)
     var assignedRole = payload.role || 'member';
-    if (requester.role !== 'admin' && assignedRole === 'admin') {
-      throw new Error('Cannot assign admin role without admin privileges');
-    }
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -368,6 +364,17 @@ function updateUser(userId, fields, requestingUserId) {
     // Verify requester is admin
     var requester = getUserById(requestingUserId);
     if (!requester || requester.role !== 'admin') throw new Error('Unauthorized');
+
+    // FIX C — prevent removing the last admin's admin role
+    if (fields.role !== undefined && fields.role !== 'admin') {
+      var target = getUserById(userId);
+      if (target && target.role === 'admin') {
+        var admins = getUsers().filter(function(u) { return u.role === 'admin'; });
+        if (admins.length <= 1) {
+          throw new Error('Cannot remove the last admin');
+        }
+      }
+    }
 
     var s = getSheet('users');
     var data = s.getDataRange().getValues();
@@ -431,6 +438,11 @@ function getUserById(userId) {
   var data = s.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === userId) {
+      // FIX B — ignore deactivated users
+      var active = data[i][8];
+      var isActive = (active === true || active === 1 ||
+                      String(active).toUpperCase() === 'TRUE' || active === 'true');
+      if (!isActive) return null;
       return {
         id: data[i][0], name: data[i][1], role: data[i][4],
         avatarColor: data[i][5], email: data[i][6],
@@ -931,15 +943,15 @@ function quickAddTask(payload) {
 // Alias
 function quickCreateTask(payload) { return quickAddTask(payload); }
 
-function updateTask(taskId, fields, requestingUserId) {
+// FIX A — internal worker: performs the actual sheet write with NO authz check.
+// Use this for backend-to-backend calls (startTimer, claimTask, unclaimTask,
+// scheduleNextRecurrence, archiveOldDoneTasks, deferTask) that must not be blocked.
+function _updateTaskFields(taskId, fields) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
   try {
     var s = getSheet('tasks');
     var data = s.getDataRange().getValues();
-    var userId = requestingUserId || Session.getActiveUser().getEmail() || 'system';
-
-    // Known valid status values
     var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
 
     for (var i = 1; i < data.length; i++) {
@@ -947,29 +959,11 @@ function updateTask(taskId, fields, requestingUserId) {
       var oldRow = data[i];
       var oldStatus = oldRow[6];
 
-      // Authorization: requester must be creator, an assignee, or an admin
-      var requester = getUserById(userId);
-      var isAdmin = requester && requester.role === 'admin';
-      var isCreator = oldRow[8] === userId;
-      var existingAssignees = parseAssigneeIds(oldRow[7]);
-      var isAssignee = existingAssignees.indexOf(userId) !== -1;
-      if (!isAdmin && !isCreator && !isAssignee) {
-        throw new Error('Not authorized to update this task');
-      }
-
-      // Validate status if provided
       if (fields.status !== undefined && VALID_STATUSES.indexOf(fields.status) === -1) {
         throw new Error('Invalid status: ' + fields.status);
       }
 
-      var colMap = {
-        title: 2, description: 3, clientId: 4, categoryId: 5,
-        priority: 6, status: 7, assigneeIds: 8,
-        dueDate: 11, scheduledTime: 12, isShared: 13,
-        claimedBy: 14, claimedAt: 15,
-        estimatedMinutes: 16, checklist: 17, recurrence: 18
-      };
-      // Actually tasks columns are 1-indexed in sheet:
+      // tasks columns (1-indexed in sheet):
       // id=1, title=2, description=3, client_id=4, category_id=5, priority=6, status=7,
       // assignee_ids=8, created_by=9, created_at=10, due_date=11, scheduled_time=12,
       // is_shared=13, claimed_by=14, claimed_at=15, estimated_minutes=16, checklist=17,
@@ -983,8 +977,7 @@ function updateTask(taskId, fields, requestingUserId) {
       if (fields.status !== undefined) {
         s.getRange(i + 1, 7).setValue(fields.status);
         if (fields.status !== oldStatus) {
-          logActivity(taskId, userId, 'status_changed', oldStatus + '→' + fields.status);
-          // Handle recurrence
+          logActivity(taskId, '', 'status_changed', oldStatus + '→' + fields.status);
           if (fields.status === 'done' && oldRow[17]) {
             scheduleNextRecurrence(taskId);
           }
@@ -1006,32 +999,64 @@ function updateTask(taskId, fields, requestingUserId) {
     }
     throw new Error('Task not found: ' + taskId);
   } catch(e) {
-    throw new Error('updateTask: ' + e.message);
+    throw new Error('_updateTaskFields: ' + e.message);
   } finally {
     lock.releaseLock();
   }
 }
 
-function updateTaskStatus(taskId, newStatus) {
+// FIX A — client-facing updateTask: performs authz check then delegates to _updateTaskFields.
+// requestingUserId MUST be a UUID from the frontend session (not an email address).
+function updateTask(taskId, fields, requestingUserId) {
   try {
-    var userId = Session.getActiveUser().getEmail() || 'system';
+    var s = getSheet('tasks');
+    var data = s.getDataRange().getValues();
+    var userId = requestingUserId;
+    if (!userId) throw new Error('requestingUserId is required');
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] !== taskId) continue;
+      var oldRow = data[i];
+
+      // Authorization: requester must be creator, an assignee, or an admin
+      var requester = getUserById(userId);
+      var isAdmin = requester && requester.role === 'admin';
+      var isCreator = oldRow[8] === userId;
+      var existingAssignees = parseAssigneeIds(oldRow[7]);
+      var isAssignee = existingAssignees.indexOf(userId) !== -1;
+      if (!isAdmin && !isCreator && !isAssignee) {
+        throw new Error('Not authorized to update this task');
+      }
+
+      return _updateTaskFields(taskId, fields);
+    }
+    throw new Error('Task not found: ' + taskId);
+  } catch(e) {
+    throw new Error('updateTask: ' + e.message);
+  }
+}
+
+// FIX A — userId param is a UUID from the frontend session; no email fallback.
+function updateTaskStatus(taskId, newStatus, userId) {
+  try {
+    if (!userId) throw new Error('userId is required');
     return updateTask(taskId, { status: newStatus }, userId);
   } catch(e) {
     throw new Error('updateTaskStatus: ' + e.message);
   }
 }
 
-function markTaskDone(taskId) {
-  return updateTaskStatus(taskId, 'done');
+// FIX A — userId param is a UUID from the frontend session.
+function markTaskDone(taskId, userId) {
+  return updateTaskStatus(taskId, 'done', userId);
 }
 
+// FIX A — userId must be a UUID from the frontend; no email fallback.
 function deleteTask(taskId, userId) {
   try {
-    var uid = userId || Session.getActiveUser().getEmail() || 'system';
-    // Authorization check: must be creator, assignee, or admin
-    // updateTask enforces this — calling it with the uid triggers the check
-    var result = updateTask(taskId, { status: 'deleted' }, uid);
-    logActivity(taskId, uid, 'deleted', '');
+    if (!userId) throw new Error('userId is required');
+    var result = updateTask(taskId, { status: 'deleted' }, userId);
+    logActivity(taskId, userId, 'deleted', '');
     return { success: true };
   } catch(e) {
     throw new Error('deleteTask: ' + e.message);
@@ -1100,7 +1125,7 @@ function getMyDayTasks(userIdOrName) {
     var allTasks = getTasks({});
     return allTasks.filter(function(t) {
       if (t.status === 'done' || t.status === 'deleted' || t.status === 'archived') return false;
-      var ids = parseAssigneeIds(t.assigneeIds ? JSON.stringify(t.assigneeIds) : '');
+      var ids = t.assigneeIds || []; // FIX F — already a parsed array from rowToTask; no re-serialization needed
       var isAssigned = resolvedId
         ? ids.indexOf(resolvedId) !== -1
         : false;
@@ -1219,7 +1244,7 @@ function startTimer(taskId, userId) {
 
     var logId = newId();
     tl.appendRow([logId, taskId, uid, nowStr, '', '', nowStr]);
-    try { updateTask(taskId, { status: 'in-progress' }, uid); } catch(e) {}
+    try { _updateTaskFields(taskId, { status: 'in-progress' }); } catch(e) {} // FIX A — internal call
     try { logActivity(taskId, uid, 'timer_started', ''); } catch(e) {}
 
     return { logId: logId, startedAt: nowStr, taskId: taskId };
@@ -1284,7 +1309,7 @@ function stopTimer(logId, userId, markDone) {
       var taskId = tlData[i][1];
       var task = null;
       if (markDone) {
-        task = updateTask(taskId, { status: 'done', claimedBy: '', claimedAt: '' }, uid);
+        task = _updateTaskFields(taskId, { status: 'done', claimedBy: '', claimedAt: '' }); // FIX A — internal call
       }
       logActivity(taskId, uid, 'timer_stopped', duration + 's');
 
@@ -2048,11 +2073,16 @@ function createNotification(userId, type, taskId, message) {
     try {
       var user = getUserById(userId);
       if (user && user.email && user.notifyPrefs) {
-        // Map notification type to the stored notifyPrefs key
+        // FIX E — map notification type to stored notifyPrefs key.
+        // Only timer_warning defaults to send when unmapped; all other unknown types (e.g. 'comment', 'timer') default to NO email.
         var prefKeyMap = { assigned: 'onAssign', due_soon: 'onDue', mention: 'onMention', shared: 'onShared' };
         var prefKey = prefKeyMap[type];
-        // For timer_warning (no stored pref) default to sending; for others check the mapped key
-        var shouldEmail = prefKey ? !!user.notifyPrefs[prefKey] : true;
+        var shouldEmail;
+        if (prefKey) {
+          shouldEmail = !!user.notifyPrefs[prefKey];
+        } else {
+          shouldEmail = (type === 'timer_warning'); // only timer_warning emails by default when unmapped
+        }
         if (shouldEmail) {
           MailApp.sendEmail(user.email, 'TaskFlow: ' + type, message);
         }
