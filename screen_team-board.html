@@ -35,8 +35,8 @@
 <button class="px-4 py-3 text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-container-lowest" data-tb-tab="timeline">Timeline</button>
 </div>
 <div id="tb-filter-row" class="flex gap-2 overflow-x-auto px-margin-edge py-3 no-scrollbar items-center">
-<button class="shrink-0 px-3 py-1.5 rounded-full bg-on-surface text-surface font-label-bold text-label-bold tb-filter-btn active-filter" data-filter="all">All</button>
-<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface border border-outline-variant font-label-bold text-label-bold tb-filter-btn flex items-center gap-1" data-filter="shared">
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-bold text-label-bold tb-filter-btn active-filter" data-filter="all">All</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface text-on-surface border border-outline-variant font-label-bold text-label-bold tb-filter-btn flex items-center gap-1" data-filter="shared">
 <span class="material-symbols-outlined" style="font-size:16px;">group</span> Shared
 </button>
 </div>
@@ -96,9 +96,24 @@
 </div>
 
 <script>
+function escTb(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function tbFormatElapsed(startIso) {
+  if (!startIso) return '00:00:00';
+  var t = new Date(startIso).getTime();
+  if (isNaN(t)) return '00:00:00';
+  var secs = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  var h = Math.floor(secs / 3600);
+  var m = Math.floor((secs % 3600) / 60);
+  var s = secs % 60;
+  return [h, m, s].map(function (v) { return String(v).padStart(2, '0'); }).join(':');
+}
+
 APP.register('team-board', {
   _allTasks: [],
   _activeFilter: 'all',
+  _tickHandle: null,
 
   mount: function(params) {
     if (!APP.currentUser) { APP.navigate('pin-login'); return; }
@@ -139,9 +154,9 @@ APP.register('team-board', {
       self._activeFilter = btn.getAttribute('data-filter');
       screen.querySelectorAll('.tb-filter-btn').forEach(function(b) {
         var isActive = b === btn;
-        b.classList.toggle('bg-on-surface', isActive);
-        b.classList.toggle('text-surface', isActive);
-        b.classList.toggle('bg-surface-container-low', !isActive);
+        b.classList.toggle('bg-primary', isActive);
+        b.classList.toggle('text-on-primary', isActive);
+        b.classList.toggle('bg-surface', !isActive);
         b.classList.toggle('text-on-surface', !isActive);
         b.classList.toggle('border', !isActive);
         b.classList.toggle('border-outline-variant', !isActive);
@@ -157,6 +172,16 @@ APP.register('team-board', {
       })
       .catch(function(err) { APP.showError(err); });
 
+    // Live elapsed-time ticker for in-progress cards
+    if (this._tickHandle) clearInterval(this._tickHandle);
+    this._tickHandle = setInterval(function() {
+      var nodes = screen.querySelectorAll('[data-live-elapsed]');
+      for (var i = 0; i < nodes.length; i++) {
+        var st = nodes[i].getAttribute('data-start');
+        nodes[i].textContent = 'REC ' + tbFormatElapsed(st);
+      }
+    }, 1000);
+
     APP.call('getTeamPresence', APP.token)
       .then(function(presence) {
         self._renderPresence(screen, presence || []);
@@ -167,6 +192,7 @@ APP.register('team-board', {
   unmount: function() {
     this._allTasks = [];
     this._activeFilter = 'all';
+    if (this._tickHandle) { clearInterval(this._tickHandle); this._tickHandle = null; }
   },
 
   _filteredTasks: function() {
@@ -230,95 +256,118 @@ APP.register('team-board', {
       });
     });
 
+    // Single source of truth: after any timer/done mutation, refetch from server
+    // so the UI reflects authoritative state (avoids the glitchy optimistic flicker).
+    function refresh() {
+      return APP.call('getTeamTasks', {}, APP.token).then(function(tasks) {
+        self._allTasks = tasks || [];
+        self._renderBoard(screen);
+      });
+    }
+
     screen.querySelectorAll('.tb-stop-btn').forEach(function(btn) {
+      if (btn._bound) return; btn._bound = true;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
+        if (btn._busy) return; btn._busy = true;
         var taskId = btn.getAttribute('data-task-id');
-        var logId = btn.getAttribute('data-log-id') || taskId; // use logId if stored, fallback backend resolves
+        var logId = btn.getAttribute('data-log-id') || taskId;
         APP.call('stopTimer', logId, APP.token)
-          .then(function() {
-            var t = self._allTasks.find(function(x) { return x.id === taskId; });
-            if (t) t.status = 'todo';
-            self._renderBoard(screen);
-          })
-          .catch(function(err) { APP.showError(err); });
+          .then(refresh)
+          .catch(function(err) { APP.showError(err); })
+          .then(function() { btn._busy = false; });
       });
     });
 
     screen.querySelectorAll('.tb-play-btn').forEach(function(btn) {
+      if (btn._bound) return; btn._bound = true;
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
+        if (btn._busy) return; btn._busy = true;
         var taskId = btn.getAttribute('data-task-id');
         APP.call('startTimer', taskId, APP.token)
-          .then(function(session) {
-            // Store logId on the corresponding stop button for accurate stopTimer call
-            var stopBtn = screen.querySelector('.tb-stop-btn[data-task-id="' + taskId + '"]');
-            if (stopBtn && session && session.logId) stopBtn.setAttribute('data-log-id', session.logId);
-            var t = self._allTasks.find(function(x) { return x.id === taskId; });
-            if (t) t.status = 'in-progress';
-            self._renderBoard(screen);
-          })
-          .catch(function(err) { APP.showError(err); });
+          .then(refresh)
+          .catch(function(err) { APP.showError(err); })
+          .then(function() { btn._busy = false; });
+      });
+    });
+
+    screen.querySelectorAll('.tb-done-btn').forEach(function(btn) {
+      if (btn._bound) return; btn._bound = true;
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (btn._busy) return; btn._busy = true;
+        var taskId = btn.getAttribute('data-task-id');
+        APP.call('markTaskDone', taskId, APP.token)
+          .then(refresh)
+          .catch(function(err) { APP.showError(err); })
+          .then(function() { btn._busy = false; });
       });
     });
   },
 
   _taskCard: function(task, colType) {
-    var initials = (task.assignee || '?').charAt(0).toUpperCase();
-    var isRunning = colType === 'inprogress' && task.isRunning;
-    var isBlocked = colType === 'blocked';
-    var avatarOpacity = isBlocked ? ' opacity-50' : '';
-    var avatarImgClass = isBlocked ? 'w-full h-full object-cover grayscale' : 'w-full h-full object-cover';
+    // task.client may be an object {id, name, color} after expandTask, or a plain string
+    var clientName = (task.client && typeof task.client === 'object') ? (task.client.name || '') : (task.client || '');
+    var assigneeName = (task.assignee && typeof task.assignee === 'object') ? (task.assignee.name || '') : (task.assignee || '');
+    var initials = (assigneeName || '?').charAt(0).toUpperCase();
+    var isRunning = colType === 'inprogress' && (task.isRunning || task.timerStart);
     var avatarHtml = task.assigneeAvatar
-      ? '<img alt="' + (task.assignee || '') + '" class="' + avatarImgClass + '" src="' + task.assigneeAvatar + '"/>'
+      ? '<img alt="' + escTb(assigneeName) + '" class="w-full h-full object-cover" src="' + escTb(task.assigneeAvatar) + '"/>'
       : '<div class="w-full h-full flex items-center justify-center text-[10px] font-bold bg-secondary-container text-on-secondary-container">' + initials + '</div>';
 
-    // Priority-based border for todo
+    // Priority-based border (left accent)
     var todoBorder = (task.priority === 'urgent' || task.priority === 'high')
       ? 'border-l-4 border-error'
       : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#4F46E5]');
     var borderColor = colType === 'inprogress'
-      ? (isRunning ? 'border-2 border-error' : 'border-l-4 border-primary')
-      : (colType === 'blocked' ? 'border-l-4 border-outline' : todoBorder);
+      ? (isRunning ? 'border-l-4 border-error' : 'border-l-4 border-primary')
+      : todoBorder;
 
-    var shadowClass = isRunning ? 'shadow-md' : 'shadow-sm';
-    var metaMargin = isRunning ? 'mt-2' : 'mt-1';
+    // Smaller action buttons (36px); in-progress gets BOTH stop and done buttons
+    var actionHtml;
+    if (colType === 'inprogress') {
+      actionHtml =
+        '<div class="flex items-center gap-1.5">' +
+          '<button class="tb-stop-btn tb-action-btn w-9 h-9 rounded-full bg-error text-on-error flex items-center justify-center hover:brightness-90 transition-all" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>' +
+          '<button class="tb-done-btn tb-action-btn w-9 h-9 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center hover:brightness-90 transition-all" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">check</span></button>' +
+        '</div>';
+    } else if (colType === 'todo') {
+      actionHtml = '<button class="tb-play-btn tb-action-btn w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center hover:brightness-90 transition-all" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+    } else {
+      actionHtml = ''; // done column: no action
+    }
 
-    var actionHtml = colType === 'inprogress'
-      ? '<button class="tb-stop-btn tb-action-btn w-11 h-11 rounded-full bg-error text-on-error flex items-center justify-center" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">stop</span></button>'
-      : (colType === 'todo'
-          ? '<button class="tb-play-btn tb-action-btn w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-secondary hover:text-on-secondary transition-colors" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:20px;">play_arrow</span></button>'
-          : (colType === 'done'
-              ? ''
-              : '<button class="tb-action-btn w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant" data-task-id="' + task.id + '" aria-label="View task"><span class="material-symbols-outlined" style="font-size:20px;">visibility</span></button>'));
+    // Live elapsed timer for in-progress; otherwise priority/comment meta
+    var elapsedSeed = task.timerStart || task.timer_start || '';
+    var metaHtml;
+    if (colType === 'inprogress' && (isRunning || elapsedSeed)) {
+      metaHtml = '<div class="flex items-center gap-1.5 bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span><span data-live-elapsed data-start="' + escTb(elapsedSeed) + '">REC ' + tbFormatElapsed(elapsedSeed) + '</span></div>';
+    } else if (task.priority === 'high' || task.priority === 'urgent') {
+      metaHtml = '<span class="font-label-bold text-label-bold text-error">High Priority</span>';
+    } else if (task.shared && task.commentCount) {
+      metaHtml = '<span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined" style="font-size:14px;">chat</span><span class="font-label-bold text-label-bold">' + task.commentCount + '</span></span>';
+    } else {
+      metaHtml = '<span></span>';
+    }
 
-    var metaHtml = colType === 'inprogress' && task.timerDisplay
-      ? '<div class="flex items-center gap-1 bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold tracking-wider"><span class="w-2 h-2 rounded-full bg-error"></span> REC ' + task.timerDisplay + '</div>'
-      : (task.priority === 'high' || task.priority === 'urgent'
-          ? '<span class="font-label-bold text-label-bold text-error">High Priority</span>'
-          : (colType === 'blocked' && task.blockedReason
-              ? '<span class="font-label-bold text-label-bold text-error flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:14px;">warning</span> ' + task.blockedReason + '</span>'
-              : (task.shared && task.commentCount
-                  ? '<span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined" style="font-size:14px;">chat</span><span class="font-label-bold text-label-bold">' + task.commentCount + '</span></span>'
-                  : '<span></span>')));
+    var clientChip = clientName
+      ? (task.shared
+          ? '<div class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined" style="font-size:14px;">group</span><span class="font-label-bold text-label-bold">' + escTb(clientName) + '</span></div>'
+          : '<span class="font-label-bold text-label-bold text-on-surface-variant">' + escTb(clientName) + '</span>')
+      : '<span></span>';
 
-    var sharedIcon = task.shared
-      ? '<div class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined" style="font-size:14px;">group</span><span class="font-label-bold text-label-bold">' + (task.client || '') + '</span></div>'
-      : '<span class="font-label-bold text-label-bold text-on-surface-variant">' + (task.client || '') + '</span>';
+    var titleClass = 'font-body-standard text-body-standard text-on-surface font-semibold leading-tight mt-1';
 
-    var titleClass = isBlocked
-      ? 'font-body-standard text-body-standard text-on-surface-variant font-medium leading-tight mt-1 line-through'
-      : 'font-body-standard text-body-standard text-on-surface font-medium leading-tight mt-1';
-
-    return '<div class="bg-surface-container-lowest rounded-xl ' + shadowClass + ' p-3 flex flex-col gap-2 ' + borderColor + ' relative cursor-pointer" data-tb-task-id="' + task.id + '">' +
+    return '<div class="bg-surface rounded-xl shadow-sm p-3 flex flex-col gap-1.5 ' + borderColor + ' relative cursor-pointer" data-tb-task-id="' + task.id + '">' +
       '<div class="flex justify-between items-start">' +
         '<div class="flex-1 pr-8">' +
-          sharedIcon +
-          '<h3 class="' + titleClass + '">' + (task.title || 'Untitled') + '</h3>' +
+          clientChip +
+          '<h3 class="' + titleClass + '">' + escTb(task.title || 'Untitled') + '</h3>' +
         '</div>' +
-        '<div class="absolute top-3 right-3 w-6 h-6 rounded-full overflow-hidden border border-outline-variant' + avatarOpacity + '">' + avatarHtml + '</div>' +
+        '<div class="absolute top-3 right-3 w-6 h-6 rounded-full overflow-hidden border border-outline-variant">' + avatarHtml + '</div>' +
       '</div>' +
-      '<div class="flex items-center justify-between ' + metaMargin + '">' +
+      '<div class="flex items-center justify-between mt-1">' +
         metaHtml +
         actionHtml +
       '</div>' +
