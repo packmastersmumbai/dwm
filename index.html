@@ -159,20 +159,21 @@ var APP = (function() {
 })();
 </script>
 
-<!-- All 14 screens included here — each registers itself via APP.register() -->
-<div class="tf-screen" id="screen-pin-login"><?!= include('screen_pin-login') ?></div>
-<div class="tf-screen" id="screen-kanban-home"><?!= include('screen_kanban-home') ?></div>
-<div class="tf-screen" id="screen-reports-kpi"><?!= include('screen_reports-kpi') ?></div>
-<div class="tf-screen" id="screen-myday-share"><?!= include('screen_myday-share') ?></div>
-<div class="tf-screen" id="screen-task-detail-sheet"><?!= include('screen_task-detail-sheet') ?></div>
-<div class="tf-screen" id="screen-admin-panel"><?!= include('screen_admin-panel') ?></div>
-<div class="tf-screen" id="screen-notifications"><?!= include('screen_notifications') ?></div>
-<div class="tf-screen" id="screen-add-edit-task"><?!= include('screen_add-edit-task') ?></div>
-<div class="tf-screen" id="screen-team-timeline"><?!= include('screen_team-timeline') ?></div>
-<div class="tf-screen" id="screen-daily-plan"><?!= include('screen_daily-plan') ?></div>
-<div class="tf-screen" id="screen-team-board"><?!= include('screen_team-board') ?></div>
-<div class="tf-screen" id="screen-quick-capture"><?!= include('screen_quick-capture') ?></div>
-<div class="tf-screen" id="screen-shift-handover"><?!= include('screen_shift-handover') ?></div>
+<!-- All 14 screens included here — each registers itself via APP.register().
+     role="main" + aria-label give every screen a landmark for SR users. -->
+<div class="tf-screen" role="main" aria-label="Sign in" id="screen-pin-login"><?!= include('screen_pin-login') ?></div>
+<div class="tf-screen" role="main" aria-label="Tasks" id="screen-kanban-home"><?!= include('screen_kanban-home') ?></div>
+<div class="tf-screen" role="main" aria-label="Reports" id="screen-reports-kpi"><?!= include('screen_reports-kpi') ?></div>
+<div class="tf-screen" role="main" aria-label="My Day" id="screen-myday-share"><?!= include('screen_myday-share') ?></div>
+<div class="tf-screen" role="main" aria-label="Task detail" id="screen-task-detail-sheet"><?!= include('screen_task-detail-sheet') ?></div>
+<div class="tf-screen" role="main" aria-label="Admin" id="screen-admin-panel"><?!= include('screen_admin-panel') ?></div>
+<div class="tf-screen" role="main" aria-label="Notifications" id="screen-notifications"><?!= include('screen_notifications') ?></div>
+<div class="tf-screen" role="main" aria-label="Add or edit task" id="screen-add-edit-task"><?!= include('screen_add-edit-task') ?></div>
+<div class="tf-screen" role="main" aria-label="Team timeline" id="screen-team-timeline"><?!= include('screen_team-timeline') ?></div>
+<div class="tf-screen" role="main" aria-label="Daily plan" id="screen-daily-plan"><?!= include('screen_daily-plan') ?></div>
+<div class="tf-screen" role="main" aria-label="Team board" id="screen-team-board"><?!= include('screen_team-board') ?></div>
+<div class="tf-screen" role="main" aria-label="Quick capture" id="screen-quick-capture"><?!= include('screen_quick-capture') ?></div>
+<div class="tf-screen" role="main" aria-label="Shift handover" id="screen-shift-handover"><?!= include('screen_shift-handover') ?></div>
 
 
 <!-- Init: runs after all screen IIFEs have registered via APP.register() -->

@@ -159,7 +159,7 @@ APP.register('daily-plan', {
 
     screen.querySelector('#dp-overdue-list').innerHTML = overdue.length
       ? overdue.map(function(t) { return self._taskCard(t, true); }).join('')
-      : '<p class="text-sm text-on-surface-variant opacity-70">No overdue tasks. Great job!</p>';
+      : '<p class="text-sm text-on-surface-variant opacity-70">No overdue tasks.</p>';
 
     screen.querySelector('#dp-today-list').innerHTML = today.length
       ? today.map(function(t) { return self._taskCard(t, false); }).join('')

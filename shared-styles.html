@@ -65,6 +65,26 @@ button:focus:not(:focus-visible) { outline: none; }
   }
 }
 
+/* === AI-slop fix: neutralize the chunky 4px side-stripe accents on cards ===
+   PRODUCT.md + impeccable shared laws disallow decorative side-stripes >1px
+   as primary status indicators. Status meaning is preserved via tf-pri-chip,
+   colored dots, bg tints, and icons that already exist in every card.
+   Touch-target buttons (.tb-action-btn, w-9/h-9 icon buttons) keep their
+   focus rings via the global rule above. */
+[data-screen] article.border-l-4,
+[data-screen] div.border-l-4 {
+  border-left-width: 1px !important;
+}
+
+/* === A11y fix: enlarge sub-44px icon buttons (w-8/h-8 = 32px, w-9/h-9 = 36px)
+   to meet WCAG 2.5.5 minimum 44x44. Only applies to <button> elements so we
+   don't blow up decorative dots or avatars. === */
+[data-screen] button.w-8.h-8,
+[data-screen] button.w-9.h-9 {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /* === Priority chips (replaces the side-stripe borders on cards) === */
 .tf-pri-chip {
   display: inline-flex;
