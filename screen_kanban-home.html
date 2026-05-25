@@ -104,9 +104,9 @@
     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
     <span class="font-label-bold text-label-bold mt-0.5">Home</span>
   </button>
-  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="myday-share">
-    <span class="material-symbols-outlined">calendar_today</span>
-    <span class="font-label-bold text-label-bold mt-0.5">My Day</span>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="notifications">
+    <span class="material-symbols-outlined">notifications</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Inbox</span>
   </button>
   <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="team-board">
     <span class="material-symbols-outlined">group</span>
@@ -204,8 +204,11 @@
         '</div>';
 
     var playStop = isTimer
-      ? '<button class="w-[52px] h-[52px] rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto relative cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="absolute inset-0 rounded-full border-[4px] border-[#DC2626] opacity-20 animate-ping"></span><span class="material-symbols-outlined fill-icon">stop</span></button>'
-      : '<button class="w-[52px] h-[52px] rounded-full bg-[#10B981] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon">play_arrow</span></button>';
+      ? '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' +
+          '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>' +
+          '<button class="w-9 h-9 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">check</span></button>' +
+        '</div>'
+      : '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
 
     var activeClass = isTimer
       ? ' border border-[#DC2626] shadow-md'
@@ -222,10 +225,10 @@
       '<span class="absolute -bottom-0.5 -right-0.5 w-[8px] h-[8px] rounded-full border border-surface' + assigneePulse + '" style="' + presenceDotStyle + '"></span>' +
     '</div>';
 
-    return '<article class="bg-surface rounded-xl shadow-sm border-l-4 ' + borderClass + ' p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task">' +
+    return '<article class="bg-white rounded-xl shadow-sm border-l-4 ' + borderClass + ' p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task">' +
       '<div class="flex-1 flex flex-col justify-between min-w-0">' +
         '<div class="flex justify-between items-start mb-2 gap-2">' +
-          '<h3 class="font-body-standard text-[14px] font-medium leading-tight truncate">' + escHtml(task.title) + '</h3>' +
+          '<h3 class="font-body-standard text-[14px] font-semibold leading-tight truncate text-on-surface">' + escHtml(task.title) + '</h3>' +
           assigneeHtml +
         '</div>' +
         timerHtml +
@@ -491,6 +494,20 @@
         renderTasks(screen, applyFilter(_allTasks, _activeFilter));
         APP.showError(err);
       });
+      return;
+    }
+
+    if (action === 'mark-done') {
+      e.stopPropagation();
+      e.preventDefault();
+      var taskId = btn.dataset.taskId;
+      if (btn._busy) return; btn._busy = true;
+      APP.call('markTaskDone', taskId, APP.token).then(function () {
+        deactivateTimer(taskId);
+        loadTasks(screen);
+      }).catch(function (err) {
+        APP.showError(err);
+      }).then(function () { btn._busy = false; });
       return;
     }
 
