@@ -5,8 +5,8 @@
     <div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center mb-4 shadow-sm">
       <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1; font-size: 32px;">bolt</span>
     </div>
-    <h1 class="font-title-main text-title-main text-[#F2F4F7] mb-1" style="font-size: 24px; line-height: 1.2; font-weight: 700;">TaskFlow</h1>
-    <p class="font-body-standard text-body-standard text-[#7A828F]" style="font-size: 13px;">Your work. Your pace.</p>
+    <h1 class="font-title-main text-title-main text-[#1F2328] mb-1" style="font-size: 24px; line-height: 1.2; font-weight: 700;">TaskFlow</h1>
+    <p class="font-body-standard text-body-standard text-[#6B7280]" style="font-size: 13px;">Your work. Your pace.</p>
   </div>
 
   <!-- User Selector -->
@@ -43,7 +43,7 @@
     <div class="w-[68px] h-[68px]"></div>
     <button class="pin-btn shadow-sm hover:bg-surface-container-low transition-colors cursor-pointer" data-digit="0">0</button>
     <button class="pin-btn shadow-sm hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-center" data-action="backspace" aria-label="Backspace">
-      <span class="material-symbols-outlined text-[#F2F4F7]">backspace</span>
+      <span class="material-symbols-outlined text-[#1F2328]">backspace</span>
     </button>
   </div>
 
@@ -241,25 +241,25 @@
 
       // Show loading state while fetching users
       var area = screen.querySelector('[data-area="user-selector"]');
-      if (area) area.innerHTML = '<span style="font-size:12px;color:#7A828F;padding:8px">Loading users…</span>';
+      if (area) area.innerHTML = '<span style="font-size:12px;color:#6B7280;padding:8px">Loading users…</span>';
 
       APP.call('getUsersForLogin').then(function (users) {
         _users = (users || []).filter(function(u) { return u.id !== '__error__'; });
         var errorUser = (users || []).find(function(u) { return u.id === '__error__'; });
 
         if (errorUser && area) {
-          area.innerHTML = '<span style="font-size:11px;color:#E5484D;padding:8px;display:block">' + escHtml(errorUser.name) + '</span>';
+          area.innerHTML = '<span style="font-size:11px;color:#DC2626;padding:8px;display:block">' + escHtml(errorUser.name) + '</span>';
           return;
         }
         if (_users.length > 0 && !_selectedUserId) { _selectedUserId = _users[0].id; }
         if (_users.length === 0 && area) {
-          area.innerHTML = '<span style="font-size:11px;color:#E5484D;padding:8px">No active users found. Run initializeSheets() in GAS editor.</span>';
+          area.innerHTML = '<span style="font-size:11px;color:#DC2626;padding:8px">No active users found. Run initializeSheets() in GAS editor.</span>';
           return;
         }
         renderUsers(screen);
       }).catch(function (err) {
         var msg = err && (err.message || err) || 'Unknown error';
-        if (area) area.innerHTML = '<span style="font-size:11px;color:#E5484D;padding:8px">Failed to load users: ' + escHtml(String(msg)) + '</span>';
+        if (area) area.innerHTML = '<span style="font-size:11px;color:#DC2626;padding:8px">Failed to load users: ' + escHtml(String(msg)) + '</span>';
       });
     },
     unmount: function () {

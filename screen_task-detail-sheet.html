@@ -2,8 +2,8 @@
 <!-- Mock Background Content -->
 <div class="absolute inset-0 z-0 flex flex-col p-4 opacity-50 pointer-events-none">
 <div class="h-nav-height bg-surface-container-high rounded-lg w-full mb-4"></div>
-<div class="flex-1 bg-surface-container-low rounded-lg w-full border-l-4 border-l-[#E5484D]"></div>
-<div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#2FB344]"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full border-l-4 border-l-[#DC2626]"></div>
+<div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#10B981]"></div>
 </div>
 <!-- Scrim (Dim Background) -->
 <div class="absolute inset-0 bg-black/40 z-40 transition-opacity duration-300" data-ref="scrim"></div>
@@ -18,7 +18,7 @@
 <!-- HEADER -->
 <div class="flex items-start justify-between mt-2 mb-6">
 <div class="flex items-start gap-3 flex-1">
-<div data-ref="priority-dot" aria-label="Priority" class="w-2.5 h-2.5 rounded-full bg-[#E5484D] mt-1.5 flex-shrink-0"></div>
+<div data-ref="priority-dot" aria-label="Priority" class="w-2.5 h-2.5 rounded-full bg-[#DC2626] mt-1.5 flex-shrink-0"></div>
 <h1 data-ref="task-title" class="font-title-main-mobile text-title-main-mobile text-on-surface line-clamp-2 pr-2">
   Loading...
 </h1>
@@ -53,11 +53,6 @@
 <button data-status="done" data-ref="status-btn-done" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
 <span class="material-symbols-outlined text-[20px]">check</span>
 </button>
-<div class="h-0.5 flex-1 bg-outline-variant mx-1 opacity-50"></div>
-<!-- Blocked -->
-<button data-status="blocked" data-ref="status-btn-blocked" class="w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors">
-<span class="material-symbols-outlined text-[20px]">pause</span>
-</button>
 </div>
 <!-- META GRID (2x2) -->
 <div class="grid grid-cols-2 gap-3 mb-8">
@@ -84,20 +79,20 @@
 </div>
 <!-- TIMER CARD -->
 <div data-ref="timer-card" class="mb-8 relative rounded-xl bg-surface overflow-hidden shadow-sm border border-outline-variant p-1">
-<div data-ref="timer-pulse-ring" class="absolute inset-0 rounded-xl border-2 border-[#E5484D]/30 animate-pulse pointer-events-none hidden"></div>
+<div data-ref="timer-pulse-ring" class="absolute inset-0 rounded-xl border-2 border-[#DC2626]/30 animate-pulse pointer-events-none hidden"></div>
 <div class="bg-surface-container-lowest rounded-lg p-4 flex flex-col items-center justify-center gap-3 relative z-10">
 <div data-ref="timer-display" class="font-timer-display text-timer-display text-on-surface text-center">00:00:00</div>
-<button data-ref="btn-start-timer" class="w-full bg-[#2FB344] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:brightness-90 active:scale-[0.98] transition-all">
+<button data-ref="btn-start-timer" class="w-full bg-[#10B981] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:brightness-90 active:scale-[0.98] transition-all">
 <span class="material-symbols-outlined fill-icon text-[18px]">play_arrow</span>
 START TIMER
 </button>
 <div data-ref="stop-timer-area" class="hidden w-full flex flex-col gap-2">
 <!-- requiresPhoto warning near STOP button (shown when photo required but missing) -->
-<div data-ref="stop-photo-required-notice" class="hidden flex items-center gap-2 bg-error-container/20 border border-[#E5484D]/30 rounded-lg px-3 py-2">
-  <span class="material-symbols-outlined text-[#E5484D] text-[16px] flex-shrink-0">photo_camera</span>
-  <span class="font-body-standard text-[12px] text-[#E5484D]">Add a completion photo first</span>
+<div data-ref="stop-photo-required-notice" class="hidden flex items-center gap-2 bg-error-container/20 border border-[#DC2626]/30 rounded-lg px-3 py-2">
+  <span class="material-symbols-outlined text-[#DC2626] text-[16px] flex-shrink-0">photo_camera</span>
+  <span class="font-body-standard text-[12px] text-[#DC2626]">Add a completion photo first</span>
 </div>
-<button data-ref="btn-stop-timer" class="w-full bg-[#E5484D] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-[#E5484D] active:scale-[0.98] transition-all">
+<button data-ref="btn-stop-timer" class="w-full bg-[#DC2626] text-white font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-[#DC2626] active:scale-[0.98] transition-all">
 <span class="material-symbols-outlined fill-icon text-[18px]">stop</span>
 STOP &amp; MARK DONE
 </button>
@@ -123,12 +118,12 @@ STOP &amp; MARK DONE
 </div>
 <div class="flex gap-3">
 <button data-ref="stop-confirm-cancel" class="flex-1 h-touch-target rounded-lg border border-outline-variant text-on-surface font-label-bold text-label-bold hover:bg-surface-container-low active:scale-95 transition-all">Cancel</button>
-<button data-ref="stop-confirm-ok" class="flex-1 h-touch-target rounded-lg bg-[#E5484D] text-white font-label-bold text-label-bold hover:bg-[#E5484D] active:scale-95 transition-all flex items-center justify-center gap-2"><span class="material-symbols-outlined fill-icon text-[18px]">stop</span>Stop &amp; Done</button>
+<button data-ref="stop-confirm-ok" class="flex-1 h-touch-target rounded-lg bg-[#DC2626] text-white font-label-bold text-label-bold hover:bg-[#DC2626] active:scale-95 transition-all flex items-center justify-center gap-2"><span class="material-symbols-outlined fill-icon text-[18px]">stop</span>Stop &amp; Done</button>
 </div>
 </div>
 </div>
 <button data-ref="btn-share-whatsapp" class="w-full bg-surface-container text-on-surface font-label-bold text-label-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm hover:bg-surface-container-high active:scale-[0.98] transition-all mt-1">
-<span class="material-symbols-outlined text-[18px] text-[#2FB344]">share</span>
+<span class="material-symbols-outlined text-[18px] text-[#10B981]">share</span>
 Share via WhatsApp
 </button>
 </div>
@@ -144,9 +139,9 @@ Share via WhatsApp
     </label>
   </div>
   <!-- requiresPhoto notice (shown when photo is required and none attached) -->
-  <div data-ref="photo-required-notice" class="hidden mb-3 flex items-start gap-2 bg-error-container/20 border border-[#E5484D]/30 rounded-xl px-3 py-2.5">
-    <span class="material-symbols-outlined text-[#E5484D] text-[18px] flex-shrink-0 mt-0.5">photo_camera</span>
-    <span class="font-body-standard text-[13px] text-[#E5484D]">A completion photo is required before this task can be marked done.</span>
+  <div data-ref="photo-required-notice" class="hidden mb-3 flex items-start gap-2 bg-error-container/20 border border-[#DC2626]/30 rounded-xl px-3 py-2.5">
+    <span class="material-symbols-outlined text-[#DC2626] text-[18px] flex-shrink-0 mt-0.5">photo_camera</span>
+    <span class="font-body-standard text-[13px] text-[#DC2626]">A completion photo is required before this task can be marked done.</span>
   </div>
   <!-- Thumbnail grid -->
   <div data-ref="attachments-grid" class="grid grid-cols-3 gap-2">
@@ -295,10 +290,10 @@ Share via WhatsApp
   }
 
   var PRIORITY_COLORS = {
-    'high': '#E5484D',
-    'urgent': '#E5484D',
-    'medium': '#FFB400',
-    'low': '#2FB344'
+    'high': '#DC2626',
+    'urgent': '#DC2626',
+    'medium': '#4F46E5',
+    'low': '#10B981'
   };
 
   var STATUS_LABELS = {
@@ -327,15 +322,15 @@ Share via WhatsApp
     var icon  = qs(screen, 'completion-photo-icon');
     if (badge) {
       badge.textContent = _requiresPhoto ? '(required)' : '(optional)';
-      if (_requiresPhoto) badge.className = 'text-[#E5484D] font-semibold';
+      if (_requiresPhoto) badge.className = 'text-[#DC2626] font-semibold';
       else badge.className = 'text-on-surface-variant font-normal';
     }
     if (row && _requiresPhoto) {
-      row.style.borderColor = _attachmentCount > 0 ? '' : '#E5484D44';
+      row.style.borderColor = _attachmentCount > 0 ? '' : '#DC262644';
       row.style.backgroundColor = _attachmentCount > 0 ? '' : 'rgba(186,26,26,0.06)';
     }
     if (icon && _requiresPhoto && _attachmentCount === 0) {
-      icon.style.color = '#E5484D';
+      icon.style.color = '#DC2626';
     } else if (icon) {
       icon.style.color = '';
     }
@@ -349,7 +344,7 @@ Share via WhatsApp
     qs(screen, 'task-title').textContent = task.title || 'Untitled Task';
 
     // Priority dot
-    var priorityColor = PRIORITY_COLORS[(task.priority || '').toLowerCase()] || '#7A828F';
+    var priorityColor = PRIORITY_COLORS[(task.priority || '').toLowerCase()] || '#6B7280';
     qs(screen, 'priority-dot').style.backgroundColor = priorityColor;
     qs(screen, 'meta-priority-dot').style.backgroundColor = priorityColor;
     qs(screen, 'meta-priority').textContent = task.priority || '—';
@@ -384,19 +379,19 @@ Share via WhatsApp
       var isOverdue = dueDay < today;
       dueEl.textContent = due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       if (isOverdue) {
-        dueWrapper.className = dueWrapper.className.replace('bg-surface-container-lowest border border-outline-variant', 'bg-error-container/30 border border-[#E5484D]/30');
-        dueEl.className = 'font-body-standard text-body-standard font-medium text-[#E5484D] truncate';
+        dueWrapper.className = dueWrapper.className.replace('bg-surface-container-lowest border border-outline-variant', 'bg-error-container/30 border border-[#DC2626]/30');
+        dueEl.className = 'font-body-standard text-body-standard font-medium text-[#DC2626] truncate';
       }
     } else {
       dueEl.textContent = '—';
     }
 
     // Status chips — highlight active
-    ['todo', 'in-progress', 'done', 'blocked'].forEach(function(s) {
+    ['todo', 'in-progress', 'done'].forEach(function(s) {
       var btn = screen.querySelector('[data-status="' + s + '"]');
       if (!btn) return;
       if (task.status === s) {
-        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-[#2FB344] text-white shadow-md transform scale-110 transition-transform';
+        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-[#10B981] text-white shadow-md transform scale-110 transition-transform';
       } else {
         btn.className = 'w-10 h-10 rounded-full flex items-center justify-center border border-outline-variant text-outline bg-surface hover:bg-surface-container-low transition-colors';
       }
@@ -772,7 +767,7 @@ Share via WhatsApp
       }
 
       // Status toggle buttons
-      ['todo', 'in-progress', 'done', 'blocked'].forEach(function(s) {
+      ['todo', 'in-progress', 'done'].forEach(function(s) {
         var btn = screen.querySelector('[data-status="' + s + '"]');
         if (!btn) return;
         btn.addEventListener('click', function() {
@@ -784,7 +779,7 @@ Share via WhatsApp
             if (attachSec) {
               attachSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
               attachSec.style.transition = 'outline 0.2s';
-              attachSec.style.outline = '2px solid #E5484D';
+              attachSec.style.outline = '2px solid #DC2626';
               setTimeout(function() { attachSec.style.outline = ''; }, 2000);
             }
             return;

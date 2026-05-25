@@ -60,14 +60,6 @@
 </div>
 <div id="tb-col-todo" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
 </div>
-<!-- Blocked Column -->
-<div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-error-container/30 p-2 h-full max-h-full overflow-hidden">
-<div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
-<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wide">Blocked</span>
-<span id="tb-blocked-count" class="font-label-bold text-label-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">0</span>
-</div>
-<div id="tb-col-blocked" class="flex flex-col gap-3 overflow-y-auto flex-1"><!-- dynamic --></div>
-</div>
 <!-- Done Column -->
 <div class="w-[280px] shrink-0 flex flex-col gap-3 rounded-lg bg-col-done p-2 h-full max-h-full overflow-hidden" style="background-color:rgba(52,168,83,0.08)">
 <div class="flex items-center justify-between px-2 py-1 min-h-[44px]">
@@ -186,7 +178,7 @@ APP.register('team-board', {
   },
 
   _renderPresence: function(screen, presence) {
-    var colorMap = { online: '#2FB344', away: '#FFB400', offline: '#3A4250' };
+    var colorMap = { online: '#10B981', away: '#4F46E5', offline: '#D3CFC7' };
     var strip = screen.querySelector('#tb-presence-strip');
     var currentUserId = (APP.currentUser && APP.currentUser.id) || null;
     strip.innerHTML = presence.map(function(p) {
@@ -212,12 +204,10 @@ APP.register('team-board', {
     var tasks = self._filteredTasks();
     var inprogress = tasks.filter(function(t) { return t.status === 'in-progress' || t.status === 'inprogress'; });
     var todo = tasks.filter(function(t) { return t.status === 'todo'; });
-    var blocked = tasks.filter(function(t) { return t.status === 'blocked'; });
     var done = tasks.filter(function(t) { return t.status === 'done'; });
 
     screen.querySelector('#tb-inprogress-count').textContent = inprogress.length;
     screen.querySelector('#tb-todo-count').textContent = todo.length;
-    screen.querySelector('#tb-blocked-count').textContent = blocked.length;
     screen.querySelector('#tb-done-count').textContent = done.length;
 
     screen.querySelector('#tb-col-inprogress').innerHTML = inprogress.map(function(t) {
@@ -226,10 +216,6 @@ APP.register('team-board', {
 
     screen.querySelector('#tb-col-todo').innerHTML = todo.map(function(t) {
       return self._taskCard(t, 'todo');
-    }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
-
-    screen.querySelector('#tb-col-blocked').innerHTML = blocked.map(function(t) {
-      return self._taskCard(t, 'blocked');
     }).join('') || '<p class="text-xs text-on-surface-variant text-center py-4 opacity-60">No tasks</p>';
 
     screen.querySelector('#tb-col-done').innerHTML = done.map(function(t) {
@@ -290,7 +276,7 @@ APP.register('team-board', {
     // Priority-based border for todo
     var todoBorder = (task.priority === 'urgent' || task.priority === 'high')
       ? 'border-l-4 border-error'
-      : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#FFB400]');
+      : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#4F46E5]');
     var borderColor = colType === 'inprogress'
       ? (isRunning ? 'border-2 border-error' : 'border-l-4 border-primary')
       : (colType === 'blocked' ? 'border-l-4 border-outline' : todoBorder);

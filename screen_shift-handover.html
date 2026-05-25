@@ -59,18 +59,6 @@
       </div>
     </section>
 
-    <!-- Section: Blocked -->
-    <section>
-      <h2 class="font-body-standard text-body-standard font-semibold text-on-surface flex items-center gap-2 mb-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-error inline-block"></span>
-        Blocked
-        <span data-ref="count-blocked" class="ml-auto font-label-bold text-label-bold text-on-surface-variant"></span>
-      </h2>
-      <div data-ref="list-blocked" class="space-y-2">
-        <div class="text-center text-on-surface-variant py-4 font-label-bold text-label-bold">None</div>
-      </div>
-    </section>
-
     <!-- Share via WhatsApp (bottom CTA) -->
     <button data-ref="btn-whatsapp-bottom"
       class="w-full h-11 bg-[#25D366] text-white rounded-lg font-label-bold text-label-bold flex items-center justify-center gap-2 hover:bg-[#1EB855] active:scale-95 transition-all">
@@ -150,7 +138,7 @@
     lines.push('');
 
     var counts = data.counts || {};
-    lines.push('Total: ' + (counts.total || 0) + ' | Done: ' + (data.completedToday || []).length + ' | Open: ' + (data.stillOpen || []).length + ' | Blocked: ' + (data.blocked || []).length);
+    lines.push('Total: ' + (counts.total || 0) + ' | Done: ' + (data.completedToday || []).length + ' | Open: ' + (data.stillOpen || []).length);
     lines.push('');
 
     function addSection(label, tasks) {
@@ -164,7 +152,6 @@
 
     addSection('Completed Today', data.completedToday);
     addSection('Still Open', data.stillOpen);
-    addSection('Blocked', data.blocked);
 
     return lines.join('\n');
   }
@@ -189,8 +176,7 @@
         [
           { label: 'Total', val: counts.total, color: 'bg-surface-container-high text-on-surface' },
           { label: 'Done',  val: (data.completedToday || []).length, color: 'bg-success text-on-success' },
-          { label: 'Open',  val: (data.stillOpen || []).length, color: 'bg-warning text-on-warning' },
-          { label: 'Blocked', val: (data.blocked || []).length, color: 'bg-error text-on-error' }
+          { label: 'Open',  val: (data.stillOpen || []).length, color: 'bg-warning text-on-warning' }
         ].forEach(function(c) {
           var chip = document.createElement('span');
           chip.className = 'text-[11px] font-label-bold px-2 py-1 rounded-full ' + c.color;
@@ -200,11 +186,9 @@
 
         qs(screen, 'count-completed').textContent = (data.completedToday || []).length;
         qs(screen, 'count-open').textContent      = (data.stillOpen || []).length;
-        qs(screen, 'count-blocked').textContent   = (data.blocked || []).length;
 
         renderSection(screen, 'list-completed', data.completedToday);
         renderSection(screen, 'list-open',      data.stillOpen);
-        renderSection(screen, 'list-blocked',   data.blocked);
 
         // Store for WhatsApp sharing
         screen._handoverData = data;

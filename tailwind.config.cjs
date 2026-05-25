@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config}
- *  TaskFlow Shopfloor theme — semantic keys preserved so existing utility classes
- *  (bg-primary, text-on-surface, etc.) auto-flip to the dark amber palette.
+ *  TaskFlow "Calm Material" — light, indigo-accented theme.
+ *  Semantic keys preserved so existing utility classes (bg-primary, text-on-surface, etc.)
+ *  auto-flip to the new palette.
  *  Source of truth: DESIGN.md + style_tokens.html
  */
 module.exports = {
@@ -12,54 +13,54 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Primary — safety amber
-        'primary': '#FFB400',
-        'on-primary': '#0E1116',
-        'primary-container': '#2E2410',
-        'on-primary-container': '#FFB400',
-        'primary-fixed': '#FFC633',
-        'on-primary-fixed': '#0E1116',
-        'primary-fixed-dim': '#E69F00',
-        // Secondary — muted ink (kept distinct from primary on dark canvas)
-        'secondary': '#B8BFCA',
-        'on-secondary': '#0E1116',
-        'secondary-container': '#1D222A',
-        'on-secondary-container': '#F2F4F7',
-        'secondary-fixed': '#252B35',
-        'on-secondary-fixed': '#F2F4F7',
-        'secondary-fixed-dim': '#7A828F',
-        // Tertiary — on-time green (kept as semantic accent for success states)
-        'tertiary': '#2FB344',
-        'on-tertiary': '#0E1116',
-        'tertiary-container': '#1A2E20',
-        'on-tertiary-container': '#2FB344',
-        'tertiary-fixed': '#1A2E20',
-        'on-tertiary-fixed': '#2FB344',
-        'tertiary-fixed-dim': '#2FB344',
-        // Surface — dark canvas + tonal lifts
-        'surface': '#0E1116',
-        'on-surface': '#F2F4F7',
-        'surface-dim': '#0E1116',
-        'surface-bright': '#252B35',
-        'surface-tint': '#FFB400',
-        'surface-variant': '#1D222A',
-        'on-surface-variant': '#B8BFCA',
-        'surface-container-lowest': '#0E1116',
-        'surface-container-low': '#161A20',
-        'surface-container': '#1D222A',
-        'surface-container-high': '#252B35',
-        'surface-container-highest': '#3A4250',
+        // Primary — indigo
+        'primary': '#4F46E5',
+        'on-primary': '#FFFFFF',
+        'primary-container': '#EEF2FF',
+        'on-primary-container': '#3730A3',
+        'primary-fixed': '#6366F1',
+        'on-primary-fixed': '#FFFFFF',
+        'primary-fixed-dim': '#4338CA',
+        // Secondary — neutral ink
+        'secondary': '#4A5260',
+        'on-secondary': '#FFFFFF',
+        'secondary-container': '#F4F2EE',
+        'on-secondary-container': '#1F2328',
+        'secondary-fixed': '#EAE6DF',
+        'on-secondary-fixed': '#1F2328',
+        'secondary-fixed-dim': '#6B7280',
+        // Tertiary — emerald success
+        'tertiary': '#10B981',
+        'on-tertiary': '#FFFFFF',
+        'tertiary-container': '#ECFDF5',
+        'on-tertiary-container': '#047857',
+        'tertiary-fixed': '#ECFDF5',
+        'on-tertiary-fixed': '#047857',
+        'tertiary-fixed-dim': '#10B981',
+        // Surface — light canvas + tonal lifts
+        'surface': '#FAF9F7',
+        'on-surface': '#1F2328',
+        'surface-dim': '#F4F2EE',
+        'surface-bright': '#FFFFFF',
+        'surface-tint': '#4F46E5',
+        'surface-variant': '#F4F2EE',
+        'on-surface-variant': '#4A5260',
+        'surface-container-lowest': '#FFFFFF',
+        'surface-container-low': '#FAF9F7',
+        'surface-container': '#F4F2EE',
+        'surface-container-high': '#EAE6DF',
+        'surface-container-highest': '#D3CFC7',
         // Outline — hairlines
-        'outline': '#3A4250',
-        'outline-variant': '#2A313C',
+        'outline': '#D3CFC7',
+        'outline-variant': '#E5E1DA',
         // Error — overdue red
-        'error': '#E5484D',
-        'on-error': '#F2F4F7',
-        'error-container': '#2E1517',
-        'on-error-container': '#E5484D',
+        'error': '#DC2626',
+        'on-error': '#FFFFFF',
+        'error-container': '#FEF2F2',
+        'on-error-container': '#991B1B',
         // Background
-        'background': '#0E1116',
-        'on-background': '#F2F4F7',
+        'background': '#FAF9F7',
+        'on-background': '#1F2328',
       },
       fontFamily: {
         'title-main': ['Inter', 'sans-serif'],
@@ -110,13 +111,13 @@ module.exports = {
         '2xl': '10px',
       },
       boxShadow: {
-        // Flat system — shadows neutralised, replaced visually by hairline borders
+        // Subtle elevation for light mode legibility
         'none': 'none',
-        'sm': '0 0 0 1px #2A313C',
-        DEFAULT: '0 0 0 1px #2A313C',
-        'md': '0 0 0 1px #3A4250',
-        'lg': '0 0 0 1px #3A4250',
-        'xl': '0 0 0 1px #3A4250',
+        'sm': '0 1px 2px rgba(0,0,0,0.04)',
+        DEFAULT: '0 1px 2px rgba(0,0,0,0.04)',
+        'md': '0 1px 3px rgba(0,0,0,0.06)',
+        'lg': '0 4px 12px rgba(0,0,0,0.08)',
+        'xl': '0 8px 24px rgba(0,0,0,0.10)',
       },
     },
   },

@@ -7,7 +7,7 @@
 </div>
 <div class="flex items-center gap-2 text-on-surface-variant dark:text-surface-variant">
 <span class="font-label-bold text-label-bold text-on-surface-variant" data-today-label></span>
-<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-[#2FB344]" data-action="share-day" aria-label="Share day summary on WhatsApp">
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-[#10B981]" data-action="share-day" aria-label="Share day summary on WhatsApp">
 <span class="material-symbols-outlined">share</span>
 </button>
 <button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full text-on-surface-variant" data-action="sign-out" aria-label="Sign out">
@@ -64,9 +64,9 @@
 <div class="mt-4 pt-4 border-t border-outline-variant dark:border-outline">
 <section class="flex flex-col gap-2">
 <button class="flex items-center justify-between w-full h-[32px] group" data-toggle-section="shared-pool">
-<div class="flex items-center gap-2 text-[#FFB400]">
+<div class="flex items-center gap-2 text-[#4F46E5]">
 <span class="material-symbols-outlined text-[18px]">group</span>
-<span class="font-label-bold text-label-bold tracking-wider uppercase font-semibold text-[#FFB400]" data-pool-label>Shared Pool</span>
+<span class="font-label-bold text-label-bold tracking-wider uppercase font-semibold text-[#4F46E5]" data-pool-label>Shared Pool</span>
 </div>
 <span class="material-symbols-outlined text-outline-variant group-hover:text-on-surface transition-colors">expand_more</span>
 </button>
@@ -176,8 +176,8 @@
     }
 
     var timerBtn = isActive
-      ? '<button class="w-[44px] h-[44px] rounded-full bg-[#E5484D] bg-opacity-10 flex items-center justify-center text-[#E5484D] active:scale-95 relative" data-action="stop-timer" data-task-id="' + task.id + '"><div class="absolute inset-0 rounded-full border-4 border-[#E5484D] border-opacity-20 animate-pulse"></div><span class="material-symbols-outlined fill-icon">stop</span></button>'
-      : '<button class="w-[44px] h-[44px] rounded-full bg-surface-container flex items-center justify-center text-primary hover:bg-surface-container-highest transition-colors active:scale-95" data-action="start-timer" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon text-[#2FB344]">play_arrow</span></button>';
+      ? '<button class="w-[44px] h-[44px] rounded-full bg-[#DC2626] bg-opacity-10 flex items-center justify-center text-[#DC2626] active:scale-95 relative" data-action="stop-timer" data-task-id="' + task.id + '"><div class="absolute inset-0 rounded-full border-4 border-[#DC2626] border-opacity-20 animate-pulse"></div><span class="material-symbols-outlined fill-icon">stop</span></button>'
+      : '<button class="w-[44px] h-[44px] rounded-full bg-surface-container flex items-center justify-center text-primary hover:bg-surface-container-highest transition-colors active:scale-95" data-action="start-timer" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon text-[#10B981]">play_arrow</span></button>';
 
     return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 ' + borderColor + ' relative" data-task-id="' + task.id + '">' +
       '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
@@ -203,7 +203,7 @@
           '<span class="font-label-bold text-label-bold text-on-surface-variant truncate">' + escHtml(task.client || '') + '</span>' +
         '</div>' +
       '</div>' +
-      '<button class="px-3 py-1.5 rounded-full border border-[#FFB400] text-[#FFB400] flex items-center gap-1 hover:bg-[#FFB400] hover:bg-opacity-10 active:scale-95 font-label-bold text-label-bold" data-action="claim-task" data-task-id="' + task.id + '">Claim <span class="material-symbols-outlined text-[14px]">play_arrow</span></button>' +
+      '<button class="px-3 py-1.5 rounded-full border border-[#4F46E5] text-[#4F46E5] flex items-center gap-1 hover:bg-[#4F46E5] hover:bg-opacity-10 active:scale-95 font-label-bold text-label-bold" data-action="claim-task" data-task-id="' + task.id + '">Claim <span class="material-symbols-outlined text-[14px]">play_arrow</span></button>' +
     '</div>';
   }
 

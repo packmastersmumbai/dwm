@@ -17,7 +17,7 @@
     </button>
     <button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary relative" data-action="notifications" aria-label="Notifications">
       <span class="material-symbols-outlined">notifications</span>
-      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E5484D]"></span>
+      <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#DC2626]"></span>
     </button>
   </div>
 </header>
@@ -53,7 +53,7 @@
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-todo rounded-lg overflow-hidden" data-col-status="todo">
     <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px] text-[#7A828F]">pending</span>
+        <span class="material-symbols-outlined text-[16px] text-[#6B7280]">pending</span>
         <h2 class="text-[13px] font-semibold text-on-surface">To Do</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="todo">0</span>
       </div>
@@ -68,7 +68,7 @@
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-progress rounded-lg overflow-hidden" data-col-status="in-progress">
     <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px] text-[#FFB400]">model_training</span>
+        <span class="material-symbols-outlined text-[16px] text-[#4F46E5]">model_training</span>
         <h2 class="text-[13px] font-semibold text-on-surface">In Progress</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="in-progress">0</span>
       </div>
@@ -79,26 +79,11 @@
     <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-inprogress"></div>
   </section>
 
-  <!-- Column: Blocked -->
-  <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-blocked rounded-lg overflow-hidden" data-col-status="blocked">
-    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px] text-[#E5484D]">block</span>
-        <h2 class="text-[13px] font-semibold text-on-surface">Blocked</h2>
-        <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="blocked">0</span>
-      </div>
-      <button class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer focus-visible:ring-2 ring-primary" data-action="add-task-col" data-status="blocked" aria-label="Add task to Blocked">
-        <span class="material-symbols-outlined text-[18px]">add</span>
-      </button>
-    </div>
-    <div class="p-2 overflow-y-auto hide-scrollbar flex flex-col gap-3" data-area="task-list-blocked"></div>
-  </section>
-
   <!-- Column: Done -->
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-done rounded-lg overflow-hidden" data-col-status="done">
     <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px] text-[#2FB344]">check_circle</span>
+        <span class="material-symbols-outlined text-[16px] text-[#10B981]">check_circle</span>
         <h2 class="text-[13px] font-semibold text-on-surface">Done</h2>
         <span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs" data-col-count="done">0</span>
       </div>
@@ -109,7 +94,7 @@
 </main>
 
 <!-- FAB -->
-<button class="fixed bottom-[80px] right-margin-edge w-fab-size h-fab-size bg-[#FFB400] rounded-full flex items-center justify-center text-white z-40 cursor-pointer hover:bg-primary active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary" style="box-shadow:0 4px 12px rgba(26,115,232,0.35)" data-action="add-task" aria-label="Add task">
+<button class="fixed bottom-[80px] right-margin-edge w-fab-size h-fab-size bg-[#4F46E5] rounded-full flex items-center justify-center text-white z-40 cursor-pointer hover:bg-primary active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary" style="box-shadow:0 4px 12px rgba(26,115,232,0.35)" data-action="add-task" aria-label="Add task">
   <span class="material-symbols-outlined text-[24px]">add</span>
 </button>
 
@@ -152,19 +137,19 @@
 
   function priorityBorderClass(p) {
     if (p === 'urgent' || p === 'high') return 'border-error';
-    if (p === 'medium') return 'border-[#FFB400]';
-    if (p === 'low') return 'border-[#2FB344]';
+    if (p === 'medium') return 'border-[#4F46E5]';
+    if (p === 'low') return 'border-[#10B981]';
     return 'border-outline-variant';
   }
   function priorityDotColor(p) {
-    if (p === 'urgent') return '#E5484D';
+    if (p === 'urgent') return '#DC2626';
     if (p === 'high') return '#FF6D00';
-    if (p === 'medium') return '#FFB400';
-    if (p === 'low') return '#2FB344';
-    return '#3A4250';
+    if (p === 'medium') return '#4F46E5';
+    if (p === 'low') return '#10B981';
+    return '#D3CFC7';
   }
   function presenceDotColor(status) {
-    return status === 'online' ? '#2FB344' : status === 'away' ? '#FFB400' : '#3A4250';
+    return status === 'online' ? '#10B981' : status === 'away' ? '#4F46E5' : '#D3CFC7';
   }
 
   function formatElapsed(startIso) {
@@ -198,7 +183,7 @@
 
     // Due date with overdue styling
     var dueDateHtml = task.dueDate
-      ? '<span class="flex items-center gap-0.5' + (isOverdue ? ' text-[#E5484D] font-semibold' : '') + '"><span class="material-symbols-outlined text-[12px]">calendar_today</span> ' + escHtml(task.dueDate) + '</span>'
+      ? '<span class="flex items-center gap-0.5' + (isOverdue ? ' text-[#DC2626] font-semibold' : '') + '"><span class="material-symbols-outlined text-[12px]">calendar_today</span> ' + escHtml(task.dueDate) + '</span>'
       : '';
 
     // Task-type icon (design_services / code / etc.) per reference
@@ -211,7 +196,7 @@
     var clientChip = clientName ? '<span class="px-2 py-0.5 bg-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '';
 
     var timerHtml = isTimer
-      ? '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-[#E5484D] font-bold mt-1"><span class="animate-pulse" data-live-timer data-start="' + escHtml(timerStart || '') + '">● REC ' + formatElapsed(timerStart) + '</span>' +
+      ? '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-[#DC2626] font-bold mt-1"><span class="animate-pulse" data-live-timer data-start="' + escHtml(timerStart || '') + '">● REC ' + formatElapsed(timerStart) + '</span>' +
           (clientName ? '<span class="ml-auto px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '') +
         '</div>'
       : '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface-variant mt-1">' +
@@ -219,11 +204,11 @@
         '</div>';
 
     var playStop = isTimer
-      ? '<button class="w-[52px] h-[52px] rounded-full bg-[#E5484D] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto relative cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#E5484D] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="absolute inset-0 rounded-full border-[4px] border-[#E5484D] opacity-20 animate-ping"></span><span class="material-symbols-outlined fill-icon">stop</span></button>'
-      : '<button class="w-[52px] h-[52px] rounded-full bg-[#2FB344] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#2FB344] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon">play_arrow</span></button>';
+      ? '<button class="w-[52px] h-[52px] rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto relative cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="absolute inset-0 rounded-full border-[4px] border-[#DC2626] opacity-20 animate-ping"></span><span class="material-symbols-outlined fill-icon">stop</span></button>'
+      : '<button class="w-[52px] h-[52px] rounded-full bg-[#10B981] text-white flex items-center justify-center shrink-0 shadow-sm mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon">play_arrow</span></button>';
 
     var activeClass = isTimer
-      ? ' border border-[#E5484D] shadow-md'
+      ? ' border border-[#DC2626] shadow-md'
       : ' hover:shadow-md';
 
     // Assignee with presence dot (image when available, initials fallback)
@@ -275,8 +260,8 @@
   }
 
   function renderTasks(screen, tasks) {
-    var statuses = { 'todo': 'task-list-todo', 'in-progress': 'task-list-inprogress', 'blocked': 'task-list-blocked', 'done': 'task-list-done' };
-    var counts = { 'todo': 0, 'in-progress': 0, 'blocked': 0, 'done': 0 };
+    var statuses = { 'todo': 'task-list-todo', 'in-progress': 'task-list-inprogress', 'done': 'task-list-done' };
+    var counts = { 'todo': 0, 'in-progress': 0, 'done': 0 };
 
     Object.keys(statuses).forEach(function (status) {
       var area = screen.querySelector('[data-area="' + statuses[status] + '"]');
@@ -398,8 +383,8 @@
           return;
         }
         results.innerHTML = tasks.map(function(t) {
-          var priorityColors = { urgent: '#E5484D', high: '#FF6D00', medium: '#FFB400', low: '#2FB344' };
-          var dotColor = priorityColors[t.priority] || '#3A4250';
+          var priorityColors = { urgent: '#DC2626', high: '#FF6D00', medium: '#4F46E5', low: '#10B981' };
+          var dotColor = priorityColors[t.priority] || '#D3CFC7';
           var clientName = (t.client && t.client.name) ? t.client.name : (t.clientId || '');
           return '<div class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container active:scale-[0.98] cursor-pointer transition-all" data-action="open-task" data-task-id="' + t.id + '">' +
             '<div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + dotColor + '"></div>' +

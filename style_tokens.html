@@ -1,49 +1,49 @@
 <!--
-  TaskFlow Shopfloor — Design Tokens
-  Single source of truth for the design system. Mirrors DESIGN.md frontmatter.
+  TaskFlow — "Calm Material" Design Tokens
+  Light, indigo-accented palette. Single source of truth for CSS variables.
+  Mirrors DESIGN.md frontmatter and tailwind.config.cjs.
   Included once from index.html before shared-styles.html and all screen_*.html partials.
-  Each screen's <style> block should reference these via var(--token-name).
 -->
 <style>
 :root {
-  /* === Colors === */
-  --color-primary: #FFB400;
-  --color-on-primary: #0E1116;
-  --color-primary-hover: #FFC633;
-  --color-primary-pressed: #E69F00;
+  /* === Colors — Calm Material === */
+  --color-primary: #4F46E5;          /* indigo 600 */
+  --color-on-primary: #FFFFFF;
+  --color-primary-hover: #4338CA;
+  --color-primary-pressed: #3730A3;
 
-  --color-canvas: #0E1116;
-  --color-surface-1: #161A20;
-  --color-surface-2: #1D222A;
-  --color-surface-3: #252B35;
-  --color-surface-inverse: #F7F5F2;
+  --color-canvas: #FAF9F7;           /* warm off-white */
+  --color-surface-1: #FFFFFF;
+  --color-surface-2: #F4F2EE;
+  --color-surface-3: #EAE6DF;
+  --color-surface-inverse: #1F2328;
 
-  --color-ink: #F2F4F7;
-  --color-ink-muted: #B8BFCA;
-  --color-ink-subtle: #7A828F;
-  --color-ink-disabled: #4A5160;
-  --color-ink-on-light: #0E1116;
+  --color-ink: #1F2328;              /* near-black, never pure */
+  --color-ink-muted: #4A5260;
+  --color-ink-subtle: #6B7280;
+  --color-ink-disabled: #B5BAC2;
+  --color-ink-on-light: #1F2328;
 
-  --color-hairline: #2A313C;
-  --color-hairline-strong: #3A4250;
-  --color-focus-ring: #FFB400;
+  --color-hairline: #E5E1DA;
+  --color-hairline-strong: #D3CFC7;
+  --color-focus-ring: #6366F1;
 
-  --color-status-ontime: #2FB344;
-  --color-status-ontime-bg: #1A2E20;
-  --color-status-watch: #FFB400;
-  --color-status-watch-bg: #2E2410;
-  --color-status-overdue: #E5484D;
-  --color-status-overdue-bg: #2E1517;
-  --color-status-done: #7A828F;
-  --color-status-done-bg: #1D222A;
+  --color-status-ontime: #10B981;
+  --color-status-ontime-bg: #ECFDF5;
+  --color-status-watch: #F59E0B;
+  --color-status-watch-bg: #FFFBEB;
+  --color-status-overdue: #DC2626;
+  --color-status-overdue-bg: #FEF2F2;
+  --color-status-done: #6B7280;
+  --color-status-done-bg: #F3F4F6;
 
-  --color-rec-active: #E5484D;
-  --color-rec-active-bg: #2E1517;
+  --color-rec-active: #DC2626;
+  --color-rec-active-bg: #FEF2F2;
 
   /* === Typography — families === */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-  --font-serif: 'Instrument Serif', Georgia, serif; /* brand wordmark only */
+  --font-serif: 'Instrument Serif', Georgia, serif;
 
   /* === Typography — sizes === */
   --fs-display-lg: 32px;
@@ -100,6 +100,10 @@
   --touch-glove: 56px;
   --max-content-width: 480px;
 
+  /* === Elevation (subtle, light-mode legibility) === */
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-sheet: 0 -4px 16px rgba(0, 0, 0, 0.06);
+
   /* === Motion === */
   --motion-fast: 120ms ease;
   --motion-base: 200ms ease;
@@ -118,9 +122,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* === Reusable token-driven utility classes ===
-   Use these in screen partials to stay aligned with DESIGN.md.
-   Anything not covered here should still reference var(--*) directly. */
+/* === Reusable token-driven utility classes === */
 
 .tf-btn-primary {
   background: var(--color-primary);
@@ -143,10 +145,10 @@ html, body {
 }
 
 .tf-btn-secondary {
-  background: var(--color-surface-2);
+  background: var(--color-surface-1);
   color: var(--color-ink);
   font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-hairline-strong);
   border-radius: var(--radius-sm);
   padding: 14px 16px;
   min-height: 48px;
@@ -165,7 +167,7 @@ html, body {
 
 .tf-btn-danger {
   background: var(--color-status-overdue);
-  color: var(--color-ink);
+  color: #FFFFFF;
   font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
   border: 0;
   border-radius: var(--radius-sm);
@@ -194,7 +196,7 @@ html, body {
   font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
   background: var(--color-surface-1);
   color: var(--color-ink-muted);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-hairline-strong);
   border-radius: var(--radius-pill);
   padding: 8px 14px;
   min-height: 36px;
@@ -211,12 +213,14 @@ html, body {
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-md);
   padding: var(--space-card-pad);
+  box-shadow: var(--elev-card);
 }
 .tf-card-elevated {
-  background: var(--color-surface-2);
+  background: var(--color-surface-1);
   border: 1px solid var(--color-hairline-strong);
   border-radius: var(--radius-md);
   padding: var(--space-card-pad);
+  box-shadow: var(--elev-card);
 }
 
 .tf-input {
@@ -224,7 +228,7 @@ html, body {
   background: var(--color-surface-1);
   color: var(--color-ink);
   font: var(--fw-regular) var(--fs-body-md)/var(--lh-normal) var(--font-sans);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-hairline-strong);
   border-radius: var(--radius-sm);
   padding: 13px 14px;
   min-height: 48px;
@@ -233,8 +237,9 @@ html, body {
 }
 .tf-input:focus {
   outline: none;
-  background: var(--color-surface-2);
+  background: #FFFFFF;
   border-color: var(--color-focus-ring);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .tf-mono       { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
