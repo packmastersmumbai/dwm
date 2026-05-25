@@ -186,7 +186,7 @@ APP.register('team-board', {
   },
 
   _renderPresence: function(screen, presence) {
-    var colorMap = { online: '#34A853', away: '#FBBC04', offline: '#DADCE0' };
+    var colorMap = { online: '#2FB344', away: '#FFB400', offline: '#3A4250' };
     var strip = screen.querySelector('#tb-presence-strip');
     var currentUserId = (APP.currentUser && APP.currentUser.id) || null;
     strip.innerHTML = presence.map(function(p) {
@@ -290,7 +290,7 @@ APP.register('team-board', {
     // Priority-based border for todo
     var todoBorder = (task.priority === 'urgent' || task.priority === 'high')
       ? 'border-l-4 border-error'
-      : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#FBBC04]');
+      : (task.priority === 'low' ? 'border-l-4 border-outline-variant' : 'border-l-4 border-[#FFB400]');
     var borderColor = colType === 'inprogress'
       ? (isRunning ? 'border-2 border-error' : 'border-l-4 border-primary')
       : (colType === 'blocked' ? 'border-l-4 border-outline' : todoBorder);

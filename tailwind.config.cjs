@@ -1,4 +1,8 @@
-/** @type {import('tailwindcss').Config} */
+/** @type {import('tailwindcss').Config}
+ *  TaskFlow Shopfloor theme — semantic keys preserved so existing utility classes
+ *  (bg-primary, text-on-surface, etc.) auto-flip to the dark amber palette.
+ *  Source of truth: DESIGN.md + style_tokens.html
+ */
 module.exports = {
   content: [
     "./screen_*.html",
@@ -8,54 +12,54 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Primary
-        'primary': '#1A73E8',
-        'on-primary': '#FFFFFF',
-        'primary-container': '#E8F0FE',
-        'on-primary-container': '#041E49',
-        'primary-fixed': '#D3E3FD',
-        'on-primary-fixed': '#041E49',
-        'primary-fixed-dim': '#A8C7FA',
-        // Secondary
-        'secondary': '#4285F4',
-        'on-secondary': '#FFFFFF',
-        'secondary-container': '#C2E7FF',
-        'on-secondary-container': '#001D35',
-        'secondary-fixed': '#D3E3FD',
-        'on-secondary-fixed': '#001A41',
-        'secondary-fixed-dim': '#82B0FF',
-        // Tertiary
-        'tertiary': '#9334E6',
-        'on-tertiary': '#FFFFFF',
-        'tertiary-container': '#EAD5F9',
-        'on-tertiary-container': '#21005D',
-        'tertiary-fixed': '#EAD5F9',
-        'on-tertiary-fixed': '#21005D',
-        'tertiary-fixed-dim': '#D0BCFF',
-        // Surface
-        'surface': '#FFFFFF',
-        'on-surface': '#202124',
-        'surface-dim': '#F5F5F5',
-        'surface-bright': '#FAFAFA',
-        'surface-tint': '#1A73E8',
-        'surface-variant': '#DADCE0',
-        'on-surface-variant': '#5F6368',
-        'surface-container-lowest': '#FFFFFF',
-        'surface-container-low': '#F8F9FA',
-        'surface-container': '#F1F3F4',
-        'surface-container-high': '#E8EAED',
-        'surface-container-highest': '#DADCE0',
-        // Outline
-        'outline': '#79747E',
-        'outline-variant': '#E0E0E0',
-        // Error
-        'error': '#EA4335',
-        'on-error': '#FFFFFF',
-        'error-container': '#FFDAD6',
-        'on-error-container': '#410002',
+        // Primary — safety amber
+        'primary': '#FFB400',
+        'on-primary': '#0E1116',
+        'primary-container': '#2E2410',
+        'on-primary-container': '#FFB400',
+        'primary-fixed': '#FFC633',
+        'on-primary-fixed': '#0E1116',
+        'primary-fixed-dim': '#E69F00',
+        // Secondary — muted ink (kept distinct from primary on dark canvas)
+        'secondary': '#B8BFCA',
+        'on-secondary': '#0E1116',
+        'secondary-container': '#1D222A',
+        'on-secondary-container': '#F2F4F7',
+        'secondary-fixed': '#252B35',
+        'on-secondary-fixed': '#F2F4F7',
+        'secondary-fixed-dim': '#7A828F',
+        // Tertiary — on-time green (kept as semantic accent for success states)
+        'tertiary': '#2FB344',
+        'on-tertiary': '#0E1116',
+        'tertiary-container': '#1A2E20',
+        'on-tertiary-container': '#2FB344',
+        'tertiary-fixed': '#1A2E20',
+        'on-tertiary-fixed': '#2FB344',
+        'tertiary-fixed-dim': '#2FB344',
+        // Surface — dark canvas + tonal lifts
+        'surface': '#0E1116',
+        'on-surface': '#F2F4F7',
+        'surface-dim': '#0E1116',
+        'surface-bright': '#252B35',
+        'surface-tint': '#FFB400',
+        'surface-variant': '#1D222A',
+        'on-surface-variant': '#B8BFCA',
+        'surface-container-lowest': '#0E1116',
+        'surface-container-low': '#161A20',
+        'surface-container': '#1D222A',
+        'surface-container-high': '#252B35',
+        'surface-container-highest': '#3A4250',
+        // Outline — hairlines
+        'outline': '#3A4250',
+        'outline-variant': '#2A313C',
+        // Error — overdue red
+        'error': '#E5484D',
+        'on-error': '#F2F4F7',
+        'error-container': '#2E1517',
+        'on-error-container': '#E5484D',
         // Background
-        'background': '#FFFFFF',
-        'on-background': '#202124',
+        'background': '#0E1116',
+        'on-background': '#F2F4F7',
       },
       fontFamily: {
         'title-main': ['Inter', 'sans-serif'],
@@ -65,39 +69,54 @@ module.exports = {
         'timer-display': ['JetBrains Mono', 'Courier New', 'monospace'],
       },
       fontSize: {
-        'title-main': ['20px', { lineHeight: '1.25', fontWeight: '700' }],
-        'title-main-mobile': ['16px', { lineHeight: '1.25', fontWeight: '700' }],
+        'title-main': ['20px', { lineHeight: '1.25', fontWeight: '600' }],
+        'title-main-mobile': ['17px', { lineHeight: '1.3', fontWeight: '600' }],
         'body-standard': ['14px', { lineHeight: '1.5', fontWeight: '400' }],
-        'label-bold': ['11px', { lineHeight: '1.25', fontWeight: '600' }],
-        'timer-display': ['16px', { lineHeight: '1.25', letterSpacing: '0.06em', fontWeight: '700' }],
+        'label-bold': ['11px', { lineHeight: '1', letterSpacing: '0.12em', fontWeight: '700' }],
+        'timer-display': ['18px', { lineHeight: '1', letterSpacing: '0.02em', fontWeight: '600' }],
       },
       fontWeight: {
-        'title-main': '700',
-        'title-main-mobile': '700',
+        'title-main': '600',
+        'title-main-mobile': '600',
         'body-standard': '400',
-        'label-bold': '600',
-        'timer-display': '700',
+        'label-bold': '700',
+        'timer-display': '600',
       },
       spacing: {
-        'nav-height': '56px',
+        'nav-height': '64px',
         'touch-target': '48px',
+        'touch-glove': '56px',
         'margin-edge': '16px',
         'gutter-card': '16px',
         'fab-size': '56px',
       },
       height: {
-        'nav-height': '56px',
+        'nav-height': '64px',
         'touch-target': '48px',
+        'touch-glove': '56px',
         'fab-size': '56px',
       },
       width: {
-        'nav-height': '56px',
+        'nav-height': '64px',
         'touch-target': '48px',
+        'touch-glove': '56px',
         'fab-size': '56px',
       },
       borderRadius: {
-        'xl': '0.75rem',
-        '2xl': '1rem',
+        'sm': '4px',
+        'md': '6px',
+        'lg': '10px',
+        'xl': '10px',
+        '2xl': '10px',
+      },
+      boxShadow: {
+        // Flat system — shadows neutralised, replaced visually by hairline borders
+        'none': 'none',
+        'sm': '0 0 0 1px #2A313C',
+        DEFAULT: '0 0 0 1px #2A313C',
+        'md': '0 0 0 1px #3A4250',
+        'lg': '0 0 0 1px #3A4250',
+        'xl': '0 0 0 1px #3A4250',
       },
     },
   },

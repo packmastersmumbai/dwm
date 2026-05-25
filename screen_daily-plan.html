@@ -21,7 +21,7 @@ Skip <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
 <span class="material-symbols-outlined text-error text-[20px]">warning</span>
 <h2 class="font-title-main text-title-main text-error">OVERDUE</h2>
 </div>
-<span class="text-[12px] text-[#EA4335] bg-[#FEF3F2] px-2 py-1 rounded-full font-medium">Deal with these first</span>
+<span class="text-[12px] text-[#E5484D] bg-[#2E1517] px-2 py-1 rounded-full font-medium">Deal with these first</span>
 </div>
 <div id="dp-overdue-list" class="flex flex-col gap-3">
 <!-- Skeleton placeholder -->
@@ -74,7 +74,7 @@ Skip <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
 
 <!-- Bottom Action Bar (Sticky) — sits above bottom nav -->
 <div class="fixed w-full bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] p-4 z-40 flex items-center justify-between max-w-3xl left-1/2 -translate-x-1/2" style="bottom:56px">
-<div id="dp-task-count-label" class="text-[13px] text-[#5F6368] font-medium flex items-center gap-2">
+<div id="dp-task-count-label" class="text-[13px] text-[#7A828F] font-medium flex items-center gap-2">
 <span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
 Loading…
 </div>
@@ -170,8 +170,8 @@ APP.register('daily-plan', {
 
   _taskCard: function(task, isOverdue) {
     var isLow = !isOverdue && (task.priority === 'low' || task.optional);
-    var borderColor = isOverdue ? 'border-error' : (isLow ? 'border-outline' : 'border-[#FBBC04]');
-    var dotColor = isOverdue ? 'bg-error' : (isLow ? 'bg-outline' : 'bg-[#FBBC04]');
+    var borderColor = isOverdue ? 'border-error' : (isLow ? 'border-outline' : 'border-[#FFB400]');
+    var dotColor = isOverdue ? 'bg-error' : (isLow ? 'bg-outline' : 'bg-[#FFB400]');
     var opacityClass = isLow ? ' opacity-80' : '';
     var lateBadge = isOverdue
       ? '<span class="text-[11px] font-bold text-error flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> ' + (task.daysLate || '?') + 'd late</span>'

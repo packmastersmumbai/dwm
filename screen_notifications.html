@@ -44,7 +44,7 @@
 </button>
 <h2 class="text-[16px] font-semibold text-on-surface">Notifications</h2>
 </div>
-<button data-ref="btn-mark-all" class="text-[13px] text-[#1A73E8] font-medium hover:underline active:scale-95 transition-transform">Mark all read</button>
+<button data-ref="btn-mark-all" class="text-[13px] text-[#FFB400] font-medium hover:underline active:scale-95 transition-transform">Mark all read</button>
 </div>
 
 <!-- Notification List -->
@@ -63,12 +63,12 @@
 <script>
 (function() {
   var ICON_MAP = {
-    assigned:  { icon: 'assignment',   color: '#1A73E8' },
-    mention:   { icon: 'chat_bubble',  color: '#9334E6' },
-    due:       { icon: 'schedule',     color: '#FA7B17' },
-    done:      { icon: 'check_circle', color: '#34A853' },
-    timer:     { icon: 'timer',        color: '#EA4335' },
-    default:   { icon: 'notifications',color: '#9AA0A6' }
+    assigned:  { icon: 'assignment',   color: '#FFB400' },
+    mention:   { icon: 'chat_bubble',  color: '#FFB400' },
+    due:       { icon: 'schedule',     color: '#FFB400' },
+    done:      { icon: 'check_circle', color: '#2FB344' },
+    timer:     { icon: 'timer',        color: '#E5484D' },
+    default:   { icon: 'notifications',color: '#7A828F' }
   };
 
   function qs(screen, ref) {
@@ -101,14 +101,14 @@
         '<p class="text-[11px] text-on-surface-variant mt-0.5">' + (notif.timeAgo || notif.timestamp || '') + '</p>' +
       '</div>' +
       viewBtn +
-      (isUnread ? '<div class="w-[8px] h-[8px] rounded-full bg-[#1A73E8] shrink-0 mt-2 ml-2 self-start"></div>' : '');
+      (isUnread ? '<div class="w-[8px] h-[8px] rounded-full bg-[#FFB400] shrink-0 mt-2 ml-2 self-start"></div>' : '');
 
     return row;
   }
 
   function markRowRead(row) {
     row.classList.add('opacity-70');
-    var dot = row.querySelector('.rounded-full.bg-\\[\\#1A73E8\\]');
+    var dot = row.querySelector('.rounded-full.bg-\\[\\#FFB400\\]');
     if (dot && dot.classList.contains('w-[8px]')) dot.remove();
   }
 

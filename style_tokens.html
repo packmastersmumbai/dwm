@@ -1,0 +1,253 @@
+<!--
+  TaskFlow Shopfloor — Design Tokens
+  Single source of truth for the design system. Mirrors DESIGN.md frontmatter.
+  Included once from index.html before shared-styles.html and all screen_*.html partials.
+  Each screen's <style> block should reference these via var(--token-name).
+-->
+<style>
+:root {
+  /* === Colors === */
+  --color-primary: #FFB400;
+  --color-on-primary: #0E1116;
+  --color-primary-hover: #FFC633;
+  --color-primary-pressed: #E69F00;
+
+  --color-canvas: #0E1116;
+  --color-surface-1: #161A20;
+  --color-surface-2: #1D222A;
+  --color-surface-3: #252B35;
+  --color-surface-inverse: #F7F5F2;
+
+  --color-ink: #F2F4F7;
+  --color-ink-muted: #B8BFCA;
+  --color-ink-subtle: #7A828F;
+  --color-ink-disabled: #4A5160;
+  --color-ink-on-light: #0E1116;
+
+  --color-hairline: #2A313C;
+  --color-hairline-strong: #3A4250;
+  --color-focus-ring: #FFB400;
+
+  --color-status-ontime: #2FB344;
+  --color-status-ontime-bg: #1A2E20;
+  --color-status-watch: #FFB400;
+  --color-status-watch-bg: #2E2410;
+  --color-status-overdue: #E5484D;
+  --color-status-overdue-bg: #2E1517;
+  --color-status-done: #7A828F;
+  --color-status-done-bg: #1D222A;
+
+  --color-rec-active: #E5484D;
+  --color-rec-active-bg: #2E1517;
+
+  /* === Typography — families === */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif; /* brand wordmark only */
+
+  /* === Typography — sizes === */
+  --fs-display-lg: 32px;
+  --fs-headline-lg: 24px;
+  --fs-headline-md: 20px;
+  --fs-headline-sm: 17px;
+  --fs-body-lg: 16px;
+  --fs-body-md: 14px;
+  --fs-body-sm: 13px;
+  --fs-label-md: 13px;
+  --fs-label-caps: 11px;
+  --fs-mono-timer: 18px;
+  --fs-mono-meta: 12px;
+  --fs-mono-id: 11px;
+
+  /* === Typography — weights === */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* === Typography — line heights === */
+  --lh-tight: 1.15;
+  --lh-snug: 1.25;
+  --lh-normal: 1.5;
+  --lh-flat: 1;
+
+  /* === Typography — tracking === */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  --tracking-caps: 0.12em;
+
+  /* === Radii === */
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+
+  /* === Spacing (4px base) === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-screen-pad: 16px;
+  --space-card-pad: 16px;
+
+  /* === Touch / layout === */
+  --bottom-nav-h: 64px;
+  --touch-min: 44px;
+  --touch-glove: 56px;
+  --max-content-width: 480px;
+
+  /* === Motion === */
+  --motion-fast: 120ms ease;
+  --motion-base: 200ms ease;
+  --motion-slow: 320ms ease;
+  --motion-rec-breath: 1.5s ease-in-out infinite;
+}
+
+/* === Base reset for the app shell === */
+html, body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-md);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Reusable token-driven utility classes ===
+   Use these in screen partials to stay aligned with DESIGN.md.
+   Anything not covered here should still reference var(--*) directly. */
+
+.tf-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
+  letter-spacing: var(--tracking-wide);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.tf-btn-primary:hover { background: var(--color-primary-hover); }
+.tf-btn-primary:active { background: var(--color-primary-pressed); }
+.tf-btn-primary:disabled {
+  background: var(--color-surface-2);
+  color: var(--color-ink-disabled);
+  cursor: not-allowed;
+}
+
+.tf-btn-secondary {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.tf-btn-ghost {
+  background: transparent;
+  color: var(--color-ink-muted);
+  font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.tf-btn-danger {
+  background: var(--color-status-overdue);
+  color: var(--color-ink);
+  font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  font: var(--fw-bold) var(--fs-label-caps)/var(--lh-flat) var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+.tf-chip-ontime  { background: var(--color-status-ontime-bg);  color: var(--color-status-ontime); }
+.tf-chip-watch   { background: var(--color-status-watch-bg);   color: var(--color-status-watch); }
+.tf-chip-overdue { background: var(--color-status-overdue-bg); color: var(--color-status-overdue); }
+.tf-chip-done    { background: var(--color-status-done-bg);    color: var(--color-status-done); }
+
+.tf-chip-filter {
+  display: inline-flex;
+  align-items: center;
+  font: var(--fw-semibold) var(--fs-label-md)/var(--lh-snug) var(--font-sans);
+  background: var(--color-surface-1);
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.tf-chip-filter.is-active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+.tf-card {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-card-pad);
+}
+.tf-card-elevated {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-card-pad);
+}
+
+.tf-input {
+  width: 100%;
+  background: var(--color-surface-1);
+  color: var(--color-ink);
+  font: var(--fw-regular) var(--fs-body-md)/var(--lh-normal) var(--font-sans);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: 13px 14px;
+  min-height: 48px;
+  caret-color: var(--color-primary);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+.tf-input:focus {
+  outline: none;
+  background: var(--color-surface-2);
+  border-color: var(--color-focus-ring);
+}
+
+.tf-mono       { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tf-mono-timer { font: var(--fw-semibold) var(--fs-mono-timer)/var(--lh-flat) var(--font-mono); letter-spacing: var(--tracking-wide); font-variant-numeric: tabular-nums; }
+.tf-mono-meta  { font: var(--fw-medium)   var(--fs-mono-meta)/1.3      var(--font-mono); letter-spacing: var(--tracking-wide); font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+.tf-mono-id    { font: var(--fw-medium)   var(--fs-mono-id)/var(--lh-flat)   var(--font-mono); letter-spacing: 0.04em; color: var(--color-ink-subtle); }
+
+.tf-label-caps {
+  font: var(--fw-bold) var(--fs-label-caps)/var(--lh-flat) var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+
+.tf-hairline { border-top: 1px solid var(--color-hairline); }
+</style>
