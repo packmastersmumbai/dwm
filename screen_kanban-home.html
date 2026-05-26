@@ -3,6 +3,118 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-pulse, .animate-ping { animation: none !important; }
   }
+  /* ── List view ───────────────────────────────────────────────────── */
+  [data-screen="kanban-home"] [data-view-area="list"] {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  [data-screen="kanban-home"] .kh-list-chrome {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 0 4px;
+    position: sticky; top: 0;
+    background: var(--color-surface, #FAF9F7);
+    z-index: 2;
+  }
+  [data-screen="kanban-home"] .kh-list-filters {
+    display: grid;
+    grid-template-columns: minmax(140px, 2fr) repeat(3, minmax(110px, 1fr));
+    gap: 6px;
+  }
+  [data-screen="kanban-home"] .kh-list-filters .tf-input {
+    min-height: 32px;
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  [data-screen="kanban-home"] .kh-list-sel {
+    appearance: auto;
+  }
+  [data-screen="kanban-home"] .kh-list-meta {
+    display: flex; align-items: center; padding: 2px 2px 4px;
+  }
+  [data-screen="kanban-home"] .kh-list-head,
+  [data-screen="kanban-home"] .kh-list-row {
+    display: grid;
+    grid-template-columns: 44px minmax(0,2.4fr) minmax(0,1.4fr) 88px 80px 110px minmax(0,1.2fr) 88px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 8px;
+  }
+  [data-screen="kanban-home"] .kh-list-head {
+    background: var(--color-surface-container-low, #F2EFEA);
+    border-radius: 8px;
+    position: sticky;
+    top: 86px;
+    z-index: 1;
+  }
+  [data-screen="kanban-home"] .kh-list-h {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant, #5A5651);
+    background: transparent;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    padding: 0;
+  }
+  [data-screen="kanban-home"] .kh-list-h:hover { color: var(--color-on-surface, #211F1B); }
+  [data-screen="kanban-home"] .kh-c-act-h { text-align: right; }
+  [data-screen="kanban-home"] .kh-list-body {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  [data-screen="kanban-home"] .kh-list-row {
+    background: #FFFFFF;
+    border: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  [data-screen="kanban-home"] .kh-list-row:hover { background: var(--color-surface-container-low, #F2EFEA); }
+  [data-screen="kanban-home"] .kh-list-row:focus-visible {
+    outline: none;
+    border-color: var(--color-primary, #4F46E5);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  [data-screen="kanban-home"] .kh-list-row.is-done {
+    opacity: 0.6;
+  }
+  [data-screen="kanban-home"] .kh-c-title, [data-screen="kanban-home"] .kh-c-proj,
+  [data-screen="kanban-home"] .kh-c-asg { min-width: 0; }
+  [data-screen="kanban-home"] .kh-c-act { display: flex; justify-content: flex-end; align-items: center; }
+  @media (max-width: 720px) {
+    [data-screen="kanban-home"] .kh-list-filters {
+      grid-template-columns: 1fr 1fr;
+    }
+    [data-screen="kanban-home"] .kh-list-search { grid-column: 1 / -1; }
+    [data-screen="kanban-home"] .kh-list-head { display: none; }
+    [data-screen="kanban-home"] .kh-list-row {
+      grid-template-columns: 28px 1fr auto;
+      grid-template-areas:
+        'pri title act'
+        'pri meta act';
+      row-gap: 2px;
+    }
+    [data-screen="kanban-home"] .kh-c-pri { grid-area: pri; }
+    [data-screen="kanban-home"] .kh-c-title { grid-area: title; }
+    [data-screen="kanban-home"] .kh-c-act { grid-area: act; }
+    [data-screen="kanban-home"] .kh-c-proj,
+    [data-screen="kanban-home"] .kh-c-due,
+    [data-screen="kanban-home"] .kh-c-time,
+    [data-screen="kanban-home"] .kh-c-status,
+    [data-screen="kanban-home"] .kh-c-asg {
+      grid-area: meta;
+      display: inline-flex;
+      margin-right: 8px;
+      font-size: 11px;
+    }
+  }
+
   /* ── Gantt timeline ──────────────────────────────────────────────── */
   [data-screen="kanban-home"] [data-view-area="timeline"] [data-gantt] {
     position: relative;
@@ -416,6 +528,22 @@
   // Supports any number of concurrent running timers per user.
   var _activeTimers = {};
 
+  // Mutation guards — block backend race re-hydration after stop/done.
+  // Entries auto-evict after 60s via the ensureTickerRunning 1s tick.
+  var _recentlyStopped = {}; // taskId -> Date.now()
+  var _recentlyDone    = {}; // taskId -> Date.now()
+  var GUARD_TTL_MS = 60000;
+
+  function _sweepGuards() {
+    var now = Date.now();
+    Object.keys(_recentlyStopped).forEach(function (id) {
+      if (now - _recentlyStopped[id] > GUARD_TTL_MS) delete _recentlyStopped[id];
+    });
+    Object.keys(_recentlyDone).forEach(function (id) {
+      if (now - _recentlyDone[id] > GUARD_TTL_MS) delete _recentlyDone[id];
+    });
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   function priorityBorderClass(p) {
@@ -683,19 +811,290 @@
     '</div>';
   }
 
+  // ── List view: filter/search/sort/persistence ────────────────────────────
+  var _listState = (function () {
+    try {
+      var raw = sessionStorage.getItem('kh.list.filters');
+      if (raw) {
+        var p = JSON.parse(raw);
+        return {
+          q: typeof p.q === 'string' ? p.q : '',
+          priority: p.priority || 'all',
+          project: p.project || 'all',
+          status: p.status || 'all',
+          sortKey: p.sortKey || 'default',
+          sortDir: p.sortDir === 'desc' ? 'desc' : 'asc'
+        };
+      }
+    } catch (e) {}
+    return { q: '', priority: 'all', project: 'all', status: 'all', sortKey: 'default', sortDir: 'asc' };
+  })();
+  var _listSaveDebounce = null;
+  function _persistListState() {
+    clearTimeout(_listSaveDebounce);
+    _listSaveDebounce = setTimeout(function () {
+      try { sessionStorage.setItem('kh.list.filters', JSON.stringify(_listState)); } catch (e) {}
+    }, 200);
+  }
+
+  function _statusLabel(s) {
+    if (s === 'in-progress') return 'In Progress';
+    if (s === 'todo') return 'Todo';
+    if (s === 'done') return 'Done';
+    return s || '—';
+  }
+  function _priLabel(p) {
+    if (!p) return 'None';
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  }
+
+  function _listSortRank(t) {
+    return t.status === 'in-progress' ? 0 : t.status === 'todo' ? 1 : t.status === 'done' ? 2 : 3;
+  }
+
+  function _listGetField(t, key) {
+    switch (key) {
+      case 'priority': return priWeight(t.priority);
+      case 'title':    return (t.title || '').toLowerCase();
+      case 'project':  return ((t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '')).toLowerCase();
+      case 'due':      return t.dueDate || '9999-99-99';
+      case 'time':     return Number(t.totalLoggedMinutes) || 0;
+      case 'status':   return _listSortRank(t);
+      case 'assignee': {
+        var a0 = (t.assignees && t.assignees[0]) || {};
+        return (a0.name || t.assignee || '').toString().toLowerCase();
+      }
+      default: return 0;
+    }
+  }
+
+  function _listDefaultSort(a, b) {
+    var ra = _listSortRank(a), rb = _listSortRank(b);
+    if (ra !== rb) return ra - rb;
+    var pa = priWeight(a.priority), pb = priWeight(b.priority);
+    if (pa !== pb) return pa - pb;
+    var ad = a.dueDate || '9999-99-99', bd = b.dueDate || '9999-99-99';
+    return ad < bd ? -1 : ad > bd ? 1 : 0;
+  }
+
+  function _applyListFilters(tasks) {
+    var q = (_listState.q || '').trim().toLowerCase();
+    return tasks.filter(function (t) {
+      if (_listState.priority !== 'all') {
+        var p = (t.priority || 'none').toLowerCase();
+        if (_listState.priority === 'none' ? (t.priority && p !== 'none') : p !== _listState.priority) return false;
+      }
+      if (_listState.project !== 'all') {
+        var pname = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '');
+        if (pname !== _listState.project) return false;
+      }
+      if (_listState.status !== 'all' && t.status !== _listState.status) return false;
+      if (q && (t.title || '').toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function _renderListRow(t) {
+    var session = _activeTimers[t.id] || null;
+    var isTimer = !!session;
+    var clientName = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '');
+    var asg0 = (t.assignees && t.assignees[0]) || {};
+    var asgName = asg0.name || t.assignee || '—';
+    var asgInit = asgName.split(/\s+/).map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || '?';
+    var pri = (t.priority || '').toLowerCase();
+    var priChipColor = priorityDotColor(t.priority);
+    var priChip = pri
+      ? '<span class="inline-flex items-center justify-center px-1.5 rounded text-[10px] font-bold text-white" style="background:' + priChipColor + ';height:18px;line-height:18px">' + pri.charAt(0).toUpperCase() + '</span>'
+      : '<span class="text-[11px] text-on-surface-variant">—</span>';
+
+    var _today = new Date(); _today.setHours(0,0,0,0);
+    var _due = t.dueDate ? new Date(t.dueDate) : null;
+    if (_due) _due.setHours(0,0,0,0);
+    var isOverdue = !!_due && _due.getTime() < _today.getTime() && t.status !== 'done';
+    var dueTxt = t.dueDate ? escHtml(t.dueDate) : '—';
+
+    var timeHtml;
+    if (isTimer) {
+      timeHtml = '<span class="tf-mono-meta text-[11px] text-[#DC2626] font-bold" data-live-timer data-start="' + escHtml(session.startedAt || '') + '">● ' + formatElapsed(session.startedAt) + '</span>';
+    } else {
+      var mins = Number(t.totalLoggedMinutes) || 0;
+      timeHtml = mins > 0
+        ? '<span class="tf-mono-meta text-[11px] text-on-surface-variant">' + formatMinutes(mins) + '</span>'
+        : '<span class="text-[11px] text-on-surface-variant">—</span>';
+    }
+
+    var statusColor = t.status === 'done' ? '#10B981' : t.status === 'in-progress' ? '#4F46E5' : '#9CA3AF';
+    var statusChip = '<span class="inline-flex items-center gap-1 text-[11px] text-on-surface-variant"><span class="w-1.5 h-1.5 rounded-full" style="background:' + statusColor + '"></span>' + _statusLabel(t.status) + '</span>';
+
+    var actionHtml;
+    if (t.status === 'done') {
+      actionHtml = '<span class="material-symbols-outlined text-[18px] text-[#10B981]">check_circle</span>';
+    } else if (isTimer) {
+      actionHtml =
+        '<button class="w-7 h-7 rounded-full bg-[#DC2626] text-white inline-flex items-center justify-center focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + t.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">stop</span></button>' +
+        '<button class="w-7 h-7 rounded-full bg-[#10B981] text-white inline-flex items-center justify-center focus-visible:ring-2 ring-[#10B981] ring-offset-1 ml-1" data-action="mark-done" data-task-id="' + t.id + '" aria-label="Mark done"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">check</span></button>';
+    } else if (t.status === 'in-progress') {
+      actionHtml =
+        '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white inline-flex items-center justify-center focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + t.id + '" aria-label="Resume timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>' +
+        '<button class="w-7 h-7 rounded-full bg-[#10B981] text-white inline-flex items-center justify-center focus-visible:ring-2 ring-[#10B981] ring-offset-1 ml-1" data-action="mark-done" data-task-id="' + t.id + '" aria-label="Mark done"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">check</span></button>';
+    } else {
+      actionHtml = '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white inline-flex items-center justify-center focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + t.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>';
+    }
+
+    var rowCls = 'kh-list-row' + (t.status === 'done' ? ' is-done' : '');
+    var titleCls = 'text-[13px] font-medium text-on-surface truncate' + (t.status === 'done' ? ' line-through' : '');
+    var dueCls = 'text-[11px] tf-mono-meta ' + (isOverdue ? 'text-[#DC2626] font-semibold' : 'text-on-surface-variant');
+
+    return '<div class="' + rowCls + '" data-action="open-task" data-task-id="' + t.id + '" role="row" tabindex="0">' +
+      '<div class="kh-c-pri">' + priChip + '</div>' +
+      '<div class="kh-c-title"><p class="' + titleCls + '">' + escHtml(t.title || '') + '</p></div>' +
+      '<div class="kh-c-proj text-[11px] text-on-surface-variant truncate">' + (clientName ? escHtml(clientName) : '—') + '</div>' +
+      '<div class="kh-c-due ' + dueCls + '">' + dueTxt + '</div>' +
+      '<div class="kh-c-time">' + timeHtml + '</div>' +
+      '<div class="kh-c-status">' + statusChip + '</div>' +
+      '<div class="kh-c-asg"><span class="inline-flex items-center gap-1 text-[11px] text-on-surface-variant"><span class="w-4 h-4 rounded-full bg-surface-container flex items-center justify-center text-[9px] font-bold">' + asgInit + '</span><span class="truncate">' + escHtml(asgName) + '</span></span></div>' +
+      '<div class="kh-c-act" onclick="event.stopPropagation()">' + actionHtml + '</div>' +
+    '</div>';
+  }
+
+  function _bindListChrome(screen, area, allTasks) {
+    var qInput = area.querySelector('[data-list-q]');
+    var priSel = area.querySelector('[data-list-pri]');
+    var projSel = area.querySelector('[data-list-proj]');
+    var statSel = area.querySelector('[data-list-stat]');
+    var clearBtn = area.querySelector('[data-list-clear]');
+
+    if (qInput && !qInput._bound) {
+      qInput._bound = true;
+      var qDeb;
+      qInput.addEventListener('input', function () {
+        clearTimeout(qDeb);
+        qDeb = setTimeout(function () {
+          _listState.q = qInput.value;
+          _persistListState();
+          renderList(screen, _allTasks ? applyFilter(_allTasks, _activeFilter) : []);
+        }, 180);
+      });
+    }
+    function bindSel(sel, key) {
+      if (!sel || sel._bound) return;
+      sel._bound = true;
+      sel.addEventListener('change', function () {
+        _listState[key] = sel.value;
+        _persistListState();
+        renderList(screen, _allTasks ? applyFilter(_allTasks, _activeFilter) : []);
+      });
+    }
+    bindSel(priSel, 'priority');
+    bindSel(projSel, 'project');
+    bindSel(statSel, 'status');
+
+    if (clearBtn && !clearBtn._bound) {
+      clearBtn._bound = true;
+      clearBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        _listState.q = ''; _listState.priority = 'all'; _listState.project = 'all'; _listState.status = 'all';
+        _listState.sortKey = 'default'; _listState.sortDir = 'asc';
+        _persistListState();
+        renderList(screen, _allTasks ? applyFilter(_allTasks, _activeFilter) : []);
+      });
+    }
+
+    area.querySelectorAll('[data-list-sort]').forEach(function (h) {
+      if (h._bound) return;
+      h._bound = true;
+      h.addEventListener('click', function () {
+        var k = h.getAttribute('data-list-sort');
+        if (_listState.sortKey === k) {
+          _listState.sortDir = _listState.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          _listState.sortKey = k;
+          _listState.sortDir = 'asc';
+        }
+        _persistListState();
+        renderList(screen, _allTasks ? applyFilter(_allTasks, _activeFilter) : []);
+      });
+    });
+  }
+
   function renderList(screen, tasks) {
     var area = screen.querySelector('[data-view-area="list"]');
     if (!area) return;
-    var sorted = tasks.slice().sort(function(a, b) {
-      var ad = a.dueDate || '9999-99-99';
-      var bd = b.dueDate || '9999-99-99';
-      return ad < bd ? -1 : ad > bd ? 1 : 0;
+
+    // Dynamic project options from full task set (not filtered)
+    var projects = {};
+    (_allTasks || []).forEach(function (t) {
+      var n = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '');
+      if (n) projects[n] = true;
     });
-    if (sorted.length === 0) {
-      area.innerHTML = '<p class="text-center text-on-surface-variant text-sm mt-8">No tasks</p>';
-      return;
+    var projOpts = Object.keys(projects).sort();
+
+    function opt(value, label, selVal) {
+      return '<option value="' + escHtml(value) + '"' + (value === selVal ? ' selected' : '') + '>' + escHtml(label) + '</option>';
     }
-    area.innerHTML = sorted.map(renderTaskRow).join('');
+
+    var priOptsHtml = ['all','urgent','high','medium','low','none'].map(function (v) {
+      return opt(v, v === 'all' ? 'All priorities' : _priLabel(v), _listState.priority);
+    }).join('');
+    var projOptsHtml = [opt('all', 'All projects', _listState.project)]
+      .concat(projOpts.map(function (n) { return opt(n, n, _listState.project); })).join('');
+    var statOptsHtml = [
+      opt('all', 'All statuses', _listState.status),
+      opt('todo', 'Todo', _listState.status),
+      opt('in-progress', 'In Progress', _listState.status),
+      opt('done', 'Done', _listState.status)
+    ].join('');
+
+    var anyActive = !!(_listState.q || _listState.priority !== 'all' || _listState.project !== 'all' || _listState.status !== 'all' ||
+                       (_listState.sortKey && _listState.sortKey !== 'default'));
+
+    // Filter + sort
+    var filtered = _applyListFilters(tasks);
+    if (_listState.sortKey && _listState.sortKey !== 'default') {
+      var key = _listState.sortKey, dir = _listState.sortDir === 'desc' ? -1 : 1;
+      filtered.sort(function (a, b) {
+        var av = _listGetField(a, key), bv = _listGetField(b, key);
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+    } else {
+      filtered.sort(_listDefaultSort);
+    }
+
+    function sortArrow(k) {
+      if (_listState.sortKey !== k) return '';
+      return _listState.sortDir === 'asc' ? ' ▲' : ' ▼';
+    }
+
+    var headerCells = [
+      ['priority','Priority'], ['title','Title'], ['project','Project'],
+      ['due','Due'], ['time','Time'], ['status','Status'], ['assignee','Assignee']
+    ].map(function (c) {
+      return '<button type="button" class="kh-list-h" data-list-sort="' + c[0] + '">' + c[1] + sortArrow(c[0]) + '</button>';
+    }).join('') + '<div class="kh-list-h kh-c-act-h">Action</div>';
+
+    var bodyHtml = filtered.length === 0
+      ? '<div class="text-center text-on-surface-variant text-sm py-10">No tasks match these filters.</div>'
+      : filtered.map(_renderListRow).join('');
+
+    area.innerHTML =
+      '<div class="kh-list-chrome">' +
+        '<div class="kh-list-filters">' +
+          '<input type="text" class="tf-input kh-list-search" data-list-q placeholder="Search title…" value="' + escHtml(_listState.q || '') + '" aria-label="Search by title" />' +
+          '<select class="tf-input kh-list-sel" data-list-pri aria-label="Priority filter">' + priOptsHtml + '</select>' +
+          '<select class="tf-input kh-list-sel" data-list-proj aria-label="Project filter">' + projOptsHtml + '</select>' +
+          '<select class="tf-input kh-list-sel" data-list-stat aria-label="Status filter">' + statOptsHtml + '</select>' +
+        '</div>' +
+        (anyActive
+          ? '<div class="kh-list-meta"><span class="text-[11px] text-on-surface-variant">' + filtered.length + ' result' + (filtered.length === 1 ? '' : 's') + '</span><a href="#" class="text-[12px] text-primary hover:underline ml-3" data-list-clear>Clear filters</a></div>'
+          : '<div class="kh-list-meta"><span class="text-[11px] text-on-surface-variant">' + filtered.length + ' task' + (filtered.length === 1 ? '' : 's') + '</span></div>'
+        ) +
+      '</div>' +
+      '<div class="kh-list-head" role="row">' + headerCells + '</div>' +
+      '<div class="kh-list-body" role="rowgroup">' + bodyHtml + '</div>';
+
+    _bindListChrome(screen, area, _allTasks);
   }
 
   // ── Gantt timeline ────────────────────────────────────────────────
@@ -1117,6 +1516,7 @@
         var s = el.getAttribute('data-start');
         if (s) el.textContent = '● REC ' + formatElapsed(s);
       });
+      _sweepGuards();
       // Heartbeat: every 60 ticks (~60 seconds) ping backend for each running timer
       _timerTickCount++;
       if (_timerTickCount >= 60) {
@@ -1139,6 +1539,23 @@
     delete _activeTimers[taskId];
   }
 
+  // Apply _recentlyDone guard — coerce stale 'in-progress' to 'done' until eviction.
+  function _coerceGuardedTasks(tasks) {
+    _sweepGuards();
+    var now = Date.now();
+    return (tasks || []).map(function (t) {
+      if (t && t.id && _recentlyDone[t.id] && t.status !== 'done' &&
+          (now - _recentlyDone[t.id] <= GUARD_TTL_MS)) {
+        t.status = 'done';
+        if (!t.completedAt) t.completedAt = new Date(_recentlyDone[t.id]).toISOString();
+        if (!t.completedBy && APP && APP.currentUser) {
+          t.completedBy = { id: APP.currentUser.id, name: APP.currentUser.name };
+        }
+      }
+      return t;
+    });
+  }
+
   // Quiet refetch — reconciles state without spinners or visual reset.
   function quietReconcile(screen) {
     var fetchPromise = (_activeScope === 'mine')
@@ -1149,7 +1566,7 @@
       if (_activeScope === 'shared') {
         tasks = tasks.filter(function (t) { return t.isShared === true || t.shared === true; });
       }
-      _allTasks = tasks;
+      _allTasks = _coerceGuardedTasks(tasks);
       renderAll(screen);
     }).catch(function () { /* silent */ });
   }
@@ -1167,19 +1584,23 @@
       if (_activeScope === 'shared') {
         tasks = tasks.filter(function (t) { return t.isShared === true || t.shared === true; });
       }
-      _allTasks = tasks;
+      _allTasks = _coerceGuardedTasks(tasks);
       renderAll(screen);
       ensureTickerRunning();
     }).catch(function (err) { APP.showError(err); });
 
     // Hydrate ALL active timers for current user (multi-timer)
     APP.call('getActiveTimers', APP.currentUser.id, APP.token).then(function (sessions) {
-      _activeTimers = {};
+      _sweepGuards();
+      var now = Date.now();
+      var next = {};
       (sessions || []).forEach(function (s) {
-        if (s && s.taskId && s.logId) {
-          _activeTimers[s.taskId] = { logId: s.logId, startedAt: s.startedAt || new Date().toISOString() };
-        }
+        if (!s || !s.taskId || !s.logId) return;
+        // Skip incoming sessions that the user recently stopped — backend cache may lag.
+        if (_recentlyStopped[s.taskId] && (now - _recentlyStopped[s.taskId] <= GUARD_TTL_MS)) return;
+        next[s.taskId] = { logId: s.logId, startedAt: s.startedAt || new Date().toISOString() };
       });
+      _activeTimers = next;
       renderAll(screen);
       ensureTickerRunning();
     }).catch(function () { /* benign — first deploy may not have getActiveTimers yet */ });
@@ -1349,12 +1770,14 @@
       var localTask = _allTasks.find(function (t) { return t.id === taskId; });
       // Don't snap status back — server keeps it in-progress until marked done.
       delete _activeTimers[taskId];
+      _recentlyStopped[taskId] = Date.now();
       renderAll(screen);
 
       APP.call('stopTimer', session.logId, APP.token).then(function () {
         // Quietly reconcile totals (totalLoggedMinutes) without flicker
         quietReconcile(screen);
       }).catch(function (err) {
+        delete _recentlyStopped[taskId];
         _activeTimers[taskId] = snapshot;
         renderAll(screen);
         ensureTickerRunning();
@@ -1382,11 +1805,15 @@
           : null;
       }
       delete _activeTimers[taskId];
+      _recentlyDone[taskId] = Date.now();
+      _recentlyStopped[taskId] = Date.now();
       renderAll(screen);
 
       APP.call('markTaskDone', taskId, APP.token).then(function () {
         quietReconcile(screen);
       }).catch(function (err) {
+        delete _recentlyDone[taskId];
+        delete _recentlyStopped[taskId];
         if (localTask) {
           localTask.status = priorStatus;
           localTask.completedAt = priorCompletedAt;
