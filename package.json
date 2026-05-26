@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "audit": "node e2e-audit.js",
+    "verify": "node e2e-verify.js"
+  },
   "devDependencies": {
     "tailwindcss": "^3.4.19"
   }

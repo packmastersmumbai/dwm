@@ -1,6 +1,9 @@
 node_modules/
 .playwright/
 screenshots/
+audit-screenshots/
+.audit-results.json
+STATE.md
 creds.json
 *.log
 .DS_Store
