@@ -55,6 +55,50 @@ select:focus-visible,
 }
 button:focus:not(:focus-visible) { outline: none; }
 
+/* === Touch-device hover neutralizer ===
+   This is a gloves-on factory app; mobile is the primary surface.
+   Tailwind's hover:* utilities fire :hover on tap and the highlight STICKS
+   until the next tap somewhere else, leaving ghost-highlighted buttons.
+   On any device with no fine pointer, hover backgrounds are wiped. */
+@media (hover: none), (pointer: coarse) {
+  [class*="hover\\:bg-"]:hover {
+    background-color: transparent !important;
+  }
+  [class*="hover\\:bg-"][class*="bg-"]:hover {
+    /* For buttons that ALSO carry a base bg- class, fall back to the base
+       by clearing the hover-applied bg. The base bg class wins on cascade. */
+    background-color: revert !important;
+  }
+  [class*="hover\\:underline"]:hover { text-decoration: none !important; }
+  [class*="hover\\:shadow"]:hover { box-shadow: revert !important; }
+}
+
+/* === Bottom-sheet enter / exit ===
+   Animated counterpart to the existing class-toggle pattern. Sheets that opt in
+   should start with .tf-sheet (sets initial state) and toggle .tf-sheet-open
+   instead of removing a .hidden class. Curve is the iOS Ionic drawer curve.
+   Scrim has its own opacity fade. */
+.tf-sheet {
+  /* The sheet's own card; consumer is responsible for positioning. */
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 280ms var(--ease-sheet, cubic-bezier(0.32, 0.72, 0, 1)),
+    opacity 200ms var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1));
+  will-change: transform, opacity;
+}
+.tf-sheet.tf-sheet-open {
+  transform: translateY(0);
+  opacity: 1;
+}
+.tf-scrim {
+  background-color: rgba(0, 0, 0, 0);
+  transition: background-color 200ms var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.tf-scrim.tf-scrim-open {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
 /* === Reduced motion — disable all animations system-wide === */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -613,10 +657,15 @@ button:focus:not(:focus-visible) { outline: none; }
 .pointer-events-none { pointer-events: none; }
 .select-none { user-select: none; }
 
-/* --- Transition / interaction utilities --- */
-.transition-colors { transition-property: color, background-color, border-color; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-.transition-all { transition-property: all; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-.transition-opacity { transition-property: opacity; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+/* --- Transition / interaction utilities ---
+   `transition-all` is dangerous: it animates EVERY property that changes,
+   including layout-affecting ones (margin/padding/height) which trigger
+   reflow and feel janky on mid-tier Android. We scope it to the props
+   real UI interactions actually animate. */
+.transition-colors { transition-property: color, background-color, border-color; transition-duration: 150ms; transition-timing-function: var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1)); }
+.transition-all { transition-property: transform, opacity, background-color, color, border-color, box-shadow; transition-duration: 180ms; transition-timing-function: var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1)); }
+.transition-opacity { transition-property: opacity; transition-duration: 150ms; transition-timing-function: var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1)); }
+.transition-transform { transition-property: transform; transition-duration: 160ms; transition-timing-function: var(--ease-out-strong, cubic-bezier(0.23, 1, 0.32, 1)); }
 .active\:scale-95:active { transform: scale(0.95); }
 .active\:scale-90:active { transform: scale(0.9); }
 .hover\:underline:hover { text-decoration: underline; }

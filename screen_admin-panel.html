@@ -196,9 +196,9 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 <!-- Edit User Bottom Sheet (shared, hidden by default) -->
 <div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
   <!-- Scrim -->
-  <div data-ref="edit-user-scrim" class="absolute inset-0 bg-black/40 transition-opacity"></div>
-  <!-- Sheet -->
-  <div class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl shadow-xl flex flex-col max-h-[90dvh]">
+  <div data-ref="edit-user-scrim" class="absolute inset-0 tf-scrim"></div>
+  <!-- Sheet (slides up from bottom edge via .tf-sheet on open) -->
+  <div data-ref="edit-user-sheet-card" class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl shadow-xl flex flex-col max-h-[90dvh] tf-sheet">
     <!-- Handle -->
     <div class="flex justify-center pt-3 pb-1">
       <div class="w-8 h-1 rounded-full bg-outline-variant"></div>
@@ -432,11 +432,27 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
     sheet.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    // Force a reflow so the next class change actually animates from the
+    // initial .tf-sheet state instead of being batched into the same paint.
+    var card  = qs(screen, 'edit-user-sheet-card');
+    var scrim = qs(screen, 'edit-user-scrim');
+    // eslint-disable-next-line no-unused-expressions
+    if (card) card.offsetHeight;
+    if (card)  card.classList.add('tf-sheet-open');
+    if (scrim) scrim.classList.add('tf-scrim-open');
   }
 
   function closeEditUserSheet(screen) {
-    qs(screen, 'edit-user-sheet').classList.add('hidden');
-    document.body.style.overflow = '';
+    var sheet = qs(screen, 'edit-user-sheet');
+    var card  = qs(screen, 'edit-user-sheet-card');
+    var scrim = qs(screen, 'edit-user-scrim');
+    if (card)  card.classList.remove('tf-sheet-open');
+    if (scrim) scrim.classList.remove('tf-scrim-open');
+    // After the transform/opacity transition finishes, fully hide.
+    setTimeout(function() {
+      sheet.classList.add('hidden');
+      document.body.style.overflow = '';
+    }, 280);
     _editUserId = null;
   }
 

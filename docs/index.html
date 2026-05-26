@@ -58,7 +58,8 @@
     border: 2.5px solid #E8F0FE;
     border-top-color: #1A73E8;
     border-radius: 50%;
-    animation: spin .9s linear infinite;
+    /* Faster spin = perceived faster load (Emil's perceived-performance rule). */
+    animation: spin .7s linear infinite;
     margin-top: 4px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -82,25 +83,19 @@
   ></iframe>
 </div>
 <script>
-  // Hide splash once iframe fires `load`. GAS apps render their body in a nested iframe,
-  // so 'load' on the outer wrapper fires before content paint; we add a 1.2s grace so
-  // the user sees the splash long enough to feel intentional, then fade out.
+  // Hide splash as soon as iframe fires `load`. Previously held the splash for a
+  // 1200ms "feel intentional" grace, which just made the app feel slower. Trust
+  // the load event; on slow networks the hard 6s timeout still catches stalls.
   var splash = document.getElementById('splash');
   var iframe = document.getElementById('app');
-  var minSplash = 1200;
-  var loadedAt = null;
-  var pageStart = Date.now();
-  iframe.addEventListener('load', function() {
-    loadedAt = Date.now();
-    var waited = loadedAt - pageStart;
-    var remain = Math.max(0, minSplash - waited);
-    setTimeout(function() {
-      splash.classList.add('hide');
-      setTimeout(function() { splash.style.display = 'none'; }, 450);
-    }, remain);
-  });
-  // Hard timeout: hide splash after 8s even if iframe never fires load
-  setTimeout(function() { splash.classList.add('hide'); setTimeout(function(){ splash.style.display='none'; }, 450); }, 8000);
+  function hideSplash() {
+    if (splash.classList.contains('hide')) return;
+    splash.classList.add('hide');
+    setTimeout(function() { splash.style.display = 'none'; }, 350);
+  }
+  iframe.addEventListener('load', hideSplash);
+  // Hard timeout: hide splash after 6s even if iframe never fires load.
+  setTimeout(hideSplash, 6000);
 
   // Service worker registration for offline shell (cache the wrapper itself)
   if ('serviceWorker' in navigator) {

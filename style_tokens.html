@@ -104,10 +104,19 @@
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04);
   --elev-sheet: 0 -4px 16px rgba(0, 0, 0, 0.06);
 
-  /* === Motion === */
-  --motion-fast: 120ms ease;
-  --motion-base: 200ms ease;
-  --motion-slow: 320ms ease;
+  /* === Motion ===
+     Custom curves: built-in CSS easings lack the punch that makes
+     animations feel intentional (Emil Kowalski's design-engineering rule).
+     ease-out-strong   — UI interactions (dropdowns, tooltips, button feedback)
+     ease-in-out-strong — on-screen movement / morphs
+     ease-sheet         — iOS-like drawer + bottom-sheet curve (Ionic)
+     Duration tokens carry only the time; combine with a curve token. */
+  --ease-out-strong:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-sheet:         cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-fast: 120ms var(--ease-out-strong);
+  --motion-base: 200ms var(--ease-out-strong);
+  --motion-slow: 320ms var(--ease-out-strong);
   --motion-rec-breath: 1.5s ease-in-out infinite;
 }
 

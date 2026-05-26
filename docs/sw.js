@@ -4,7 +4,7 @@
 (function () {
   if (typeof self === 'undefined' || typeof self.addEventListener !== 'function') return;
 
-  var CACHE = 'taskflow-wrapper-v2';
+  var CACHE = 'taskflow-wrapper-v3';
   var SHELL = ['./', './index.html'];
 
   self.addEventListener('install', function (e) {
