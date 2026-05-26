@@ -45,7 +45,19 @@ async function loginAs(browser, user) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   const t0 = Date.now();
-  await page.goto(APP_URL, { waitUntil: 'networkidle', timeout: 60000 });
+  // Resilient goto — retry up to 3x on transient network errors.
+  let gotoErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(APP_URL, { waitUntil: 'networkidle', timeout: 60000 });
+      gotoErr = null;
+      break;
+    } catch (e) {
+      gotoErr = e;
+      await page.waitForTimeout(1500 * attempt);
+    }
+  }
+  if (gotoErr) { return { frame: null, page, ctx, ms: -1, taps: 0, debug: { gotoErr: gotoErr.message } }; }
   const frame = await findFrame(page);
   if (!frame) return { frame: null, ms: -1, taps: 0 };
   await page.waitForTimeout(1500);
@@ -86,8 +98,19 @@ async function closeCtx(ctx) {
   if (ctx) { try { await ctx.close(); } catch (e) {} }
 }
 
-async function evalIn(frame, fn) {
-  try { return await frame.evaluate(fn); } catch (e) { return { __err: e.message }; }
+async function evalIn(frame, fn, arg) {
+  try { return await frame.evaluate(fn, arg); } catch (e) { return { __err: e.message }; }
+}
+
+// Wait until at least one task card has rendered on kanban-home (data loaded).
+async function waitForCards(frame, page, timeoutMs) {
+  const deadline = Date.now() + (timeoutMs || 15000);
+  while (Date.now() < deadline) {
+    const n = await evalIn(frame, () => document.querySelectorAll('#screen-kanban-home [data-task-id]').length);
+    if (n && n > 0) return n;
+    await page.waitForTimeout(400);
+  }
+  return 0;
 }
 
 async function probe1_loginEachUser(browser) {
@@ -105,17 +128,27 @@ async function probe1_loginEachUser(browser) {
 }
 
 async function probe2_scopeFilter(browser) {
-  const { frame, page, ctx } = await loginAs(browser, USERS[1]);
+  const { frame, page, ctx } = await loginAs(browser, USERS[1]); // Priya
   if (!frame) { rec('2.scope-mine', '✗', 'login failed'); await closeCtx(ctx); return; }
-  await evalIn(frame, () => APP.navigate && APP.navigate('kanban-home'));
-  await page.waitForTimeout(2000);
+  await waitForCards(frame, page, 15000);
+  // The card avatar image's alt attribute carries the assignee name (renderCard line ~672).
   const mine = await evalIn(frame, () => {
-    const cards = document.querySelectorAll('#screen-kanban-home .task-card, #screen-kanban-home [data-task-id]');
-    return Array.from(cards).map(c => c.getAttribute('data-assignee-name') || c.getAttribute('data-assignee') || '');
+    const cards = document.querySelectorAll('#screen-kanban-home [data-task-id]');
+    return Array.from(cards).map(c => {
+      const img = c.querySelector('img[alt]');
+      if (img) return img.getAttribute('alt');
+      // Fallback: initials div has no alt, return ''.
+      return '';
+    });
   });
-  const offMine = Array.isArray(mine) ? mine.filter(n => n && n !== 'Priya' && n !== '').length : -1;
-  rec('2.scope-mine', offMine === 0 && Array.isArray(mine) && mine.length > 0 ? '✓' : (offMine === -1 ? '⚠' : (mine.length === 0 ? '⚠' : '✗')),
-      'cards=' + (Array.isArray(mine) ? mine.length : '?') + ' non-Priya=' + offMine);
+  const offMine = Array.isArray(mine) ? mine.filter(n => n && n !== 'Priya').length : -1;
+  const total = Array.isArray(mine) ? mine.length : 0;
+  // ✓ only when we actually have cards AND none are off-user. ⚠ when 0 cards (Priya may simply have none assigned).
+  let status;
+  if (total === 0) status = '⚠';
+  else if (offMine === 0) status = '✓';
+  else status = '✗';
+  rec('2.scope-mine', status, 'cards=' + total + ' non-Priya=' + offMine);
   await page.screenshot({ path: PATH.join(OUT, 'scope-priya-mine.png') });
   await closeCtx(ctx);
 }
@@ -123,57 +156,90 @@ async function probe2_scopeFilter(browser) {
 async function probeTimer(browser, label, action) {
   const { frame, page, ctx } = await loginAs(browser, USERS[0]);
   if (!frame) { rec(label, '✗', 'login failed'); await closeCtx(ctx); return; }
+  const cards = await waitForCards(frame, page, 15000);
+  if (!cards) { rec(label, '⚠', 'no cards rendered after login'); await closeCtx(ctx); return; }
+
+  // Pick a card that has the matching button for the action.
+  const wantSel = action === 'start' ? '[data-action="start-timer"]' : '[data-action="stop-timer"]';
+  const r = await evalIn(frame, (sel) => {
+    const cards = document.querySelectorAll('#screen-kanban-home [data-task-id]');
+    for (const c of cards) {
+      const btn = c.querySelector(sel);
+      if (btn) {
+        const id = c.getAttribute('data-task-id');
+        btn.click();
+        return { id, clicked: true };
+      }
+    }
+    return { err: 'no card with ' + sel };
+  }, wantSel);
+
   await page.waitForTimeout(2000);
-  const r = await evalIn(frame, (act) => {
-    const card = document.querySelector('#screen-kanban-home [data-task-id]');
-    if (!card) return { err: 'no card' };
-    const id = card.getAttribute('data-task-id');
-    const btn = card.querySelector('[data-action="start-timer"], [data-action="stop-timer"]');
-    if (btn) btn.click();
-    return { id, hadBtn: !!btn };
-  });
-  await page.waitForTimeout(1500);
-  const pill = await evalIn(frame, () => !!document.querySelector('#rec-pill, [data-rec-pill], .rec-pill'));
+  // REC pill = `[data-live-timer]` per screen_kanban-home.html:636.
+  const pill = await evalIn(frame, () => document.querySelectorAll('[data-live-timer]').length);
   await page.screenshot({ path: PATH.join(OUT, label + '.png') });
-  rec(label, r && !r.err ? '✓' : '⚠', JSON.stringify(r) + ' recPill=' + pill);
+  rec(label, r && !r.err ? (action === 'start' ? (pill > 0 ? '✓' : '⚠') : '✓') : '⚠',
+      JSON.stringify(r) + ' recPills=' + pill);
   await closeCtx(ctx);
 }
 
 async function probe7_bottomNav(browser) {
   const { frame, page, ctx } = await loginAs(browser, USERS[0]);
   if (!frame) { rec('7.bottom-nav', '✗', 'login failed'); await closeCtx(ctx); return; }
+  await page.waitForTimeout(2000);
   const slots = ['kanban-home','myday-share','team-board','reports-kpi','admin-panel'];
+  const detail = {};
   let okN = 0;
   for (const s of slots) {
+    // Ensure we navigate AWAY from the target first (so the activation is a real transition).
+    if (s === 'kanban-home') {
+      await evalIn(frame, () => { try { APP.navigate('myday-share'); } catch(e){} });
+      await page.waitForTimeout(800);
+    }
     await evalIn(frame, (target) => { try { APP.navigate(target); } catch(e){} }, s);
-    await page.waitForTimeout(1200);
-    const active = await evalIn(frame, (target) => !!document.querySelector('#screen-' + target + '.active'), s);
+    // Poll up to 4s for the screen to become active.
+    let active = false;
+    for (let i = 0; i < 10 && !active; i++) {
+      await page.waitForTimeout(400);
+      active = await evalIn(frame, (target) => !!document.querySelector('#screen-' + target + '.active'), s);
+    }
+    detail[s] = active;
     if (active) okN++;
   }
-  rec('7.bottom-nav', okN === slots.length ? '✓' : '✗', okN + '/' + slots.length + ' slots activated');
+  rec('7.bottom-nav', okN === slots.length ? '✓' : '✗', okN + '/' + slots.length + ' ' + JSON.stringify(detail));
   await closeCtx(ctx);
 }
 
 async function probe8_gantt(browser) {
+  // Gantt lives in kanban-home's "timeline" view-area, NOT in screen_team-timeline.
   const { frame, page, ctx } = await loginAs(browser, USERS[0]);
   if (!frame) { rec('8.gantt-grouping', '✗', 'login failed'); await closeCtx(ctx); return; }
+  await waitForCards(frame, page, 15000);
   const t0 = Date.now();
-  await evalIn(frame, () => APP.navigate('team-timeline'));
+  await evalIn(frame, () => {
+    const btn = document.querySelector('#screen-kanban-home [data-view="timeline"]');
+    if (btn) btn.click();
+  });
   await page.waitForTimeout(3500);
   perf.timelineRenderMs = Date.now() - t0;
-  const lanes = await evalIn(frame, () => document.querySelectorAll('#screen-team-timeline [data-project-lane], #screen-team-timeline .project-lane').length);
-  rec('8.gantt-grouping', lanes > 0 ? '✓' : '⚠', 'projectLanes=' + lanes + ' renderMs=' + perf.timelineRenderMs);
+  const lanes = await evalIn(frame, () => document.querySelectorAll('#screen-kanban-home [data-view-area="timeline"] [data-project-header], #screen-kanban-home [data-view-area="timeline"] .gantt-project-header').length);
+  rec('8.gantt-grouping', lanes > 0 ? '✓' : '⚠', 'projectHeaders=' + lanes + ' renderMs=' + perf.timelineRenderMs);
   await page.screenshot({ path: PATH.join(OUT, 'gantt.png') });
   await closeCtx(ctx);
 }
 
 async function probe9_listSticky(browser) {
+  // List sticky strip is `.kh-list-sticky` inside kanban-home's "list" view-area.
   const { frame, page, ctx } = await loginAs(browser, USERS[0]);
   if (!frame) { rec('9.list-sticky', '✗', 'login failed'); await closeCtx(ctx); return; }
-  await evalIn(frame, () => APP.navigate && APP.navigate('list-view'));
+  await waitForCards(frame, page, 15000);
+  await evalIn(frame, () => {
+    const btn = document.querySelector('#screen-kanban-home [data-view="list"]');
+    if (btn) btn.click();
+  });
   await page.waitForTimeout(2000);
   const sticky = await evalIn(frame, () => {
-    const strip = document.querySelector('#screen-list-view .filter-strip, #screen-list-view [data-filter-strip], #screen-list-view .sticky');
+    const strip = document.querySelector('#screen-kanban-home [data-view-area="list"] .kh-list-sticky, #screen-kanban-home .kh-list-sticky');
     if (!strip) return { found: false };
     const cs = getComputedStyle(strip);
     return { found: true, position: cs.position, top: cs.top };
@@ -208,26 +274,34 @@ async function probePerfTeam(browser) {
 async function probe6_markDoneSync(browser) {
   const { frame, page, ctx } = await loginAs(browser, USERS[0]);
   if (!frame) { rec('6.mark-done-sync', '✗', 'login failed'); await closeCtx(ctx); return; }
-  await page.waitForTimeout(2000);
+  const cards = await waitForCards(frame, page, 15000);
+  if (!cards) { rec('6.mark-done-sync', '⚠', 'no cards rendered'); await closeCtx(ctx); return; }
   const r = await evalIn(frame, () => {
-    const card = document.querySelector('#screen-kanban-home [data-task-id]');
-    if (!card) return { err: 'no card' };
-    const id = card.getAttribute('data-task-id');
-    const btn = card.querySelector('[data-action="mark-done"], [data-action="done"]');
-    if (btn) btn.click();
-    return { id, hadBtn: !!btn };
+    // Pick any card with a mark-done button.
+    const all = document.querySelectorAll('#screen-kanban-home [data-task-id]');
+    for (const c of all) {
+      const btn = c.querySelector('[data-action="mark-done"]');
+      if (btn) {
+        const id = c.getAttribute('data-task-id');
+        btn.click();
+        return { id, hadBtn: true };
+      }
+    }
+    return { err: 'no card with mark-done btn' };
   });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(4000); // backend round-trip + re-render
   const moved = await evalIn(frame, (id) => {
     const c = document.querySelector('[data-task-id="' + id + '"]');
     if (!c) return { gone: true };
-    const col = c.closest('[data-column], [data-status]');
-    const status = col ? (col.getAttribute('data-status') || col.getAttribute('data-column')) : null;
-    const strike = getComputedStyle(c).textDecorationLine || '';
-    return { status, strike };
+    // Check the card itself + every descendant text-bearing element for line-through.
+    const all = [c].concat(Array.from(c.querySelectorAll('h3,span,div')));
+    const strikes = all.map(e => getComputedStyle(e).textDecorationLine).filter(x => /line-through/.test(x));
+    // Also check for any explicit "done" status hint via class.
+    const cls = c.className || '';
+    return { strikes: strikes.length, doneCls: /\bdone\b|line-through/.test(cls) };
   }, r && r.id);
-  rec('6.mark-done-sync', r && r.hadBtn && (moved.gone || moved.status === 'done' || /line-through/.test(moved.strike)) ? '✓' : '⚠',
-      JSON.stringify(r) + ' moved=' + JSON.stringify(moved));
+  const ok = r && r.hadBtn && (moved.gone || moved.strikes > 0 || moved.doneCls);
+  rec('6.mark-done-sync', ok ? '✓' : '⚠', JSON.stringify(r) + ' moved=' + JSON.stringify(moved));
   await page.screenshot({ path: PATH.join(OUT, '6.mark-done.png') });
   await closeCtx(ctx);
 }
