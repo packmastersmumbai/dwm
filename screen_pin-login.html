@@ -16,6 +16,11 @@
     </div>
   </div>
 
+  <!-- Yesterday performance card -->
+  <div class="w-full max-w-md px-margin-edge mb-3" data-area="yesterday-card" style="display:none;transition:opacity 220ms ease">
+    <div class="tf-card bg-surface-container-low rounded-xl px-4 py-3 border border-outline-variant" style="min-height:64px" data-yesterday-content></div>
+  </div>
+
   <!-- Error message -->
   <div class="w-full max-w-md px-margin-edge mb-2 text-center" style="min-height:20px">
     <span class="text-error font-label-bold text-sm" data-pin-error style="display:none"></span>
@@ -136,6 +141,49 @@
     area.innerHTML = userHtml + addTile;
   }
 
+  function yesterdayIso() {
+    var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 1);
+    var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + dd;
+  }
+
+  function hideYesterdayCard(screen) {
+    var card = screen.querySelector('[data-area="yesterday-card"]');
+    if (card) card.style.display = 'none';
+  }
+
+  function loadYesterdayCard(screen, userId) {
+    var card = screen.querySelector('[data-area="yesterday-card"]');
+    var body = screen.querySelector('[data-yesterday-content]');
+    if (!card || !body) return;
+    card.style.display = 'none';
+    card.style.opacity = '1';
+    // Token may not exist at login — call without token; backend will gate
+    if (!window.APP || !APP.call) return;
+    APP.call('getYesterdayPerformanceForLogin', userId).then(function(p) {
+      if (!p) return;
+      var hasData = (p.tasksCompleted || 0) > 0 || (p.minutesLogged || 0) > 0 || (p.tasksAssigned || 0) > 0;
+      if (!hasData) { card.style.display = 'none'; return; }
+      var delta = p.deltaFromPrevious;
+      var arrow = '';
+      if (delta != null) {
+        if (delta > 0) arrow = '<span style="color:#10B981">▲ ' + delta + '</span>';
+        else if (delta < 0) arrow = '<span style="color:#DC2626">▼ ' + Math.abs(delta) + '</span>';
+        else arrow = '<span style="color:#9CA3AF">▬ 0</span>';
+      }
+      var nudge = '';
+      if (delta != null) nudge = (delta >= 0) ? 'Keep it going.' : 'Push for better today.';
+      body.innerHTML =
+        '<div style="font-size:11px;color:#6B7280;letter-spacing:0.04em;text-transform:uppercase">Yesterday</div>' +
+        '<div style="font-size:14px;color:#111827;margin-top:2px">' +
+          '<strong>' + (p.tasksCompleted || 0) + ' done</strong> · ' +
+          '<strong>' + (p.onTimeRate || 0) + '%</strong> on-time · score <strong>' + (p.score || 0) + '</strong> ' + arrow +
+        '</div>' +
+        (nudge ? '<div style="font-size:11px;color:#6B7280;margin-top:2px">' + nudge + '</div>' : '');
+      card.style.display = '';
+    }).catch(function() { card.style.display = 'none'; });
+  }
+
   function selectUser(screen, userId) {
     _selectedUserId = userId;
     _pin = [];
@@ -143,6 +191,7 @@
     updateDots(screen);
     showError(screen, '');
     renderUsers(screen);
+    loadYesterdayCard(screen, userId);
   }
 
   function addDigit(screen, digit) {
@@ -151,6 +200,9 @@
     if (_pin.length >= PIN_LENGTH) return;
     _pin.push(digit);
     updateDots(screen);
+    // Dim yesterday card so keypad stays visually primary
+    var ycard = screen.querySelector('[data-area="yesterday-card"]');
+    if (ycard && ycard.style.display !== 'none') ycard.style.opacity = '0.4';
     if (_pin.length === PIN_LENGTH) { submitPin(screen); }
   }
 

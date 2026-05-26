@@ -179,6 +179,7 @@ function createTriggers() {
   ScriptApp.newTrigger('sendDueSoonNotifications').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('checkTimerWarnings').timeBased().everyMinutes(30).create();
   ScriptApp.newTrigger('checkEscalations').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('sendDailyReportEmail').timeBased().everyDays(1).atHour(19).create();
 }
 
 // ============================================================
@@ -1143,9 +1144,24 @@ var Internal = (function() {
       var currentDue = task.dueDate ? new Date(task.dueDate) : new Date();
       var nextDue = new Date(currentDue);
 
-      if (rec.type === 'daily')        nextDue.setDate(nextDue.getDate() + 1);
-      else if (rec.type === 'weekly')  nextDue.setDate(nextDue.getDate() + 7);
-      else if (rec.type === 'monthly') nextDue.setMonth(nextDue.getMonth() + 1);
+      var step = Math.max(1, parseInt(rec.step || rec.interval || 1, 10) || 1);
+      if (rec.type === 'daily')        nextDue.setDate(nextDue.getDate() + step);
+      else if (rec.type === 'weekly')  nextDue.setDate(nextDue.getDate() + 7 * step);
+      else if (rec.type === 'monthly') nextDue.setMonth(nextDue.getMonth() + step);
+      else if (rec.type === 'every-n-days') nextDue.setDate(nextDue.getDate() + step);
+      else if (rec.type === 'weekly-days') {
+        // Find next configured weekday after currentDue
+        var DOW = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
+        var days = (rec.days || []).map(function(d){ return DOW[String(d).toLowerCase()]; }).filter(function(n){ return n !== undefined; });
+        if (!days.length) return;
+        var found = null;
+        for (var k = 1; k <= 14; k++) {
+          var cand = new Date(currentDue); cand.setDate(cand.getDate() + k);
+          if (days.indexOf(cand.getDay()) !== -1) { found = cand; break; }
+        }
+        if (!found) return;
+        nextDue = found;
+      }
       else return;
 
       var nextDueStr = Utilities.formatDate(nextDue, getTimezone(), 'yyyy-MM-dd');
@@ -1230,6 +1246,195 @@ var Internal = (function() {
     }
   }
 
+  // ── Performance scoring ──────────────────────────────────────
+  // Compute per-user metrics for a period. period: 'day'|'week'|'month'|'all'
+  // Optional dateIso anchors the "day"/"week"/"month" window to a specific date.
+  function computePerformanceWindow(period, dateIso) {
+    var tz = getTimezone();
+    var anchor = dateIso ? new Date(dateIso + 'T00:00:00') : new Date();
+    if (isNaN(anchor)) anchor = new Date();
+    var startOfDay = new Date(anchor); startOfDay.setHours(0,0,0,0);
+    var endOfDay = new Date(startOfDay); endOfDay.setDate(endOfDay.getDate() + 1);
+    var start, end;
+    if (period === 'day') { start = startOfDay; end = endOfDay; }
+    else if (period === 'week') {
+      start = new Date(startOfDay); start.setDate(start.getDate() - 6);
+      end = endOfDay;
+    } else if (period === 'month') {
+      start = new Date(startOfDay); start.setDate(start.getDate() - 29);
+      end = endOfDay;
+    } else { // 'all'
+      start = new Date(2000, 0, 1); end = new Date(anchor.getFullYear()+10, 0, 1);
+    }
+    return { start: start, end: end, length: end - start };
+  }
+
+  function _userPerfMetrics(userId, win, tasks, timeLogRows) {
+    var today = todayStr();
+    var assigned = 0, completed = 0, overdue = 0, inProgress = 0, onTime = 0, cycleSum = 0, cycleN = 0;
+    tasks.forEach(function(t) {
+      var ids = t.assigneeIds || [];
+      var mine = ids.indexOf(userId) !== -1 || t.createdBy === userId;
+      if (!mine) return;
+      var createdAt = t.createdAt ? new Date(t.createdAt) : null;
+      var updatedAt = t.updatedAt ? new Date(t.updatedAt) : null;
+      // Assigned: created in window OR currently still open at window end
+      var createdInWindow = createdAt && createdAt >= win.start && createdAt < win.end;
+      if (createdInWindow) assigned++;
+      if (t.status === 'done' || t.status === 'archived') {
+        if (updatedAt && updatedAt >= win.start && updatedAt < win.end) {
+          completed++;
+          if (t.dueDate && t.updatedAt) {
+            var doneDay = t.updatedAt.substring(0,10);
+            if (doneDay <= t.dueDate) onTime++;
+          } else if (!t.dueDate) {
+            onTime++; // no deadline → counts as on-time
+          }
+          if (createdAt && updatedAt) {
+            var diffMin = Math.max(0, Math.round((updatedAt - createdAt) / 60000));
+            cycleSum += diffMin; cycleN++;
+          }
+        }
+      } else if (t.status === 'in-progress') {
+        inProgress++;
+      }
+      if (t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted') {
+        overdue++;
+      }
+    });
+    // If assigned is zero but user completed work (legacy/back-dated), fall back to completed count
+    if (assigned === 0) assigned = completed + inProgress + overdue;
+
+    var minutesLogged = 0;
+    timeLogRows.forEach(function(row) {
+      if (row[2] !== userId) return;
+      var stopped = row[4];
+      if (!stopped) return;
+      var stoppedAt = new Date(stopped);
+      if (isNaN(stoppedAt)) return;
+      if (stoppedAt < win.start || stoppedAt >= win.end) return;
+      var secs = Number(row[5]) || 0;
+      if (secs > 0) minutesLogged += Math.floor(secs / 60);
+    });
+
+    var onTimeRate    = completed > 0 ? Math.round((onTime / completed) * 100) : 0;
+    var completionRate = assigned > 0 ? Math.round((completed / assigned) * 100) : 0;
+    var overdueRate   = assigned > 0 ? (overdue / assigned) : 0;
+    var avgCycleMinutes = cycleN > 0 ? Math.round(cycleSum / cycleN) : null;
+    var score = Math.round(
+      0.50 * onTimeRate +
+      0.30 * completionRate +
+      0.20 * (100 * (1 - Math.min(1, overdueRate)))
+    );
+    if (assigned === 0 && completed === 0 && minutesLogged === 0) score = 0;
+
+    return {
+      tasksAssigned: assigned,
+      tasksCompleted: completed,
+      tasksOverdue: overdue,
+      tasksInProgress: inProgress,
+      minutesLogged: minutesLogged,
+      onTimeRate: onTimeRate,
+      completionRate: completionRate,
+      avgCycleMinutes: avgCycleMinutes,
+      score: score
+    };
+  }
+
+  function getUserPerformance(userId, period, dateIso) {
+    try {
+      period = period || 'week';
+      var win = computePerformanceWindow(period, dateIso);
+      var prevAnchor = new Date(win.start.getTime() - 1);
+      var prevAnchorIso = Utilities.formatDate(prevAnchor, getTimezone(), 'yyyy-MM-dd');
+      var prevWin = computePerformanceWindow(period, prevAnchorIso);
+
+      var tasks = getTasks({ teamView: true, includeArchived: true });
+      var tl = getSheet('time_log');
+      var tlData = tl ? tl.getDataRange().getValues() : [[]];
+      var tlRows = tlData.slice(1);
+
+      var user = getUserById(userId);
+      var metrics = _userPerfMetrics(userId, win, tasks, tlRows);
+      var prevMetrics = _userPerfMetrics(userId, prevWin, tasks, tlRows);
+
+      return Object.assign({
+        userId: userId,
+        name: user ? user.name : '',
+        periodStart: win.start.toISOString(),
+        periodEnd: win.end.toISOString(),
+        deltaFromPrevious: (prevMetrics.score === 0 && prevMetrics.tasksAssigned === 0) ? null : (metrics.score - prevMetrics.score)
+      }, metrics);
+    } catch(e) {
+      return {
+        userId: userId, name: '', periodStart: null, periodEnd: null,
+        tasksAssigned: 0, tasksCompleted: 0, tasksOverdue: 0, tasksInProgress: 0,
+        minutesLogged: 0, onTimeRate: 0, completionRate: 0, avgCycleMinutes: null,
+        score: 0, deltaFromPrevious: null, error: e.message
+      };
+    }
+  }
+
+  function getDailyCompanyReport(dateIso) {
+    try {
+      var anchor = dateIso || todayStr();
+      var users = getUsersStatic();
+      var tasks = getTasks({ teamView: true, includeArchived: true });
+      var tl = getSheet('time_log');
+      var tlData = tl ? tl.getDataRange().getValues() : [[]];
+      var tlRows = tlData.slice(1);
+      var win = computePerformanceWindow('day', anchor);
+
+      var perUser = users.map(function(u) {
+        var m = _userPerfMetrics(u.id, win, tasks, tlRows);
+        return Object.assign({ userId: u.id, name: u.name }, m);
+      });
+
+      var totalMin = 0, completedTotal = 0, addedTotal = 0;
+      tasks.forEach(function(t) {
+        var createdAt = t.createdAt ? new Date(t.createdAt) : null;
+        if (createdAt && createdAt >= win.start && createdAt < win.end) addedTotal++;
+        var updatedAt = t.updatedAt ? new Date(t.updatedAt) : null;
+        if ((t.status === 'done' || t.status === 'archived') && updatedAt && updatedAt >= win.start && updatedAt < win.end) {
+          completedTotal++;
+        }
+      });
+      tlRows.forEach(function(row) {
+        var stopped = row[4]; if (!stopped) return;
+        var s = new Date(stopped); if (isNaN(s)) return;
+        if (s < win.start || s >= win.end) return;
+        var secs = Number(row[5]) || 0; if (secs > 0) totalMin += Math.floor(secs/60);
+      });
+      var activeTimers = 0;
+      tlRows.forEach(function(row) { if (!row[4]) activeTimers++; });
+      var today = todayStr();
+      var overdueAtEod = tasks.filter(function(t) {
+        return t.dueDate && t.dueDate < today && t.status !== 'done' && t.status !== 'archived' && t.status !== 'deleted';
+      }).length;
+
+      var topPerformers = perUser.slice().sort(function(a,b){ return b.score - a.score; })
+        .slice(0,3).map(function(u){ return { userId: u.userId, name: u.name, score: u.score }; });
+      var needsAttention = perUser.filter(function(u){ return u.tasksOverdue > 2; })
+        .map(function(u){ return { userId: u.userId, name: u.name, overdue: u.tasksOverdue }; });
+
+      return {
+        date: anchor,
+        company: {
+          tasksCompleted: completedTotal,
+          tasksAdded: addedTotal,
+          totalMinutesLogged: totalMin,
+          overdueAtEod: overdueAtEod,
+          activeTimersAtEod: activeTimers
+        },
+        users: perUser,
+        topPerformers: topPerformers,
+        needsAttention: needsAttention
+      };
+    } catch(e) {
+      return { date: dateIso || todayStr(), company: {}, users: [], topPerformers: [], needsAttention: [], error: e.message };
+    }
+  }
+
   return {
     getClients:                getClients,
     getCategories:             getCategories,
@@ -1247,7 +1452,9 @@ var Internal = (function() {
     scheduleNextRecurrence:    scheduleNextRecurrence,
     quickSaveTask:             quickSaveTask,
     triggerRateLimited:        triggerRateLimited,
-    createNotification:        createNotification
+    createNotification:        createNotification,
+    getUserPerformance:        getUserPerformance,
+    getDailyCompanyReport:     getDailyCompanyReport
   };
 })();
 
@@ -2906,6 +3113,121 @@ function getShiftHandover(token) {
 // FIX 1 — Restore aliases called by frontend screens and manifest.json
 function getTeamMembers(token) { requireSession(token); return Internal.getUsers(); }
 function getTeamPresence(token) { return getTeamStatus(token); }
+
+// ── Performance scoring API ─────────────────────────────────
+// userId, period ('day'|'week'|'month'|'all'), optional dateIso anchor
+function getUserPerformance(userId, period, dateIso, token) {
+  requireSession(token);
+  return Internal.getUserPerformance(userId, period, dateIso);
+}
+
+// Admin-only company report
+function getDailyCompanyReport(dateIso, token) {
+  requireAdmin(token);
+  return Internal.getDailyCompanyReport(dateIso);
+}
+
+// Lightweight, ungated yesterday-perf snapshot for the login screen.
+// Returns minimal fields only — never throws. Validates that userId exists
+// and is active before computing, so this cannot enumerate arbitrary IDs.
+function getYesterdayPerformanceForLogin(userId) {
+  try {
+    if (!userId) return null;
+    var users = getUsersForLogin();
+    var found = users.find(function(u) { return u.id === userId; });
+    if (!found || found.id === '__error__') return null;
+    var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 1);
+    var iso = Utilities.formatDate(d, getTimezone(), 'yyyy-MM-dd');
+    var p = Internal.getUserPerformance(userId, 'day', iso);
+    return {
+      tasksCompleted: p.tasksCompleted || 0,
+      onTimeRate:     p.onTimeRate || 0,
+      score:          p.score || 0,
+      minutesLogged:  p.minutesLogged || 0,
+      tasksAssigned:  p.tasksAssigned || 0,
+      deltaFromPrevious: p.deltaFromPrevious
+    };
+  } catch(e) { return null; }
+}
+
+// ── Daily report email (driven by trigger) ──────────────────
+// Runs once per day at 19:00 server time. Rate-limited to one send per day.
+// Wraps all work in try/catch — must never throw to the trigger runtime.
+function sendDailyReportEmail() {
+  try {
+    if (Internal.triggerRateLimited('sendDailyReportEmail', 12 * 60 * 60 * 1000)) return;
+    var report = Internal.getDailyCompanyReport(todayStr());
+    if (!report) return;
+    var admins = [];
+    try {
+      admins = Internal.getUsers().filter(function(u) { return u.role === 'admin' && u.email; });
+    } catch(e) { admins = []; }
+    if (!admins.length) return;
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function chipsHtml(items, color, label) {
+      if (!items || !items.length) return '';
+      return '<div style="margin:8px 0;font-family:Arial,sans-serif;font-size:13px"><strong>' + esc(label) + ':</strong> ' +
+        items.map(function(x) {
+          return '<span style="display:inline-block;background:' + color + ';color:#fff;border-radius:12px;padding:3px 10px;margin:2px 4px 2px 0;font-size:12px">' +
+            esc(x.name) + (x.score != null ? ' · ' + x.score : '') + (x.overdue != null ? ' · ' + x.overdue + ' overdue' : '') +
+            '</span>';
+        }).join('') + '</div>';
+    }
+
+    var c = report.company || {};
+    var userRows = (report.users || []).map(function(u) {
+      var scoreColor = u.score >= 80 ? '#10B981' : (u.score >= 60 ? '#F59E0B' : '#DC2626');
+      return '<tr>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">' + esc(u.name) + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;text-align:right">' + (u.tasksCompleted || 0) + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;text-align:right">' + (u.onTimeRate || 0) + '%</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;text-align:right">' + (u.minutesLogged || 0) + 'm</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;text-align:right;color:' + scoreColor + ';font-weight:bold">' + (u.score || 0) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var html =
+      '<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111827">' +
+        '<h2 style="margin:0 0 4px 0;color:#1A73E8">TaskFlow Daily Report</h2>' +
+        '<div style="color:#6B7280;font-size:13px;margin-bottom:16px">' + esc(report.date) + '</div>' +
+        '<table style="width:100%;border-collapse:collapse;background:#F9FAFB;border-radius:8px;overflow:hidden;margin-bottom:16px">' +
+          '<tr style="background:#1A73E8;color:#fff">' +
+            '<th style="padding:8px;text-align:left">Company</th>' +
+            '<th style="padding:8px;text-align:right">Done</th>' +
+            '<th style="padding:8px;text-align:right">Added</th>' +
+            '<th style="padding:8px;text-align:right">Minutes</th>' +
+            '<th style="padding:8px;text-align:right">Overdue</th>' +
+          '</tr>' +
+          '<tr>' +
+            '<td style="padding:8px">Totals</td>' +
+            '<td style="padding:8px;text-align:right">' + (c.tasksCompleted || 0) + '</td>' +
+            '<td style="padding:8px;text-align:right">' + (c.tasksAdded || 0) + '</td>' +
+            '<td style="padding:8px;text-align:right">' + (c.totalMinutesLogged || 0) + '</td>' +
+            '<td style="padding:8px;text-align:right">' + (c.overdueAtEod || 0) + '</td>' +
+          '</tr>' +
+        '</table>' +
+        chipsHtml(report.topPerformers, '#10B981', 'Top performers') +
+        chipsHtml(report.needsAttention, '#DC2626', 'Needs attention') +
+        '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">' +
+          '<tr style="background:#F3F4F6"><th style="padding:6px 8px;text-align:left">User</th><th style="padding:6px 8px;text-align:right">Done</th><th style="padding:6px 8px;text-align:right">On-time</th><th style="padding:6px 8px;text-align:right">Logged</th><th style="padding:6px 8px;text-align:right">Score</th></tr>' +
+          userRows +
+        '</table>' +
+        '<div style="margin-top:18px;color:#9CA3AF;font-size:11px">Generated by TaskFlow.</div>' +
+      '</div>';
+
+    admins.forEach(function(a) {
+      try {
+        MailApp.sendEmail({ to: a.email, subject: 'TaskFlow Daily Report — ' + report.date, htmlBody: html });
+      } catch(mailErr) { /* silent — non-critical */ }
+    });
+  } catch(e) {
+    // Never throw from trigger
+    try { console.error('sendDailyReportEmail: ' + e.message); } catch(_) {}
+  }
+}
 
 // ============================================================
 //  SEED DEMO DATA

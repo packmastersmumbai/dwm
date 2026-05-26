@@ -136,11 +136,29 @@
         </label>
       </div>
       <!-- Frequency picker — revealed when recurring is ON -->
-      <div data-ref="recurrence-picker" class="hidden px-4 pb-4">
-        <div class="flex gap-2">
-          <button data-freq="daily"   data-ref="freq-daily"   type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold transition-colors">Daily</button>
-          <button data-freq="weekly"  data-ref="freq-weekly"  type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Weekly</button>
-          <button data-freq="monthly" data-ref="freq-monthly" type="button" class="freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Monthly</button>
+      <div data-ref="recurrence-picker" class="hidden px-4 pb-4 flex flex-col gap-3">
+        <div class="flex gap-2 flex-wrap">
+          <button data-freq="daily"        data-ref="freq-daily"        type="button" class="freq-btn flex-1 min-w-[64px] h-[40px] rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold transition-colors">Daily</button>
+          <button data-freq="weekly"       data-ref="freq-weekly"       type="button" class="freq-btn flex-1 min-w-[64px] h-[40px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Weekly</button>
+          <button data-freq="monthly"      data-ref="freq-monthly"      type="button" class="freq-btn flex-1 min-w-[64px] h-[40px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Monthly</button>
+          <button data-freq="every-n-days" data-ref="freq-every-n-days" type="button" class="freq-btn flex-1 min-w-[84px] h-[40px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Every N days</button>
+          <button data-freq="weekly-days"  data-ref="freq-weekly-days"  type="button" class="freq-btn flex-1 min-w-[84px] h-[40px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors">Days of week</button>
+        </div>
+        <!-- N step input — shown for every-n-days / weekly / monthly -->
+        <div data-ref="freq-step-row" class="hidden flex items-center gap-2">
+          <label class="font-label-bold text-label-bold text-on-surface-variant">Every</label>
+          <input data-ref="freq-step-input" type="number" min="1" max="365" value="1" class="w-16 h-9 rounded-lg border border-outline-variant px-2 font-body-standard text-on-surface bg-surface-container-lowest focus:ring-2 focus:ring-primary-container"/>
+          <span data-ref="freq-step-unit" class="font-label-bold text-label-bold text-on-surface-variant">days</span>
+        </div>
+        <!-- Days of week chips -->
+        <div data-ref="freq-dow-row" class="hidden flex gap-1 flex-wrap">
+          <button data-dow="mon" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Mon</button>
+          <button data-dow="tue" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Tue</button>
+          <button data-dow="wed" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Wed</button>
+          <button data-dow="thu" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Thu</button>
+          <button data-dow="fri" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Fri</button>
+          <button data-dow="sat" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Sat</button>
+          <button data-dow="sun" type="button" class="dow-chip h-8 px-3 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold">Sun</button>
         </div>
       </div>
     </div>
@@ -186,7 +204,7 @@
 </main>
 
 <!-- Pinned Save Action -->
-<div class="fixed bottom-0 left-0 right-0 p-margin-edge bg-surface/90 backdrop-blur-sm border-t border-outline-variant z-50">
+<div class="fixed bottom-0 left-0 right-0 p-margin-edge bg-surface border-t border-outline-variant z-50">
 <button data-ref="btn-save" class="w-full h-[52px] bg-primary-container text-on-primary-container rounded-xl font-title-main-mobile text-title-main-mobile flex items-center justify-center hover:bg-surface-tint active:scale-95 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed" type="button">
   Save Task
 </button>
@@ -203,6 +221,8 @@
   var _selectedPriority = 'medium';
   var _selectedSchedule = 'morning';
   var _selectedFrequency = 'daily';
+  var _selectedDays = [];
+  var _freqStep = 1;
 
   function escHtml(s) {
     return String(s == null ? '' : s)
@@ -339,16 +359,44 @@
   }
 
   /* ── Recurrence frequency picker ──────────────────────── */
+  var FREQ_KEYS = ['daily', 'weekly', 'monthly', 'every-n-days', 'weekly-days'];
   function setFrequency(screen, freq) {
     _selectedFrequency = freq;
-    ['daily', 'weekly', 'monthly'].forEach(function(f) {
+    FREQ_KEYS.forEach(function(f) {
       var btn = qs(screen, 'freq-' + f);
       if (!btn) return;
-      if (f === freq) {
-        btn.className = 'freq-btn flex-1 h-[44px] rounded-xl border border-primary-container bg-primary-fixed text-on-primary-fixed font-label-bold text-label-bold transition-colors';
-      } else {
-        btn.className = 'freq-btn flex-1 h-[44px] rounded-xl border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-bold text-label-bold transition-colors';
-      }
+      var active = f === freq;
+      var widthCls = (f === 'every-n-days' || f === 'weekly-days') ? 'min-w-[84px]' : 'min-w-[64px]';
+      btn.className = 'freq-btn flex-1 ' + widthCls + ' h-[40px] rounded-xl border font-label-bold text-label-bold transition-colors ' +
+        (active
+          ? 'border-primary-container bg-primary-fixed text-on-primary-fixed'
+          : 'border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low');
+    });
+    // Conditional sub-rows
+    var stepRow = qs(screen, 'freq-step-row');
+    var dowRow  = qs(screen, 'freq-dow-row');
+    var stepUnit = qs(screen, 'freq-step-unit');
+    var showStep = (freq === 'every-n-days' || freq === 'weekly' || freq === 'monthly');
+    var showDow  = (freq === 'weekly-days');
+    if (stepRow) stepRow.classList.toggle('hidden', !showStep);
+    if (dowRow)  dowRow.classList.toggle('hidden', !showDow);
+    if (stepUnit) stepUnit.textContent = (freq === 'weekly') ? 'weeks' : (freq === 'monthly' ? 'months' : 'days');
+  }
+
+  function setDow(screen, day, on) {
+    var idx = _selectedDays.indexOf(day);
+    if (on === undefined) on = idx === -1;
+    if (on && idx === -1) _selectedDays.push(day);
+    if (!on && idx !== -1) _selectedDays.splice(idx, 1);
+    renderDowChips(screen);
+  }
+  function renderDowChips(screen) {
+    screen.querySelectorAll('[data-dow]').forEach(function(btn) {
+      var sel = _selectedDays.indexOf(btn.dataset.dow) !== -1;
+      btn.className = 'dow-chip h-8 px-3 rounded-full border font-label-bold text-label-bold ' +
+        (sel
+          ? 'border-primary-container bg-primary-fixed text-on-primary-fixed'
+          : 'border-outline-variant bg-surface-container-lowest text-on-surface');
     });
   }
 
@@ -381,6 +429,11 @@
       qs(screen, 'toggle-recurring').checked = true;
       toggleRecurrencePicker(screen, true);
       setFrequency(screen, task.recurrence.type);
+      _freqStep = parseInt(task.recurrence.step || task.recurrence.interval || 1, 10) || 1;
+      var stepInp = qs(screen, 'freq-step-input');
+      if (stepInp) stepInp.value = _freqStep;
+      _selectedDays = (task.recurrence.days || []).slice();
+      renderDowChips(screen);
     }
 
     // Pre-select client
@@ -456,6 +509,18 @@
   /* ── Collect task data ─────────────────────────────────── */
   function collectTaskData(screen) {
     var isRecurring = qs(screen, 'toggle-recurring').checked;
+    var stepInp = qs(screen, 'freq-step-input');
+    var stepVal = stepInp ? Math.max(1, parseInt(stepInp.value, 10) || 1) : 1;
+    var recurrence = null;
+    if (isRecurring) {
+      recurrence = { type: _selectedFrequency };
+      if (_selectedFrequency === 'every-n-days' || _selectedFrequency === 'weekly' || _selectedFrequency === 'monthly') {
+        recurrence.step = stepVal;
+      }
+      if (_selectedFrequency === 'weekly-days') {
+        recurrence.days = _selectedDays.slice();
+      }
+    }
     return {
       id:           _taskId || undefined,
       title:        qs(screen, 'field-title').value.trim(),
@@ -466,7 +531,7 @@
       scheduledTime: _selectedSchedule,
       assigneeIds:  _selectedAssignees.slice(),
       isShared:       qs(screen, 'toggle-shared').checked,
-      recurrence:     isRecurring ? { type: _selectedFrequency } : null,
+      recurrence:     recurrence,
       checklist:      qs(screen, 'toggle-checklist').checked ? [] : null,
       requiresPhoto:  !!qs(screen, 'toggle-requires-photo').checked,
       description:    qs(screen, 'field-notes').value.trim()
@@ -488,6 +553,8 @@
       _selectedPriority   = 'medium';
       _selectedSchedule   = 'morning';
       _selectedFrequency  = 'daily';
+      _selectedDays       = [];
+      _freqStep           = 1;
 
       // Default due date = today
       var today = new Date();
@@ -534,10 +601,25 @@
       });
 
       // Frequency buttons
-      ['daily', 'weekly', 'monthly'].forEach(function(f) {
-        qs(screen, 'freq-' + f).addEventListener('click', function() { setFrequency(screen, f); });
+      FREQ_KEYS.forEach(function(f) {
+        var btn = qs(screen, 'freq-' + f);
+        if (btn) btn.addEventListener('click', function() { setFrequency(screen, f); });
       });
       setFrequency(screen, 'daily');
+
+      // Days-of-week chip handlers
+      screen.querySelectorAll('[data-dow]').forEach(function(btn) {
+        btn.addEventListener('click', function() { setDow(screen, btn.dataset.dow); });
+      });
+      renderDowChips(screen);
+
+      // Step input clamp
+      var stepInp = qs(screen, 'freq-step-input');
+      if (stepInp) stepInp.addEventListener('input', function() {
+        var v = parseInt(this.value, 10);
+        if (isNaN(v) || v < 1) this.value = 1;
+        if (v > 365) this.value = 365;
+      });
 
       // Load dropdown data in parallel
       var clientsP    = APP.call('getClients', APP.token).catch(function() { return []; });
@@ -644,6 +726,8 @@
       _selectedPriority   = 'medium';
       _selectedSchedule   = 'morning';
       _selectedFrequency  = 'daily';
+      _selectedDays       = [];
+      _freqStep           = 1;
     }
   });
 })();

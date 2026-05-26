@@ -83,6 +83,21 @@
 </div>
 </div>
 </section>
+<!-- By User Performance -->
+<section class="flex flex-col gap-4">
+  <div class="flex items-center justify-between px-1">
+    <h2 class="font-title-main-mobile text-title-main-mobile">By User</h2>
+    <div class="flex bg-surface-container-low rounded-lg p-0.5" data-perf-period-row>
+      <button class="perf-period-btn px-3 py-1 rounded-md font-label-bold text-label-bold text-on-surface-variant transition-colors" data-perf-period="day">Today</button>
+      <button class="perf-period-btn px-3 py-1 rounded-md font-label-bold text-label-bold bg-surface-container-lowest shadow-sm text-primary transition-colors" data-perf-period="week">Week</button>
+      <button class="perf-period-btn px-3 py-1 rounded-md font-label-bold text-label-bold text-on-surface-variant transition-colors" data-perf-period="month">Month</button>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-area="perf-by-user">
+    <div class="space-y-2 w-full"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-3 w-2/3 opacity-80"></div><div class="tf-skeleton h-3 w-1/2 opacity-60"></div></div>
+  </div>
+  <div data-area="perf-detail" class="hidden bg-surface-container-lowest rounded-xl p-4 border border-outline-variant"></div>
+</section>
 <!-- Detailed List -->
 <section class="flex flex-col gap-4 pb-20 md:pb-0">
 <h2 class="font-title-main-mobile text-title-main-mobile px-1">Top Performers</h2>
@@ -262,6 +277,89 @@
       .sort(function(a, b) { return b.count - a.count; });
   }
 
+  var _activePerfPeriod = 'week';
+
+  function scoreColor(s) {
+    if (s >= 80) return '#10B981';
+    if (s >= 60) return '#F59E0B';
+    return '#DC2626';
+  }
+  function deltaArrow(d) {
+    if (d == null) return '<span class="text-on-surface-variant">▬</span>';
+    if (d > 0) return '<span style="color:#10B981">▲ ' + d + '</span>';
+    if (d < 0) return '<span style="color:#DC2626">▼ ' + Math.abs(d) + '</span>';
+    return '<span class="text-on-surface-variant">▬ 0</span>';
+  }
+  function initialsOf(name) {
+    return (name || '?').split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0, 2);
+  }
+
+  function renderUserPerfDetail(screen, perf) {
+    var box = screen.querySelector('[data-area="perf-detail"]');
+    if (!box) return;
+    box.classList.remove('hidden');
+    box.innerHTML =
+      '<div class="flex items-center justify-between mb-3">' +
+        '<div class="font-title-main-mobile text-title-main-mobile">' + escHtml(perf.name) + ' — Score ' + (perf.score || 0) + '</div>' +
+        '<button class="text-on-surface-variant text-sm" data-action="perf-detail-close">Close</button>' +
+      '</div>' +
+      '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">' +
+        '<div><div class="text-xs text-on-surface-variant">On-time</div><div class="font-body-standard font-semibold">' + (perf.onTimeRate || 0) + '%</div></div>' +
+        '<div><div class="text-xs text-on-surface-variant">Completion</div><div class="font-body-standard font-semibold">' + (perf.completionRate || 0) + '%</div></div>' +
+        '<div><div class="text-xs text-on-surface-variant">Overdue</div><div class="font-body-standard font-semibold">' + (perf.tasksOverdue || 0) + '</div></div>' +
+        '<div><div class="text-xs text-on-surface-variant">Minutes</div><div class="font-body-standard font-semibold">' + (perf.minutesLogged || 0) + '</div></div>' +
+      '</div>' +
+      '<div class="text-xs text-on-surface-variant">Completed: ' + (perf.tasksCompleted || 0) + ' · Assigned: ' + (perf.tasksAssigned || 0) +
+        (perf.avgCycleMinutes != null ? ' · Avg cycle: ' + perf.avgCycleMinutes + 'm' : '') + '</div>';
+  }
+
+  function renderPerfByUser(screen, users, period) {
+    var area = screen.querySelector('[data-area="perf-by-user"]');
+    if (!area) return;
+    if (!users || !users.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No users.</div>'; return; }
+    area.innerHTML = '<div class="space-y-2 w-full col-span-full"><div class="tf-skeleton h-3 w-3/4"></div><div class="tf-skeleton h-3 w-2/3 opacity-80"></div></div>';
+    var promises = users.map(function(u) {
+      return APP.call('getUserPerformance', u.id, period, null, APP.token).catch(function() {
+        return { userId: u.id, name: u.name, score: 0, onTimeRate: 0, tasksCompleted: 0, minutesLogged: 0, deltaFromPrevious: null };
+      });
+    });
+    Promise.all(promises).then(function(results) {
+      area.innerHTML = results.map(function(p) {
+        var col = scoreColor(p.score || 0);
+        return '<button type="button" class="text-left bg-surface-container-lowest rounded-xl p-3 border border-outline-variant hover:shadow-md transition-shadow flex flex-col gap-2" data-perf-uid="' + escHtml(p.userId) + '">' +
+          '<div class="flex items-center gap-2">' +
+            '<div class="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[12px]">' + escHtml(initialsOf(p.name)) + '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<div class="font-body-standard text-body-standard font-semibold truncate">' + escHtml(p.name || '') + '</div>' +
+              '<div class="text-[11px] text-on-surface-variant">' + (p.tasksCompleted || 0) + ' done · ' + (p.minutesLogged || 0) + 'm</div>' +
+            '</div>' +
+            '<div class="px-2 py-0.5 rounded-full text-white text-[12px] font-bold" style="background:' + col + '">' + (p.score || 0) + '</div>' +
+          '</div>' +
+          '<div class="flex items-center justify-between text-[11px]">' +
+            '<span class="text-on-surface-variant">On-time ' + (p.onTimeRate || 0) + '%</span>' +
+            '<span>' + deltaArrow(p.deltaFromPrevious) + '</span>' +
+          '</div>' +
+        '</button>';
+      }).join('');
+    });
+  }
+
+  function setActivePerfPeriodBtn(screen, period) {
+    screen.querySelectorAll('.perf-period-btn').forEach(function(btn) {
+      var isActive = btn.dataset.perfPeriod === period;
+      btn.classList.toggle('bg-surface-container-lowest', isActive);
+      btn.classList.toggle('shadow-sm', isActive);
+      btn.classList.toggle('text-primary', isActive);
+      btn.classList.toggle('text-on-surface-variant', !isActive);
+    });
+  }
+
+  function loadPerfData(screen, period) {
+    APP.call('getTeamMembers', APP.token).then(function(users) {
+      renderPerfByUser(screen, users || [], period);
+    }).catch(function() {});
+  }
+
   function loadData(screen, period) {
     // KPI summary (filtered by period)
     APP.call('getKpiByFilter', period, APP.token).then(function (kpi) {
@@ -324,6 +422,29 @@
           return;
         }
 
+        var perfPeriodBtn = e.target.closest('.perf-period-btn');
+        if (perfPeriodBtn) {
+          _activePerfPeriod = perfPeriodBtn.dataset.perfPeriod || 'week';
+          setActivePerfPeriodBtn(screen, _activePerfPeriod);
+          loadPerfData(screen, _activePerfPeriod);
+          return;
+        }
+
+        var perfCard = e.target.closest('[data-perf-uid]');
+        if (perfCard) {
+          APP.call('getUserPerformance', perfCard.dataset.perfUid, _activePerfPeriod, null, APP.token)
+            .then(function(p) { renderUserPerfDetail(screen, p || {}); })
+            .catch(function() {});
+          return;
+        }
+
+        var closeBtn = e.target.closest('[data-action="perf-detail-close"]');
+        if (closeBtn) {
+          var box = screen.querySelector('[data-area="perf-detail"]');
+          if (box) box.classList.add('hidden');
+          return;
+        }
+
         var actionBtn = e.target.closest('[data-action]');
         if (actionBtn && actionBtn.dataset.action === 'notifications') {
           APP.navigate('notifications');
@@ -333,6 +454,8 @@
 
       setActivePeriodBtn(screen, _activePeriod);
       loadData(screen, _activePeriod);
+      setActivePerfPeriodBtn(screen, _activePerfPeriod);
+      loadPerfData(screen, _activePerfPeriod);
     },
     unmount: function () {
       var screen = document.querySelector('[data-screen="reports-kpi"]');
