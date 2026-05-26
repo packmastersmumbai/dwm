@@ -446,6 +446,56 @@ function updateUser(userId, fields, token) {
   }
 }
 
+/**
+ * resetTestPins — INTERNAL TESTING ONLY.
+ * Resets PINs for the first four users (by getUsersStatic order) to known test values:
+ *   - Admin (first user with role==='admin'): 1234
+ *   - First three non-admin users: 1111, 2222, 3333
+ * Returns [{id, name, pin}] with the plaintext PINs assigned, for the UI banner.
+ * Admin-only. Never logs hashes; never returns hashes.
+ */
+function resetTestPins(token) {
+  try {
+    requireAdmin(token);
+    var allUsers = getUsersStatic() || [];
+    var adminUser = null;
+    var nonAdmins = [];
+    for (var i = 0; i < allUsers.length; i++) {
+      var u = allUsers[i];
+      if (!adminUser && u.role === 'admin') adminUser = u;
+      else nonAdmins.push(u);
+      if (adminUser && nonAdmins.length >= 3) break;
+    }
+    var plan = [];
+    if (adminUser) plan.push({ user: adminUser, pin: '1234' });
+    var testPins = ['1111', '2222', '3333'];
+    for (var j = 0; j < Math.min(3, nonAdmins.length); j++) {
+      plan.push({ user: nonAdmins[j], pin: testPins[j] });
+    }
+
+    var s = getSheet('users');
+    var data = s.getDataRange().getValues();
+    var result = [];
+    plan.forEach(function(p) {
+      for (var r = 1; r < data.length; r++) {
+        if (data[r][0] === p.user.id) {
+          var salt = data[r][3];
+          if (!salt) { salt = newId(); s.getRange(r + 1, 4).setValue(salt); }
+          s.getRange(r + 1, 3).setValue(hashPin(p.pin, salt));
+          // Clear any lockout fields
+          s.getRange(r + 1, 11, 1, 2).setValues([[0, '']]);
+          result.push({ id: p.user.id, name: p.user.name, pin: p.pin });
+          break;
+        }
+      }
+    });
+    cacheBust('users');
+    return result;
+  } catch(e) {
+    throw new Error('resetTestPins: ' + e.message);
+  }
+}
+
 function removeUser(userId, token) {
   try {
     requireAdmin(token);

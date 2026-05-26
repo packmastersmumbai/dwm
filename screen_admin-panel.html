@@ -443,6 +443,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   function renderUsers(screen, users) {
     var container = qs(screen, 'users-list');
     container.innerHTML = '';
+    var readOnly = screen.getAttribute('data-readonly') === 'true';
     (users || []).forEach(function(u) {
       var row = document.createElement('div');
       row.className = 'bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between border border-outline-variant';
@@ -460,41 +461,90 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
       // Edit button
       var editBtn = document.createElement('button');
       editBtn.className = 'w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95';
-      editBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">edit</span>';
-      editBtn.addEventListener('click', function() { openEditUserSheet(screen, u); });
+      editBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">' + (readOnly ? 'lock' : 'edit') + '</span>';
+      if (readOnly) {
+        editBtn.disabled = true; editBtn.title = 'Admin only';
+        editBtn.classList.add('opacity-50','cursor-not-allowed');
+      } else {
+        editBtn.addEventListener('click', function() { openEditUserSheet(screen, u); });
+      }
       actionRow.appendChild(editBtn);
 
       // Remove button
       var removeBtn = document.createElement('button');
       removeBtn.className = 'w-11 h-11 flex items-center justify-center rounded-full text-error hover:bg-error-container transition-colors active:scale-95';
-      removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_remove</span>';
-      removeBtn.addEventListener('click', function() {
-        if (!confirm('Remove ' + u.name + ' from the team?')) return;
-        APP.call('removeUser', u.id, APP.token)
-          .then(function() {
-            row.remove();
-            APP.showSuccess(u.name + ' removed.');
-          })
-          .catch(function(err) { APP.showError(err); });
-      });
+      removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">' + (readOnly ? 'lock' : 'person_remove') + '</span>';
+      if (readOnly) {
+        removeBtn.disabled = true; removeBtn.title = 'Admin only';
+        removeBtn.classList.add('opacity-50','cursor-not-allowed');
+      } else {
+        removeBtn.addEventListener('click', function() {
+          if (!confirm('Remove ' + u.name + ' from the team?')) return;
+          APP.call('removeUser', u.id, APP.token)
+            .then(function() {
+              row.remove();
+              APP.showSuccess(u.name + ' removed.');
+            })
+            .catch(function(err) { APP.showError(err); });
+        });
+      }
       actionRow.appendChild(removeBtn);
       container.appendChild(row);
     });
     if (!users || users.length === 0) {
       container.innerHTML = '<div class="text-center text-on-surface-variant py-4 font-body-standard">No team members yet.</div>';
     }
+
+    // ── Developer section (admin only) ─────────────────────────────
+    if (!readOnly) {
+      var devWrap = document.createElement('div');
+      devWrap.className = 'mt-6 p-4 bg-surface-container-low border border-outline-variant rounded-xl';
+      devWrap.innerHTML =
+        '<div class="font-label-bold text-label-bold text-on-surface-variant mb-2">Developer</div>' +
+        '<p class="text-[12px] text-on-surface-variant mb-3">Internal testing only. Resets test PINs for the first four users.</p>' +
+        '<button data-ref="btn-reset-test-pins" class="h-10 px-4 bg-tertiary-container text-on-tertiary-container rounded-lg font-label-bold text-label-bold hover:opacity-90 active:scale-95 transition-all">Reset test PINs</button>' +
+        '<div data-ref="reset-test-pins-banner" class="hidden mt-3 p-3 bg-primary-container text-on-primary-container rounded-lg text-[13px] font-mono whitespace-pre-line"></div>';
+      container.appendChild(devWrap);
+      var btn = devWrap.querySelector('[data-ref="btn-reset-test-pins"]');
+      var banner = devWrap.querySelector('[data-ref="reset-test-pins-banner"]');
+      btn.addEventListener('click', function() {
+        if (!confirm('Reset PINs for the first four users to test defaults? This cannot be undone.')) return;
+        btn.disabled = true; btn.textContent = 'Resetting…';
+        APP.call('resetTestPins', APP.token)
+          .then(function(list) {
+            var lines = (list || []).map(function(u){ return u.name + ' → ' + u.pin; });
+            banner.textContent = 'Test PINs reset:\n' + lines.join('\n');
+            banner.classList.remove('hidden');
+            APP.showSuccess('PINs reset. See banner for values.');
+            setTimeout(function(){ banner.classList.add('hidden'); }, 30000);
+          })
+          .catch(function(err){ APP.showError(err); })
+          .then(function(){ btn.disabled = false; btn.textContent = 'Reset test PINs'; });
+      });
+    }
   }
 
   APP.register('admin-panel', {
     mount: function(params) {
       if (!APP.currentUser) { APP.navigate('pin-login'); return; }
-      if (APP.currentUser.role !== 'admin') {
-        APP.showError('Access denied. Admin only.');
-        APP.navigate('kanban-home');
-        return;
-      }
-
       var screen = document.querySelector('[data-screen="admin-panel"]');
+      var isAdmin = APP.currentUser.role === 'admin';
+
+      // Non-admin: read-only view. Disable destructive actions, hide Tasks/SLA tabs.
+      if (!isAdmin) {
+        screen.setAttribute('data-readonly', 'true');
+        var lockIcon = '<span class="material-symbols-outlined text-[14px] align-middle ml-1" title="Admin only">lock</span>';
+        // Disable add-user form
+        ['new-user-name','new-user-pin','new-user-role','btn-add-user'].forEach(function(r){
+          var el = qs(screen, r); if (el) { el.setAttribute('disabled','disabled'); el.classList.add('opacity-50','cursor-not-allowed'); }
+        });
+        var addBtn = qs(screen, 'btn-add-user');
+        if (addBtn) { addBtn.title = 'Admin only'; addBtn.innerHTML = 'Add Member' + lockIcon; }
+        // Hide tabs that are admin-only (Tasks, SLA)
+        ['tab-tasks','tab-sla'].forEach(function(r){
+          var el = qs(screen, r); if (el) el.classList.add('hidden');
+        });
+      }
 
       // Avatar — render <img> when avatar URL present, else initials
       var _apAv = qs(screen, 'user-avatar');
@@ -525,7 +575,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
       // Show shift handover card for admins
       var _shCard = qs(screen, 'shift-handover-card');
-      if (_shCard) {
+      if (_shCard && isAdmin) {
         _shCard.classList.remove('hidden');
         _shCard.addEventListener('click', function() {
           APP.navigate('shift-handover');

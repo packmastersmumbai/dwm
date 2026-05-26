@@ -17,11 +17,11 @@
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-grid {
     position: relative;
     display: grid;
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: 200px 1fr;
   }
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-corner {
     position: sticky; left: 0; top: 0; z-index: 4;
-    height: 32px; width: 140px;
+    height: 32px; width: 200px;
     background: #FAF9F7;
     border-right: 1px solid var(--color-outline-variant, #E5E1DC);
     border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
@@ -45,24 +45,115 @@
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day.is-weekend {
     background: rgba(0,0,0,0.025);
   }
+  /* Project group header (full-width sticky) */
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-project-header {
+    position: sticky; left: 0; z-index: 2;
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 10px;
+    background: var(--color-surface-container-low, #F1EFEC);
+    border-top: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
+    font-size: 13px; font-weight: 600;
+    color: var(--color-on-surface, #1F1B16);
+    cursor: pointer;
+    user-select: none;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-project-header .gph-caret {
+    transition: transform 0.15s;
+    font-size: 18px;
+    color: var(--color-on-surface-variant, #5A5651);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-project-header.is-collapsed .gph-caret {
+    transform: rotate(-90deg);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-project-header .gph-chip {
+    font-size: 11px; font-weight: 500;
+    padding: 1px 8px; border-radius: 999px;
+    background: var(--color-surface, #FAF9F7);
+    color: var(--color-on-surface-variant, #5A5651);
+    border: 1px solid var(--color-outline-variant, #E5E1DC);
+  }
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label {
     position: sticky; left: 0; z-index: 2;
-    width: 140px; height: 32px;
-    display: flex; align-items: center;
+    width: 200px; height: 36px;
+    display: flex; align-items: center; gap: 6px;
     padding: 0 8px;
     font-size: 12px; font-weight: 500;
     color: var(--color-on-surface, #1F1B16);
     background: #FAF9F7;
     border-right: 1px solid var(--color-outline-variant, #E5E1DC);
     border-bottom: 1px solid rgba(0,0,0,0.04);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden; white-space: nowrap;
     cursor: pointer;
   }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .grl-title {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .grl-avatar {
+    width: 18px; height: 18px; border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .tf-pri-urgent,
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .tf-pri-high,
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .tf-pri-medium,
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label .tf-pri-low {
+    flex-shrink: 0;
+    font-size: 9px; font-weight: 700;
+    padding: 1px 5px; border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-track {
-    position: relative; height: 32px;
+    position: relative; height: 36px;
     border-bottom: 1px solid rgba(0,0,0,0.04);
     background-image: linear-gradient(to right, transparent 79px, rgba(0,0,0,0.04) 79px, rgba(0,0,0,0.04) 80px);
     background-size: 80px 100%;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row.is-hidden { display: none; }
+  /* Rich hover panel (single, shared) */
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] {
+    position: absolute;
+    z-index: 50;
+    min-width: 220px; max-width: 280px;
+    background: var(--color-surface, #FAF9F7);
+    color: var(--color-on-surface, #1F1B16);
+    border: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    padding: 10px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.12s, transform 0.12s;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover].is-open {
+    opacity: 1; transform: translateY(0);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] .gth-title {
+    font-size: 15px; font-weight: 600; line-height: 1.25;
+    color: var(--color-on-surface, #1F1B16);
+    margin-bottom: 4px;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] .gth-client {
+    font-size: 12px; color: var(--color-on-surface-variant, #5A5651);
+    margin-bottom: 8px;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] .gth-row {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--color-on-surface, #1F1B16);
+    padding: 2px 0;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] .gth-row .gth-label {
+    color: var(--color-on-surface-variant, #5A5651);
+    min-width: 70px;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-task-hover] .gth-avatar {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 700; color: #fff;
   }
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar {
     position: absolute; top: 6px; height: 20px;
@@ -655,6 +746,17 @@
     return bc - ac;
   }
 
+  // Priority sort weight (urgent → high → medium → low → null)
+  var _PRI_WEIGHT = { urgent: 0, high: 1, medium: 2, med: 2, low: 3 };
+  function priWeight(p) {
+    var k = (p || '').toString().toLowerCase();
+    return _PRI_WEIGHT.hasOwnProperty(k) ? _PRI_WEIGHT[k] : 4;
+  }
+
+  function _initialsOf(name) {
+    return (name || '?').split(/\s+/).map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+  }
+
   function renderTimeline(screen, tasks) {
     var host = screen.querySelector('[data-view-area="timeline"] [data-gantt]');
     if (!host) return;
@@ -664,10 +766,11 @@
     }
     var today = startOfDay(new Date());
     var rangeStart = new Date(today.getTime() - GANTT_DAYS_BACK * DAY_MS);
-    var totalDays = GANTT_DAYS_BACK + GANTT_DAYS_FWD + 1; // includes today
+    var totalDays = GANTT_DAYS_BACK + GANTT_DAYS_FWD + 1; // 14 days
     var totalW = totalDays * GANTT_DAY_W;
-
-    var sorted = tasks.slice().sort(sortForGantt).slice(0, GANTT_MAX_ROWS);
+    var rangeEnd = new Date(rangeStart.getTime() + (totalDays - 1) * DAY_MS);
+    var LABEL_W = 200;
+    var ROW_H = 36;
 
     // Header row (sticky)
     var headerCells = '';
@@ -682,85 +785,197 @@
         '</div>';
     }
 
-    // Rows
-    var rowsHtml = '';
-    sorted.forEach(function (t) {
-      var due = parseDayOrNull(t.dueDate);
-      var startCandidate = t.startDate || t.startedAt || t.createdAt;
-      var start = parseDayOrNull(startCandidate);
-      // Default bar span
-      var barStart, barEnd;
-      if (due && start && start.getTime() <= due.getTime()) {
-        barStart = start; barEnd = due;
-      } else if (due) {
-        barStart = due; barEnd = due;
-      } else if (start) {
-        barStart = start; barEnd = start;
-      } else {
-        barStart = today; barEnd = today;
-      }
-      // Clamp to range
-      var rangeEnd = new Date(rangeStart.getTime() + (totalDays - 1) * DAY_MS);
-      if (barEnd.getTime() < rangeStart.getTime() || barStart.getTime() > rangeEnd.getTime()) {
-        // Completely outside — still draw row but skip bar
-        rowsHtml += '<div class="gantt-row-label" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' + escHtml(t.title) + '</div>' +
-          '<div class="gantt-row-track" style="width:' + totalW + 'px"></div>';
-        return;
-      }
-      var clampedStart = barStart.getTime() < rangeStart.getTime() ? rangeStart : barStart;
-      var clampedEnd = barEnd.getTime() > rangeEnd.getTime() ? rangeEnd : barEnd;
-      var offsetDays = Math.round((clampedStart.getTime() - rangeStart.getTime()) / DAY_MS);
-      var spanDays = Math.max(1, Math.round((clampedEnd.getTime() - clampedStart.getTime()) / DAY_MS) + 1);
-      var left = offsetDays * GANTT_DAY_W + 2;
-      var width = spanDays * GANTT_DAY_W - 4;
-
-      var isOverdue = !!due && due.getTime() < today.getTime() && t.status !== 'done';
-      var statusClass = t.status === 'in-progress' ? 'status-inprogress'
-                     : t.status === 'done' ? 'status-done'
-                     : 'status-todo';
-      var isLive = !!_activeTimers[t.id];
-      var classes = 'gantt-bar ' + statusClass + (isOverdue ? ' is-overdue' : '') + (isLive ? ' is-live' : '');
-
-      var clientName = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '');
-      var asg0 = (t.assignees && t.assignees[0]) || {};
-      var asgName = asg0.name || t.assignee || '—';
-      var dueTxt = t.dueDate ? String(t.dueDate).slice(0,10) : '—';
-      var mins = Number(t.totalLoggedMinutes) || 0;
-      var tip = t.title +
-        '\nClient: ' + (clientName || '—') +
-        '\nAssignee: ' + asgName +
-        '\nDue: ' + dueTxt +
-        '\nLogged: ' + formatMinutes(mins) +
-        '\nStatus: ' + (t.status || '—');
-
-      rowsHtml += '<div class="gantt-row-label" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' + escHtml(t.title) + '</div>' +
-        '<div class="gantt-row-track" style="width:' + totalW + 'px">' +
-          '<div class="' + classes + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '"' +
-          ' style="left:' + left + 'px;width:' + width + 'px"' +
-          ' data-tooltip="' + escHtml(tip) + '" tabindex="0">' + escHtml(t.title) + '</div>' +
-        '</div>';
+    // ── Group tasks by project (client.name) ───────────────────────
+    var groups = {};
+    var groupOrder = [];
+    tasks.forEach(function(t) {
+      var pname = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' && t.client ? t.client : 'No Client');
+      if (!groups[pname]) { groups[pname] = []; groupOrder.push(pname); }
+      groups[pname].push(t);
+    });
+    // Sort each group: priority then dueDate asc
+    Object.keys(groups).forEach(function(k) {
+      groups[k].sort(function(a, b) {
+        var pa = priWeight(a.priority), pb = priWeight(b.priority);
+        if (pa !== pb) return pa - pb;
+        var ad = a.dueDate || '9999-12-31', bd = b.dueDate || '9999-12-31';
+        return ad < bd ? -1 : ad > bd ? 1 : 0;
+      });
+    });
+    // Sort groups alphabetically, "No Client" last
+    groupOrder.sort(function(a, b) {
+      if (a === 'No Client') return 1;
+      if (b === 'No Client') return -1;
+      return a.localeCompare(b);
     });
 
-    // Today line position (within the right column)
+    // ── Build group + row HTML ─────────────────────────────────────
+    var sectionsHtml = '';
+    var totalRowCount = 0;
+    var taskMeta = {}; // taskId -> meta for hover
+
+    groupOrder.forEach(function(pname, gIdx) {
+      var gTasks = groups[pname];
+      var totalMins = gTasks.reduce(function(s, t){ return s + (Number(t.totalLoggedMinutes) || 0); }, 0);
+      var gid = 'gp-' + gIdx;
+      sectionsHtml +=
+        '<div class="gantt-project-header" data-project-header data-group-id="' + gid + '">' +
+          '<span class="material-symbols-outlined gph-caret">expand_more</span>' +
+          '<span class="grl-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">' + escHtml(pname) + '</span>' +
+          '<span class="gph-chip">' + gTasks.length + ' task' + (gTasks.length === 1 ? '' : 's') + '</span>' +
+          '<span class="gph-chip">' + formatMinutes(totalMins) + '</span>' +
+        '</div>';
+
+      gTasks.forEach(function(t) {
+        totalRowCount++;
+        var due = parseDayOrNull(t.dueDate);
+        var startCandidate = t.startDate || t.startedAt || t.createdAt;
+        var start = parseDayOrNull(startCandidate);
+        var barStart, barEnd;
+        if (due && start && start.getTime() <= due.getTime()) { barStart = start; barEnd = due; }
+        else if (due) { barStart = due; barEnd = due; }
+        else if (start) { barStart = start; barEnd = start; }
+        else { barStart = today; barEnd = today; }
+
+        var pri = (t.priority || '').toString().toLowerCase();
+        var priShort = pri === 'urgent' ? 'U' : pri === 'high' ? 'H' : (pri === 'medium' || pri === 'med') ? 'M' : pri === 'low' ? 'L' : '';
+        var priChip = priShort
+          ? '<span class="tf-pri-' + (pri === 'med' ? 'medium' : pri) + '">' + priShort + '</span>'
+          : '';
+        var asg0 = (t.assignees && t.assignees[0]) || {};
+        var asgName = asg0.name || t.assignee || '';
+        var asgColor = asg0.avatarColor || '#5A5651';
+        var asgAvatar = asgName
+          ? '<span class="grl-avatar" style="background:' + escHtml(asgColor) + '" title="' + escHtml(asgName) + '">' + escHtml(_initialsOf(asgName)) + '</span>'
+          : '';
+
+        var labelHtml =
+          '<div class="gantt-row-label gantt-row" data-row-group="' + gid + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' +
+            priChip +
+            '<span class="grl-title">' + escHtml(t.title) + '</span>' +
+            asgAvatar +
+          '</div>';
+
+        var trackInner = '';
+        if (!(barEnd.getTime() < rangeStart.getTime() || barStart.getTime() > rangeEnd.getTime())) {
+          var clampedStart = barStart.getTime() < rangeStart.getTime() ? rangeStart : barStart;
+          var clampedEnd = barEnd.getTime() > rangeEnd.getTime() ? rangeEnd : barEnd;
+          var offsetDays = Math.round((clampedStart.getTime() - rangeStart.getTime()) / DAY_MS);
+          var spanDays = Math.max(1, Math.round((clampedEnd.getTime() - clampedStart.getTime()) / DAY_MS) + 1);
+          var left = offsetDays * GANTT_DAY_W + 2;
+          var width = spanDays * GANTT_DAY_W - 4;
+          var isOverdue = !!due && due.getTime() < today.getTime() && t.status !== 'done';
+          var statusClass = t.status === 'in-progress' ? 'status-inprogress'
+                         : t.status === 'done' ? 'status-done'
+                         : 'status-todo';
+          var isLive = !!_activeTimers[t.id];
+          var classes = 'gantt-bar ' + statusClass + (isOverdue ? ' is-overdue' : '') + (isLive ? ' is-live' : '');
+          trackInner =
+            '<div class="' + classes + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '"' +
+            ' style="left:' + left + 'px;width:' + width + 'px;top:8px;height:20px"' +
+            ' data-hover-task="' + escHtml(t.id) + '" tabindex="0">' + escHtml(t.title) + '</div>';
+        }
+        sectionsHtml += labelHtml +
+          '<div class="gantt-row-track gantt-row" data-row-group="' + gid + '" style="width:' + totalW + 'px">' + trackInner + '</div>';
+
+        // Stash meta for hover panel
+        taskMeta[t.id] = {
+          title: t.title || '',
+          client: (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : ''),
+          asgName: asgName, asgColor: asgColor,
+          priority: pri,
+          status: t.status || '',
+          due: t.dueDate ? String(t.dueDate).slice(0,10) : '',
+          start: startCandidate ? String(startCandidate).slice(0,10) : '',
+          mins: Number(t.totalLoggedMinutes) || 0,
+          lastActivity: t.updatedAt ? String(t.updatedAt).slice(0,16).replace('T',' ') : ''
+        };
+      });
+    });
+
+    // Today line
     var todayOffsetDays = Math.round((today.getTime() - rangeStart.getTime()) / DAY_MS);
     var todayLeft = todayOffsetDays * GANTT_DAY_W;
+    // Approx height: 32px header + each row (36px) + each group header (32px)
+    var fullHeight = 32 + totalRowCount * ROW_H + groupOrder.length * 32;
 
     var html =
-      '<div class="gantt-grid" style="grid-template-columns:140px ' + totalW + 'px">' +
+      '<div class="gantt-grid" style="grid-template-columns:' + LABEL_W + 'px ' + totalW + 'px">' +
         '<div class="gantt-corner"></div>' +
         '<div class="gantt-header" style="width:' + totalW + 'px">' + headerCells + '</div>' +
-        rowsHtml +
+        sectionsHtml +
       '</div>' +
-      '<div class="gantt-today-line" style="left:' + (140 + todayLeft + GANTT_DAY_W / 2 - 1) + 'px;top:0;height:' + (32 + sorted.length * GANTT_ROW_H) + 'px"></div>';
+      '<div class="gantt-today-line" style="left:' + (LABEL_W + todayLeft + GANTT_DAY_W / 2 - 1) + 'px;top:0;height:' + fullHeight + 'px"></div>' +
+      '<div data-task-hover style="left:0;top:0"></div>';
 
     host.innerHTML = html;
 
-    // Mobile tap-and-hold tooltip toggle
-    host.querySelectorAll('.gantt-bar[data-tooltip]').forEach(function (bar) {
-      bar.addEventListener('touchstart', function () {
-        host.querySelectorAll('.gantt-bar.tt-open').forEach(function (b) { if (b !== bar) b.classList.remove('tt-open'); });
-        bar.classList.toggle('tt-open');
+    // Project group expand/collapse
+    host.querySelectorAll('[data-project-header]').forEach(function(h) {
+      h.addEventListener('click', function() {
+        var gid = h.dataset.groupId;
+        var collapsed = h.classList.toggle('is-collapsed');
+        host.querySelectorAll('[data-row-group="' + gid + '"]').forEach(function(r) {
+          r.classList.toggle('is-hidden', collapsed);
+        });
+      });
+    });
+
+    // Rich hover panel (single shared)
+    var hover = host.querySelector('[data-task-hover]');
+    function showHover(tid, x, y) {
+      var m = taskMeta[tid]; if (!m || !hover) return;
+      var pri = m.priority;
+      var priChip = pri
+        ? '<span class="tf-pri-' + (pri === 'med' ? 'medium' : pri) + '" style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase">' + pri + '</span>'
+        : '<span class="text-on-surface-variant">—</span>';
+      var statusChip = m.status
+        ? '<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--color-surface-container-high,#E9E5E0);color:var(--color-on-surface,#1F1B16)">' + escHtml(m.status) + '</span>'
+        : '<span class="text-on-surface-variant">—</span>';
+      var asgAv = m.asgName
+        ? '<span class="gth-avatar" style="background:' + escHtml(m.asgColor) + '">' + escHtml(_initialsOf(m.asgName)) + '</span> ' + escHtml(m.asgName)
+        : '—';
+      hover.innerHTML =
+        '<div class="gth-title">' + escHtml(m.title) + '</div>' +
+        (m.client ? '<div class="gth-client">' + escHtml(m.client) + '</div>' : '') +
+        '<div class="gth-row"><span class="gth-label">Assignee</span>' + asgAv + '</div>' +
+        '<div class="gth-row"><span class="gth-label">Priority</span>' + priChip + '</div>' +
+        '<div class="gth-row"><span class="gth-label">Status</span>' + statusChip + '</div>' +
+        '<div class="gth-row"><span class="gth-label">Due</span>' + escHtml(m.due || '—') + '</div>' +
+        '<div class="gth-row"><span class="gth-label">Started</span>' + escHtml(m.start || '—') + '</div>' +
+        '<div class="gth-row"><span class="gth-label">Logged</span>' + formatMinutes(m.mins) + '</div>' +
+        (m.lastActivity ? '<div class="gth-row"><span class="gth-label">Activity</span>' + escHtml(m.lastActivity) + '</div>' : '');
+      // Position relative to host
+      var hr = host.getBoundingClientRect();
+      var left = x - hr.left + host.scrollLeft + 14;
+      var top  = y - hr.top  + host.scrollTop  + 14;
+      var hw = 280, hh = 220;
+      if (left + hw > host.scrollLeft + host.clientWidth) left = x - hr.left + host.scrollLeft - hw - 14;
+      if (top + hh > host.scrollTop + host.clientHeight) top = y - hr.top + host.scrollTop - hh - 14;
+      hover.style.left = Math.max(4, left) + 'px';
+      hover.style.top = Math.max(4, top) + 'px';
+      hover.classList.add('is-open');
+    }
+    function hideHover() { if (hover) hover.classList.remove('is-open'); }
+
+    host.querySelectorAll('.gantt-bar[data-hover-task]').forEach(function(bar) {
+      bar.addEventListener('mouseenter', function(e) { showHover(bar.dataset.hoverTask, e.clientX, e.clientY); });
+      bar.addEventListener('mousemove',  function(e) { showHover(bar.dataset.hoverTask, e.clientX, e.clientY); });
+      bar.addEventListener('mouseleave', hideHover);
+      bar.addEventListener('focus', function(e) {
+        var r = bar.getBoundingClientRect();
+        showHover(bar.dataset.hoverTask, r.left + r.width/2, r.bottom);
+      });
+      bar.addEventListener('blur', hideHover);
+      // Mobile tap-and-hold (350ms)
+      var holdTimer = null;
+      bar.addEventListener('touchstart', function(e) {
+        var t0 = e.touches && e.touches[0];
+        var x = t0 ? t0.clientX : 0, y = t0 ? t0.clientY : 0;
+        holdTimer = setTimeout(function() { showHover(bar.dataset.hoverTask, x, y); }, 350);
       }, { passive: true });
+      bar.addEventListener('touchend', function() { if (holdTimer) clearTimeout(holdTimer); setTimeout(hideHover, 2500); }, { passive: true });
+      bar.addEventListener('touchmove', function() { if (holdTimer) clearTimeout(holdTimer); }, { passive: true });
     });
   }
 
