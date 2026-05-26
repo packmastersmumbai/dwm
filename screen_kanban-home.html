@@ -170,7 +170,12 @@
     var _assigneeAvatar = _assignee0.avatar || task.assigneeAvatar || null;
     var _assigneeStatus = _assignee0.status || 'offline';
     var initials = _assigneeName.split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || '?';
-    var isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+    // Overdue = strictly BEFORE today (date-only comparison; ignores time-of-day).
+    // A task due today is NOT overdue.
+    var _today = new Date(); _today.setHours(0,0,0,0);
+    var _due = task.dueDate ? new Date(task.dueDate) : null;
+    if (_due) _due.setHours(0,0,0,0);
+    var isOverdue = !!_due && _due.getTime() < _today.getTime() && task.status !== 'done';
 
     // Checklist count — defensively parse if stored as JSON string
     var checklist = task.checklist;
@@ -203,12 +208,23 @@
           clientChip + typeIcon + dueDateHtml + checklistHtml +
         '</div>';
 
-    var playStop = isTimer
-      ? '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' +
-          '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>' +
-          '<button class="w-9 h-9 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">check</span></button>' +
-        '</div>'
-      : '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 mt-auto cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+    // Action buttons keyed by STATUS (not just live timer presence):
+    //  - timer running        → Stop + Mark Done
+    //  - in-progress, no timer→ Resume + Mark Done
+    //  - todo                 → Start
+    //  - done                 → (handled by separate done renderer)
+    var btnStop  = '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>';
+    var btnDone  = '<button class="w-9 h-9 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">check</span></button>';
+    var btnStart = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+
+    var playStop;
+    if (isTimer) {
+      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' + btnStop + btnDone + '</div>';
+    } else if (task.status === 'in-progress') {
+      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' + btnStart + btnDone + '</div>';
+    } else {
+      playStop = '<div class="shrink-0 mt-auto">' + btnStart + '</div>';
+    }
 
     var activeClass = isTimer
       ? ' border border-[#DC2626] shadow-md'
@@ -257,7 +273,7 @@
       });
     }
     if (filter === 'overdue') {
-      return tasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; });
+      return tasks.filter(function (t) { return t.dueDate && (function(){var d=new Date();d.setHours(0,0,0,0);var dd=new Date(t.dueDate);dd.setHours(0,0,0,0);return dd.getTime() < d.getTime();})() && t.status !== 'done'; });
     }
     return tasks; // 'all'
   }
@@ -289,7 +305,7 @@
     // overdue badge — computed from ALL loaded tasks (not the filtered subset)
     var overdueCount = _allTasks.filter(function (t) {
       var s = t.status;
-      return t.dueDate && new Date(t.dueDate) < new Date() &&
+      return t.dueDate && (function(){var d=new Date();d.setHours(0,0,0,0);var dd=new Date(t.dueDate);dd.setHours(0,0,0,0);return dd.getTime() < d.getTime();})() &&
              s !== 'done' && s !== 'deleted' && s !== 'archived';
     }).length;
     var badge = screen.querySelector('[data-overdue-count]');

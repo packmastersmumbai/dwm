@@ -209,7 +209,7 @@
 
   function renderAll(screen) {
     var today = new Date().toDateString();
-    var overdue = _myTasks.filter(function (t) { return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'; });
+    var overdue = _myTasks.filter(function (t) { return t.dueDate && (function(){var d=new Date();d.setHours(0,0,0,0);var dd=new Date(t.dueDate);dd.setHours(0,0,0,0);return dd.getTime() < d.getTime();})() && t.status !== 'done'; });
     var inprog  = _myTasks.filter(function (t) { return t.status === 'in-progress'; });
     var todayTasks = _myTasks.filter(function (t) { return t.status === 'todo' && (!t.dueDate || new Date(t.dueDate).toDateString() === today); });
     var done    = _myTasks.filter(function (t) { return t.status === 'done'; });
