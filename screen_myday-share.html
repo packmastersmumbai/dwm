@@ -284,6 +284,7 @@
         APP.token = null;
         APP.currentUser = null;
         try { sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
+        if (APP.clearGlobalRec) APP.clearGlobalRec();
         APP.navigate('pin-login');
       });
       return;

@@ -175,10 +175,90 @@ var APP = (function() {
       } catch(_) {}
     },
     get token() { return _token; },
-    set token(t) { _token = t; }
+    set token(t) { _token = t; },
+
+    // === Global REC pill ==========================================
+    // Per DESIGN.md: "Visible in the top-right of every screen via the
+    // global app shell". Previously only per-card pills existed inside
+    // kanban-home. The global pill makes a running timer visible from
+    // any screen. Tapping it returns to kanban-home.
+    //
+    // setGlobalRec({ startedAt: ISO, count: N }) shows the pill.
+    // clearGlobalRec() hides it.
+    // The pill embeds a [data-live-timer] span so the shell ticker
+    // (below) updates HH:MM:SS each second.
+    setGlobalRec: function(opts) {
+      var el = document.getElementById('tf-global-rec');
+      if (!el) return;
+      opts = opts || {};
+      var start = opts.startedAt || '';
+      var count = Number(opts.count) || 1;
+      var countSuffix = count > 1 ? ('  +' + (count - 1)) : '';
+      el.innerHTML =
+        '<span class="tf-rec-dot"></span>' +
+        '<span class="tf-rec-text">REC <span data-live-timer data-start="' +
+          String(start).replace(/[<>&"]/g, '') + '">' + _formatElapsed(start) +
+        '</span>' + countSuffix + '</span>';
+      el.classList.remove('hidden');
+      _ensureShellTicker();
+    },
+    clearGlobalRec: function() {
+      var el = document.getElementById('tf-global-rec');
+      if (!el) return;
+      el.innerHTML = '';
+      el.classList.add('hidden');
+    }
   };
+
+  // === Shell ticker ===============================================
+  // Cheap 1-second interval that ticks ALL [data-live-timer] elements
+  // currently in the DOM. Runs whenever any are present (global pill OR
+  // per-card pills) and stops automatically when none remain.
+  // This is what makes the global REC pill survive screen navigation —
+  // it owns the tick, not kanban-home.
+  var _shellTickerInterval = null;
+  function _ensureShellTicker() {
+    if (_shellTickerInterval) return;
+    _shellTickerInterval = setInterval(function () {
+      var live = document.querySelectorAll('[data-live-timer]');
+      if (!live.length) {
+        clearInterval(_shellTickerInterval);
+        _shellTickerInterval = null;
+        return;
+      }
+      live.forEach(function (el) {
+        var s = el.getAttribute('data-start');
+        if (s) el.textContent = _formatElapsed(s);
+      });
+    }, 1000);
+  }
+  function _formatElapsed(startIso) {
+    if (!startIso) return '00:00';
+    var ms = Date.now() - new Date(startIso).getTime();
+    if (!isFinite(ms) || ms < 0) ms = 0;
+    var total = Math.floor(ms / 1000);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return h > 0 ? (h + ':' + p(m) + ':' + p(s)) : (p(m) + ':' + p(s));
+  }
+
+  // Tapping the global pill navigates back to kanban-home so the user
+  // can see / stop the active timer.
+  document.addEventListener('click', function (e) {
+    var pill = e.target.closest && e.target.closest('#tf-global-rec');
+    if (!pill) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.APP && typeof APP.navigate === 'function') APP.navigate('kanban-home');
+  }, true);
 })();
 </script>
+
+<!-- Global REC pill — shown by APP.setGlobalRec, hidden by clearGlobalRec.
+     Sits above every screen, fixed top-right. Tap returns to kanban-home. -->
+<div id="tf-global-rec" class="hidden" role="status" aria-label="Active timer"></div>
 
 <!-- All 14 screens included here — each registers itself via APP.register().
      role="main" + aria-label give every screen a landmark for SR users. -->

@@ -1638,9 +1638,29 @@
   function activateTimer(taskId, logId, startedAt) {
     _activeTimers[taskId] = { logId: logId, startedAt: startedAt || new Date().toISOString() };
     ensureTickerRunning();
+    _broadcastGlobalRec();
   }
   function deactivateTimer(taskId) {
     delete _activeTimers[taskId];
+    _broadcastGlobalRec();
+  }
+  // Mirror the per-card timer state to the global app-shell REC pill.
+  // Single source of truth for "is anything running" lives in _activeTimers;
+  // this function projects it onto APP.setGlobalRec / clearGlobalRec.
+  function _broadcastGlobalRec() {
+    if (!window.APP || !APP.setGlobalRec) return;
+    var ids = Object.keys(_activeTimers || {});
+    if (!ids.length) { APP.clearGlobalRec(); return; }
+    // Pick the most-recently-started timer as the headline elapsed.
+    var newest = null;
+    ids.forEach(function (id) {
+      var s = _activeTimers[id];
+      if (!s || !s.startedAt) return;
+      if (!newest || new Date(s.startedAt).getTime() > new Date(newest).getTime()) {
+        newest = s.startedAt;
+      }
+    });
+    APP.setGlobalRec({ startedAt: newest, count: ids.length });
   }
 
   // Apply _recentlyDone guard — coerce stale 'in-progress' to 'done' until eviction.
@@ -1707,6 +1727,7 @@
       _activeTimers = next;
       renderAll(screen);
       ensureTickerRunning();
+      _broadcastGlobalRec();
     }).catch(function () { /* benign — first deploy may not have getActiveTimers yet */ });
   }
 
