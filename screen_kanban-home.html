@@ -52,9 +52,9 @@
 
 <!-- Filter Row -->
 <div class="w-full overflow-x-auto hide-scrollbar py-3 px-margin-edge flex gap-2 shrink-0 border-b border-outline-variant bg-surface" data-filter-row>
-  <button class="filter-btn px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="today">Today</button>
+  <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="today">Today</button>
   <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="week">This Week</button>
-  <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="all">All</button>
+  <button class="filter-btn px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="all">All</button>
   <button class="filter-btn px-4 py-1.5 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap flex items-center gap-1 cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="overdue">
     Overdue <span class="bg-error text-on-error px-1.5 py-0.5 rounded-full text-[10px] leading-none hidden" data-overdue-count></span>
   </button>
@@ -148,7 +148,7 @@
   var _timerInterval = null;
   var _timerTickCount = 0; // counts ticks for 60-second heartbeat
   var _allTasks = [];
-  var _activeFilter = 'today';
+  var _activeFilter = (function(){ try { return sessionStorage.getItem('kh.filter') || 'all'; } catch(e){ return 'all'; } })();
   var _activeScope = (function(){ try { return sessionStorage.getItem('kh.scope') || 'mine'; } catch(e){ return 'mine'; } })();
   var _activeView  = (function(){ try { return sessionStorage.getItem('kh.view')  || 'board'; } catch(e){ return 'board'; } })();
   // Multi-timer state: map of taskId → { logId, startedAt }
@@ -235,9 +235,9 @@
     //  - in-progress, no timer→ Resume + Mark Done
     //  - todo                 → Start
     //  - done                 → (handled by separate done renderer)
-    var btnStop  = '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>';
-    var btnDone  = '<button class="w-9 h-9 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">check</span></button>';
-    var btnStart = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+    var btnStop  = '<button class="w-7 h-7 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">stop</span></button>';
+    var btnDone  = '<button class="w-7 h-7 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">check</span></button>';
+    var btnStart = '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>';
 
     var playStop;
     if (isTimer) {
@@ -325,11 +325,28 @@
       var col = tasks.filter(function (t) { return t.status === status; });
       counts[status] = col.length;
       if (status === 'done') {
-        area.innerHTML = col.map(function (t) {
-          return '<article class="bg-surface/60 rounded-xl shadow-sm border-l-4 border-outline p-3 opacity-60 cursor-pointer">' +
-            '<h3 class="font-body-standard text-[14px] font-medium leading-tight line-through text-on-surface-variant">' + escHtml(t.title) + '</h3>' +
+        // Sort most-recently-completed first; show accumulated time + done by + done date
+        var sorted = col.slice().sort(function (a, b) {
+          var ad = new Date(a.completedAt || a.updatedAt || a.dueDate || 0).getTime();
+          var bd = new Date(b.completedAt || b.updatedAt || b.dueDate || 0).getTime();
+          return bd - ad;
+        });
+        area.innerHTML = sorted.map(function (t) {
+          var doneBy = (t.completedBy && t.completedBy.name) || t.completedByName ||
+                       (t.assignees && t.assignees[0] && t.assignees[0].name) ||
+                       (typeof t.assignee === 'string' ? t.assignee : (t.assignee && t.assignee.name) || '');
+          var doneInitial = doneBy ? doneBy.charAt(0).toUpperCase() : '·';
+          var doneDate = t.completedAt || t.updatedAt || '';
+          var doneDateStr = doneDate ? new Date(doneDate).toISOString().slice(0,10) : '';
+          var mins = Number(t.totalLoggedMinutes) || 0;
+          var timeChip = mins > 0 ? '<span class="tf-mono-meta flex items-center gap-0.5 text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[12px]">timer</span>' + formatMinutes(mins) + '</span>' : '';
+          var doneChip = doneDateStr ? '<span class="tf-mono-meta flex items-center gap-0.5 text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[12px]">check_circle</span>' + escHtml(doneDateStr) + '</span>' : '';
+          var byChip = doneBy ? '<span class="flex items-center gap-1 text-[11px] text-on-surface-variant"><span class="w-4 h-4 rounded-full bg-surface-container flex items-center justify-center text-[9px] font-bold text-on-surface-variant">' + doneInitial + '</span>' + escHtml(doneBy) + '</span>' : '';
+          return '<article class="bg-white rounded-xl shadow-sm p-3 cursor-pointer hover:shadow-md transition-shadow" data-task-id="' + t.id + '" data-action="open-task">' +
+            '<h3 class="font-body-standard text-[13px] font-medium leading-tight line-through text-on-surface-variant">' + escHtml(t.title) + '</h3>' +
+            '<div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">' + timeChip + doneChip + byChip + '</div>' +
           '</article>';
-        }).join('') + (col.length > 3 ? '<div class="text-center mt-4 mb-2"><a class="text-[12px] text-primary hover:underline cursor-pointer">Archive older tasks</a></div>' : '');
+        }).join('') + (col.length > 6 ? '<div class="text-center mt-4 mb-2"><a class="text-[12px] text-primary hover:underline cursor-pointer" data-action="archive-done">Archive older tasks</a></div>' : '');
       } else {
         area.innerHTML = col.map(function (t) {
           return renderCard(t);
@@ -371,11 +388,11 @@
 
     var rightBtn;
     if (isTimer) {
-      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>';
+      rightBtn = '<button class="w-7 h-7 rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">stop</span></button>';
     } else if (task.status === 'in-progress') {
-      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Resume timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+      rightBtn = '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Resume timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>';
     } else if (task.status === 'todo') {
-      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+      rightBtn = '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>';
     } else {
       rightBtn = '<span class="material-symbols-outlined text-[20px] text-[#10B981]">check_circle</span>';
     }
@@ -745,13 +762,19 @@
     var btn = e.target.closest('.filter-btn');
     if (!btn) return;
     _activeFilter = btn.dataset.filter || 'all';
-    screen.querySelectorAll('.filter-btn').forEach(function (b) {
-      b.classList.remove('bg-primary-container', 'text-on-primary-container');
-      b.classList.add('border', 'border-outline', 'text-on-surface-variant');
-    });
-    btn.classList.add('bg-primary-container', 'text-on-primary-container');
-    btn.classList.remove('border', 'border-outline', 'text-on-surface-variant');
+    try { sessionStorage.setItem('kh.filter', _activeFilter); } catch(_) {}
+    syncFilterChips(screen);
     renderAll(screen);
+  }
+  function syncFilterChips(screen) {
+    screen.querySelectorAll('.filter-btn').forEach(function (b) {
+      var on = b.dataset.filter === _activeFilter;
+      b.classList.toggle('bg-primary-container', on);
+      b.classList.toggle('text-on-primary-container', on);
+      b.classList.toggle('border', !on);
+      b.classList.toggle('border-outline', !on);
+      b.classList.toggle('text-on-surface-variant', !on);
+    });
   }
 
   // ── drag-drop (basic HTML5) ───────────────────────────────────────────────
@@ -826,6 +849,7 @@
 
       applyScopeVisibility(screen);
       applyViewVisibility(screen);
+      syncFilterChips(screen);
       loadTasks(screen);
       setupDragDrop(screen);
     },
