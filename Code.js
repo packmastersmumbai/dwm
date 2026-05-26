@@ -1645,7 +1645,12 @@ function priorityRank(p) {
 // _getTasks removed as top-level — now Internal.getTasks()
 
 function getTasks(filters, token) {
-  requireSession(token);
+  var sess = requireSession(token);
+  // When client passes no filters (Mine scope), restrict to the current user's tasks
+  // (assigned or created). Explicit filters from caller are honored as-is.
+  if (!filters) {
+    filters = { userId: sess.userId };
+  }
   return Internal.getTasks(filters);
 }
 
