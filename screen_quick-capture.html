@@ -253,7 +253,7 @@ APP.register('quick-capture', {
             micBtn.classList.add('hidden');
             try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
           } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-            APP.showError('Voice error: ' + e.error);
+            APP.showError('Voice input failed. Please type the task instead.');
           }
         };
         _recog.onend = function() {

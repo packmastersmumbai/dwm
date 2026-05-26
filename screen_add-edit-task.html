@@ -761,7 +761,9 @@
               micBtn.classList.add('hidden');
               try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
             } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-              APP.showError('Voice input error: ' + e.error);
+              // Don't leak raw API error codes (audio-capture, network, etc.)
+              // to the operator. A clear next-step instruction is more useful.
+              APP.showError('Voice input failed. Please type the task instead.');
             }
           };
           _recog.onend = function() {

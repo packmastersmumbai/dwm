@@ -170,7 +170,7 @@
   function renderClientChart(screen, clientHours) {
     var area = screen.querySelector('[data-area="chart-hours-by-client"]');
     if (!area) return;
-    if (!clientHours || !clientHours.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    if (!clientHours || !clientHours.length) { area.innerHTML = '<div class="text-on-surface-variant text-[12px] py-4">No client hours logged in this period.</div>'; return; }
     var max = Math.max.apply(null, clientHours.map(function (c) { return c.hours; }));
     var colors = ['#4F46E5','#DC2626','#4F46E5','#10B981','#4F46E5'];
     area.innerHTML = clientHours.map(function (c, i) {
@@ -189,7 +189,7 @@
   function renderTeamChart(screen, memberStats) {
     var area = screen.querySelector('[data-area="chart-team-productivity"]');
     if (!area) return;
-    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-[12px] py-4 w-full text-center">No team activity to chart yet.</div>'; return; }
     var max = Math.max.apply(null, memberStats.map(function (m) { return m.hours || 0; }));
     // Rank members high→low to apply tiered opacity (top performer fully opaque)
     var ranked = memberStats.slice().sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
@@ -210,12 +210,15 @@
   function renderTopPerformers(screen, memberStats) {
     var area = screen.querySelector('[data-area="top-performers-list"]');
     if (!area) return;
-    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-sm">No data</div>'; return; }
+    if (!memberStats || !memberStats.length) { area.innerHTML = '<div class="text-on-surface-variant text-[12px] py-4">No completed tasks in this period.</div>'; return; }
     var sorted = memberStats.slice().sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
-    var borderColors = ['#4F46E5','#10B981','#4F46E5','#DC2626'];
     area.innerHTML = sorted.map(function (m, i) {
       var initials = (m.name || '?').split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
-      return '<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center justify-between shadow-sm border-l-4" style="border-left-color:' + borderColors[i % borderColors.length] + '">' +
+      // Rank chip replaces the old border-l-4 side-stripe (impeccable absolute ban).
+      var rankBadges = ['1st','2nd','3rd','4th'];
+      var rankBadge = '<span class="font-label-bold text-label-bold text-on-surface-variant opacity-70">' + (rankBadges[i] || (i + 1) + 'th') + '</span>';
+      return '<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center justify-between shadow-sm">' +
+        '<div class="flex items-center gap-2 mr-2">' + rankBadge + '</div>' +
         '<div class="flex items-center gap-3">' +
           (m.avatar
             ? '<img alt="' + escHtml(m.name || 'User') + '" class="w-10 h-10 rounded-full object-cover" src="' + escHtml(m.avatar) + '"/>'
