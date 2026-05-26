@@ -160,7 +160,7 @@
     var dotColor = type === 'overdue' ? 'bg-error' : type === 'inprogress' ? 'bg-primary' : 'bg-outline-variant';
 
     if (type === 'done') {
-      return '<div class="h-[56px] bg-surface-container-low rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 border-surface-variant relative opacity-70" data-task-id="' + task.id + '">' +
+      return '<div class="h-[56px] bg-surface-container-low rounded-xl flex items-center justify-between px-3 shadow-sm relative opacity-70" data-task-id="' + task.id + '">' +
         '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
           '<span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>' +
           '<div class="flex flex-col overflow-hidden">' +
@@ -179,7 +179,7 @@
       ? '<button class="w-[44px] h-[44px] rounded-full bg-[#DC2626] bg-opacity-10 flex items-center justify-center text-[#DC2626] active:scale-95 relative" data-action="stop-timer" data-task-id="' + task.id + '"><div class="absolute inset-0 rounded-full border-4 border-[#DC2626] border-opacity-20 animate-pulse"></div><span class="material-symbols-outlined fill-icon">stop</span></button>'
       : '<button class="w-[44px] h-[44px] rounded-full bg-surface-container flex items-center justify-center text-primary hover:bg-surface-container-highest transition-colors active:scale-95" data-action="start-timer" data-task-id="' + task.id + '"><span class="material-symbols-outlined fill-icon text-[#10B981]">play_arrow</span></button>';
 
-    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 ' + borderColor + ' relative" data-task-id="' + task.id + '">' +
+    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm relative" data-task-id="' + task.id + '">' +
       '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
         '<div class="w-2 h-2 rounded-full flex-shrink-0 ' + dotColor + '"></div>' +
         '<div class="flex flex-col overflow-hidden whitespace-nowrap text-ellipsis">' +
@@ -195,7 +195,7 @@
   }
 
   function buildPoolRow(task) {
-    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm border-l-4 border-surface-container-highest relative" data-task-id="' + task.id + '">' +
+    return '<div class="h-[56px] bg-surface-container-lowest rounded-xl flex items-center justify-between px-3 shadow-sm relative" data-task-id="' + task.id + '">' +
       '<div class="flex items-center gap-3 overflow-hidden flex-1">' +
         '<div class="w-2 h-2 rounded-full bg-outline-variant flex-shrink-0"></div>' +
         '<div class="flex flex-col overflow-hidden">' +

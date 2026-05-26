@@ -165,7 +165,15 @@ var APP = (function() {
     showSuccess: showSuccess,
     state: state,
     get currentUser() { return currentUser; },
-    set currentUser(u) { currentUser = u; },
+    set currentUser(u) {
+      currentUser = u;
+      // Mirror the role onto <body data-role="..."> so the global Admin-tab
+      // hide rule in shared-styles.html can act on it without per-screen JS.
+      try {
+        if (u && u.role) document.body.setAttribute('data-role', u.role);
+        else document.body.removeAttribute('data-role');
+      } catch(_) {}
+    },
     get token() { return _token; },
     set token(t) { _token = t; }
   };

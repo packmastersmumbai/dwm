@@ -451,7 +451,7 @@
 
   <!-- Column: To Do -->
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-todo rounded-lg overflow-hidden" data-col-status="todo">
-    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+    <div class="sticky top-0 bg-surface-container-low px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[16px] text-[#6B7280]">pending</span>
         <h2 class="text-[13px] font-semibold text-on-surface">To Do</h2>
@@ -466,7 +466,7 @@
 
   <!-- Column: In Progress -->
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-progress rounded-lg overflow-hidden" data-col-status="in-progress">
-    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+    <div class="sticky top-0 bg-surface-container-low px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[16px] text-[#4F46E5]">model_training</span>
         <h2 class="text-[13px] font-semibold text-on-surface">In Progress</h2>
@@ -481,7 +481,7 @@
 
   <!-- Column: Done -->
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-done rounded-lg overflow-hidden" data-col-status="done">
-    <div class="sticky top-0 bg-surface-container-low/90 backdrop-blur px-3 py-2 border-b border-outline-variant flex justify-between items-center">
+    <div class="sticky top-0 bg-surface-container-low px-3 py-2 border-b border-outline-variant flex justify-between items-center">
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[16px] text-[#10B981]">check_circle</span>
         <h2 class="text-[13px] font-semibold text-on-surface">Done</h2>
@@ -645,7 +645,17 @@
       clChip = '<span class="px-1.5 py-0.5 bg-surface-variant text-on-surface-variant rounded font-normal" aria-label="' + clDone + ' of ' + clTotal + ' steps complete" style="font-size:10px;white-space:nowrap">' + clDone + '/' + clTotal + ' ✓</span>';
     }
 
+    // Priority chip — visible only for high/urgent. Low/medium stay quiet (no chip).
+    // Priority WAS conveyed by a tiny dot beside the title; this is the replacement.
+    var priChip = '';
+    var priKey = (task.priority || '').toLowerCase();
+    if (priKey === 'urgent' || priKey === 'high') {
+      var priClass = priKey === 'urgent' ? 'tf-pri-urgent' : 'tf-pri-high';
+      priChip = '<span class="' + priClass + '" style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:0.06em">' + priKey + '</span>';
+    }
+
     var metaRow = '<div class="flex items-center gap-1.5 mt-1.5 min-w-0">' +
+        priChip + (priChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' : '') +
         clientChip + sepDot + dueDateHtml + (clChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' + clChip : '') + accHtml + liveHtml +
       '</div>';
 
@@ -677,13 +687,13 @@
       '<span class="absolute rounded-full' + assigneePulse + '" style="bottom:-1px;right:-1px;width:6px;height:6px;border:1.5px solid #FFFFFF;' + presenceDotStyle + '"></span>' +
     '</div>';
 
-    // Status dot — 2.5x2.5 (10px) in priority color, inline with title
-    var statusDot = '<span class="shrink-0 rounded-full" style="width:8px;height:8px;background:' + priColor + ';display:inline-block;margin-top:5px"></span>';
+    // Removed standalone status dot — priority is already conveyed by the
+    // tf-pri-* chip in metaRow, so a second small dot was redundant.
+    // (Cards now carry: chip + bg-tint + REC pill instead of 5 status sources.)
 
-    return '<article class="bg-white rounded-xl p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200 border border-outline-variant' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task" style="box-shadow:0 1px 2px rgba(0,0,0,0.04)">' +
+    return '<article class="bg-white rounded-xl p-3 relative flex gap-2 cursor-pointer transition-[transform,box-shadow] duration-160 border border-outline-variant active:scale-[0.98]' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task" style="box-shadow:0 1px 2px rgba(0,0,0,0.04);will-change:transform">' +
       '<div class="flex-1 flex flex-col min-w-0">' +
         '<div class="flex items-start gap-2 min-w-0">' +
-          statusDot +
           '<h3 class="font-body-standard font-semibold leading-snug truncate text-on-surface flex-1 min-w-0" style="font-size:14px">' + escHtml(titleStr) + '</h3>' +
           assigneeHtml +
         '</div>' +
@@ -766,9 +776,28 @@
           '</article>';
         }).join('') + (col.length > 6 ? '<div class="text-center mt-4 mb-2"><a class="text-[12px] text-primary hover:underline cursor-pointer" data-action="archive-done">Archive older tasks</a></div>' : '');
       } else {
-        area.innerHTML = col.map(function (t) {
-          return renderCard(t);
-        }).join('');
+        if (col.length === 0) {
+          var emptyCopy = status === 'todo'
+            ? { line: 'No tasks to do', sub: 'Tap + to add one.' }
+            : { line: 'No timers running', sub: 'Tap a To Do task and Start.' };
+          area.innerHTML =
+            '<div class="flex flex-col items-center justify-center text-center px-3 py-8 text-on-surface-variant select-none">' +
+              '<div class="text-[12px] font-medium text-on-surface mb-0.5">' + emptyCopy.line + '</div>' +
+              '<div class="text-[11px] opacity-70">' + emptyCopy.sub + '</div>' +
+            '</div>';
+        } else {
+          area.innerHTML = col.map(function (t) {
+            return renderCard(t);
+          }).join('');
+        }
+      }
+      // Done column: show empty hint when nothing has been finished.
+      if (status === 'done' && col.length === 0) {
+        area.innerHTML =
+          '<div class="flex flex-col items-center justify-center text-center px-3 py-8 text-on-surface-variant select-none">' +
+            '<div class="text-[12px] font-medium text-on-surface mb-0.5">Nothing finished yet</div>' +
+            '<div class="text-[11px] opacity-70">Completed tasks land here.</div>' +
+          '</div>';
       }
       var countEl = screen.querySelector('[data-col-count="' + status + '"]');
       if (countEl) countEl.textContent = col.length;

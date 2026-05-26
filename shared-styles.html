@@ -109,15 +109,23 @@ button:focus:not(:focus-visible) { outline: none; }
   }
 }
 
-/* === AI-slop fix: neutralize the chunky 4px side-stripe accents on cards ===
-   PRODUCT.md + impeccable shared laws disallow decorative side-stripes >1px
-   as primary status indicators. Status meaning is preserved via tf-pri-chip,
-   colored dots, bg tints, and icons that already exist in every card.
-   Touch-target buttons (.tb-action-btn, w-9/h-9 icon buttons) keep their
-   focus rings via the global rule above. */
+/* Side-stripe border-l-4 was stripped from card markup in admin-panel /
+   daily-plan / myday-share (commit polish-batch-2). The earlier
+   CSS neutralizer is no longer needed — keeping a defensive rule scoped to
+   cards so any future regression is still capped at 1px. */
 [data-screen] article.border-l-4,
 [data-screen] div.border-l-4 {
   border-left-width: 1px !important;
+}
+
+/* === Admin tab is hidden for non-admin users.
+   index.html sets `data-role` on the body when login completes; if the role
+   is not "admin", every bottom-nav button pointing at admin-panel is hidden.
+   This declutters the nav for operators (Priya/Ravi/Meena) — they can still
+   reach Admin via direct nav (the screen itself is gated by role at server),
+   but it stops being a permanent visual slot they can't act on. */
+body:not([data-role="admin"]) [data-nav="admin-panel"] {
+  display: none !important;
 }
 
 /* === A11y fix: enlarge sub-44px icon buttons (w-8/h-8 = 32px, w-9/h-9 = 36px)
