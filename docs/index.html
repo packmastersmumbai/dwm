@@ -31,14 +31,17 @@
   @media (max-width: 640px) {
     #app { top: -60px; height: calc(100% + 60px); } /* mobile banner taller */
   }
-  /* Splash while iframe loads */
+  /* Splash while iframe loads — visual only, MUST NOT block taps to the iframe.
+     Without pointer-events:none here, on slow networks the splash sits on top
+     of the iframe for 1.2-8s blocking every login tap. */
   #splash {
     position: fixed; inset: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 14px; background: #fff; z-index: 10;
+    pointer-events: none;
     transition: opacity .4s ease-out;
   }
-  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash.hide { opacity: 0; }
   #splash .logo {
     width: 64px; height: 64px; border-radius: 50%;
     background: #E8F0FE; color: #1A73E8;

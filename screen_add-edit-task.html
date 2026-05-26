@@ -722,11 +722,17 @@
       }).catch(function(err) { APP.showError(err); });
 
       // Voice input — mic button (feature-detected)
+      // NOTE: Google Apps Script renders user code in a nested iframe at
+      // n-*.googleusercontent.com which has NO `allow="microphone"` set, so
+      // SpeechRecognition.start() throws NotAllowedError on every mobile browser
+      // even though the outer wrapper (docs/index.html) allows mic. We feature-detect
+      // AND catch the permission error so the user gets a clear message and the
+      // button hides itself after a confirmed failure.
       (function() {
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         var micBtn = qs(screen, 'btn-mic');
         if (!SpeechRecognition || !micBtn) return;
-        micBtn.classList.remove('hidden'); // only show when supported
+        micBtn.classList.remove('hidden');
         var _recog = null;
         var _listening = false;
         micBtn.addEventListener('click', function() {
@@ -750,7 +756,13 @@
             titleInput.value = current ? current + ' ' + transcript : transcript;
           };
           _recog.onerror = function(e) {
-            if (e.error !== 'no-speech') APP.showError('Voice input error: ' + e.error);
+            if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+              APP.showError('Voice input is not available in this app — please type the task instead.');
+              micBtn.classList.add('hidden');
+              try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
+            } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+              APP.showError('Voice input error: ' + e.error);
+            }
           };
           _recog.onend = function() {
             _listening = false;
@@ -759,8 +771,19 @@
             micBtn.removeAttribute('aria-pressed');
             micBtn.querySelector('.material-symbols-outlined').textContent = 'mic';
           };
-          _recog.start();
+          try {
+            _recog.start();
+          } catch (err) {
+            _listening = false;
+            micBtn.classList.add('hidden');
+            try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
+            APP.showError('Voice input is not available in this app — please type the task instead.');
+          }
         });
+        // If we previously confirmed unavailability, never show the button.
+        try {
+          if (sessionStorage.getItem('tf.voiceUnavailable') === '1') micBtn.classList.add('hidden');
+        } catch(_) {}
       })();
 
       // Cancel / back

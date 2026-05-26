@@ -214,11 +214,19 @@ APP.register('quick-capture', {
     });
 
     // ── Voice input (Task 2) ───────────────────────────────
+    // Note: SpeechRecognition.start() throws NotAllowedError inside the GAS
+    // inner iframe (no allow="microphone" set by Google). Graceful fail.
     (function() {
       var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       var micBtn = screen.querySelector('#qc-mic-btn');
       if (!SpeechRecognition || !micBtn) return;
       micBtn.classList.remove('hidden');
+      try {
+        if (sessionStorage.getItem('tf.voiceUnavailable') === '1') {
+          micBtn.classList.add('hidden');
+          return;
+        }
+      } catch(_) {}
       var _recog = null;
       var _listening = false;
       micBtn.addEventListener('click', function() {
@@ -240,7 +248,13 @@ APP.register('quick-capture', {
           screen.querySelector('#qc-char-count').textContent = len + '/100';
         };
         _recog.onerror = function(e) {
-          if (e.error !== 'no-speech') APP.showError('Voice error: ' + e.error);
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+            APP.showError('Voice input is not available in this app — please type the task instead.');
+            micBtn.classList.add('hidden');
+            try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
+          } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+            APP.showError('Voice error: ' + e.error);
+          }
         };
         _recog.onend = function() {
           _listening = false;
@@ -248,7 +262,14 @@ APP.register('quick-capture', {
           micBtn.removeAttribute('aria-pressed');
           micBtn.querySelector('.material-symbols-outlined').textContent = 'mic';
         };
-        _recog.start();
+        try {
+          _recog.start();
+        } catch (err) {
+          _listening = false;
+          micBtn.classList.add('hidden');
+          try { sessionStorage.setItem('tf.voiceUnavailable', '1'); } catch(_) {}
+          APP.showError('Voice input is not available in this app — please type the task instead.');
+        }
       });
       // expose for unmount cleanup
       self._micRecog = function() { return _recog; };
