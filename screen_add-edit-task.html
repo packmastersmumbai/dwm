@@ -174,6 +174,14 @@
         <span class="toggle-dot absolute w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
       </label>
     </div>
+    <!-- Checklist inline editor (shown when toggle-checklist is checked) -->
+    <div data-ref="checklist-editor" class="hidden px-4 pb-3 flex flex-col gap-2">
+      <div data-ref="ae-checklist-list" class="flex flex-col gap-1"></div>
+      <div class="flex gap-2 mt-1">
+        <input data-ref="ae-checklist-input" type="text" class="flex-1 bg-surface-container-low border-0 rounded-xl px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container text-[14px]" placeholder="Add a step…" autocomplete="off"/>
+        <button data-ref="ae-checklist-add-btn" type="button" class="px-4 py-2 bg-primary-container text-on-primary-container rounded-xl font-body-standard text-[14px] disabled:opacity-50" disabled>Add</button>
+      </div>
+    </div>
     <!-- Require completion photo -->
     <div class="flex justify-between items-center p-4">
       <div class="flex items-center gap-3 text-on-surface">
@@ -223,6 +231,7 @@
   var _selectedFrequency = 'daily';
   var _selectedDays = [];
   var _freqStep = 1;
+  var _checklistItems = []; // {id, text, done}
 
   function escHtml(s) {
     return String(s == null ? '' : s)
@@ -232,6 +241,41 @@
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
+  }
+
+  function clNewId() {
+    return 'cl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function renderChecklistItems(screen) {
+    var listEl = qs(screen, 'ae-checklist-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    _checklistItems.forEach(function(item) {
+      var row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2';
+      var span = document.createElement('span');
+      span.className = 'flex-1 font-body-standard text-on-surface text-[14px]';
+      span.textContent = item.text;
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'text-on-surface-variant hover:text-error shrink-0';
+      del.setAttribute('aria-label', 'Remove item');
+      del.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">delete</span>';
+      del.addEventListener('click', function() {
+        _checklistItems = _checklistItems.filter(function(it) { return it.id !== item.id; });
+        renderChecklistItems(screen);
+      });
+      row.appendChild(span);
+      row.appendChild(del);
+      listEl.appendChild(row);
+    });
+  }
+
+  function toggleChecklistEditor(screen, show) {
+    var ed = qs(screen, 'checklist-editor');
+    if (!ed) return;
+    if (show) { ed.classList.remove('hidden'); } else { ed.classList.add('hidden'); }
   }
 
   /* ── Date helpers ──────────────────────────────────────── */
@@ -422,7 +466,12 @@
     setSchedule(screen, task.schedule || 'morning');
 
     if (task.shared)    qs(screen, 'toggle-shared').checked    = true;
-    if (task.checklist && task.checklist.length) qs(screen, 'toggle-checklist').checked = true;
+    if (task.checklist && task.checklist.length) {
+      qs(screen, 'toggle-checklist').checked = true;
+      _checklistItems = task.checklist.map(function(it) { return { id: it.id || clNewId(), text: it.text || it.title || '', done: !!it.done }; });
+      toggleChecklistEditor(screen, true);
+      renderChecklistItems(screen);
+    }
     qs(screen, 'toggle-requires-photo').checked = !!task.requiresPhoto;
 
     if (task.recurrence && task.recurrence.type) {
@@ -532,7 +581,7 @@
       assigneeIds:  _selectedAssignees.slice(),
       isShared:       qs(screen, 'toggle-shared').checked,
       recurrence:     recurrence,
-      checklist:      qs(screen, 'toggle-checklist').checked ? [] : null,
+      checklist:      qs(screen, 'toggle-checklist').checked ? _checklistItems.slice() : null,
       requiresPhoto:  !!qs(screen, 'toggle-requires-photo').checked,
       description:    qs(screen, 'field-notes').value.trim()
     };
@@ -599,6 +648,36 @@
       qs(screen, 'toggle-recurring').addEventListener('change', function() {
         toggleRecurrencePicker(screen, this.checked);
       });
+
+      // Checklist toggle
+      _checklistItems = [];
+      toggleChecklistEditor(screen, false);
+      qs(screen, 'toggle-checklist').addEventListener('change', function() {
+        toggleChecklistEditor(screen, this.checked);
+        if (!this.checked) { _checklistItems = []; renderChecklistItems(screen); }
+      });
+
+      // Checklist add item
+      var aeInput = qs(screen, 'ae-checklist-input');
+      var aeAddBtn = qs(screen, 'ae-checklist-add-btn');
+      if (aeInput && aeAddBtn) {
+        aeInput.addEventListener('input', function() {
+          aeAddBtn.disabled = !aeInput.value.trim();
+        });
+        function doAddItem() {
+          var text = aeInput.value.trim();
+          if (!text) return;
+          _checklistItems.push({ id: clNewId(), text: text, done: false });
+          renderChecklistItems(screen);
+          aeInput.value = '';
+          aeAddBtn.disabled = true;
+          aeInput.focus();
+        }
+        aeAddBtn.addEventListener('click', doAddItem);
+        aeInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') { e.preventDefault(); doAddItem(); }
+        });
+      }
 
       // Frequency buttons
       FREQ_KEYS.forEach(function(f) {

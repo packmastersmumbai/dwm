@@ -637,8 +637,16 @@
       ? '<span class="tf-mono-meta inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold" style="font-size:12px;background:rgba(220,38,38,0.08);color:#DC2626;margin-left:auto"><span class="animate-pulse" style="display:inline-block;width:6px;height:6px;border-radius:9999px;background:#DC2626"></span><span data-live-timer data-start="' + escHtml(timerStart || '') + '">' + formatElapsed(timerStart) + '</span></span>'
       : '';
 
+    // Checklist progress chip
+    var clChip = '';
+    if (Array.isArray(task.checklist) && task.checklist.length > 0) {
+      var clDone = task.checklist.filter(function(it) { return !!it.done; }).length;
+      var clTotal = task.checklist.length;
+      clChip = '<span class="px-1.5 py-0.5 bg-surface-variant text-on-surface-variant rounded font-normal" aria-label="' + clDone + ' of ' + clTotal + ' steps complete" style="font-size:10px;white-space:nowrap">' + clDone + '/' + clTotal + ' ✓</span>';
+    }
+
     var metaRow = '<div class="flex items-center gap-1.5 mt-1.5 min-w-0">' +
-        clientChip + sepDot + dueDateHtml + accHtml + liveHtml +
+        clientChip + sepDot + dueDateHtml + (clChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' + clChip : '') + accHtml + liveHtml +
       '</div>';
 
     // Action buttons — 28px
