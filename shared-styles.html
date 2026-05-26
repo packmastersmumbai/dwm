@@ -391,16 +391,19 @@ button:focus:not(:focus-visible) { outline: none; }
         justify-content: center;
         border-radius: var(--radius-md);
         font-family: var(--font-sans);
-        font-size: 26px;
-        font-weight: var(--fw-semibold);
+        font-size: 28px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
         background-color: #FFFFFF;
         border: 1px solid var(--color-hairline-strong);
         color: var(--color-ink);
+        transition: background-color 100ms ease, transform 100ms ease, color 100ms ease;
     }
 [data-screen="pin-login"] .pin-btn:active {
         background-color: var(--color-primary);
         border-color: var(--color-primary);
         color: var(--color-on-primary);
+        transform: scale(0.96);
     }
 [data-screen="pin-login"] .pin-btn:focus-visible {
         outline: 2px solid var(--color-focus-ring);
@@ -410,15 +413,19 @@ button:focus:not(:focus-visible) { outline: none; }
     [data-screen="pin-login"] .shake-anim { animation: none !important; }
 }
 [data-screen="pin-login"] .pin-dot {
-        width: 20px;
-        height: 20px;
+        width: 14px;
+        height: 14px;
         border-radius: var(--radius-pill);
+        transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
     }
 [data-screen="pin-login"] .pin-dot-empty {
         border: 1.5px solid var(--color-hairline-strong);
+        background-color: transparent;
     }
 [data-screen="pin-login"] .pin-dot-filled {
         background-color: var(--color-primary);
+        border: 1.5px solid var(--color-primary);
+        transform: scale(1.08);
     }
 [data-screen="pin-login"] .hide-scrollbar::-webkit-scrollbar {
         display: none;

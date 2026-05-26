@@ -1,17 +1,17 @@
 <div data-screen="pin-login" class="bg-background w-full flex flex-col items-center justify-center py-8 font-body-standard text-on-background" style="min-height:100dvh">
 
   <!-- Branding -->
-  <div class="flex flex-col items-center justify-center flex-shrink-0 mb-8 w-full max-w-md px-margin-edge">
-    <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-sm">
-      <span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1; font-size: 32px;">bolt</span>
+  <div class="flex flex-col items-center justify-center flex-shrink-0 mb-10 w-full max-w-md px-margin-edge">
+    <div class="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mb-5 shadow-sm">
+      <span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1; font-size: 40px;">bolt</span>
     </div>
-    <h1 class="text-on-surface mb-1" style="font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em;">TaskFlow</h1>
-    <p class="text-on-surface-variant" style="font-size: 13px;">Your work. Your pace.</p>
+    <h1 class="text-on-surface mb-1.5" style="font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em;">TaskFlow</h1>
+    <p class="text-on-surface-variant" style="font-size: 13.5px; letter-spacing: 0.01em;">Your work. Your pace.</p>
   </div>
 
   <!-- User Selector -->
-  <div class="w-full max-w-md px-margin-edge mb-6">
-    <div class="flex flex-row overflow-x-auto hide-scrollbar gap-4 pb-2 items-start px-2" data-area="user-selector">
+  <div class="w-full max-w-md px-margin-edge mb-7">
+    <div class="flex flex-row overflow-x-auto hide-scrollbar gap-5 pb-2 pt-1 items-start px-2 justify-center" data-area="user-selector">
       <!-- Users rendered dynamically -->
     </div>
   </div>
@@ -22,11 +22,11 @@
   </div>
 
   <!-- PIN Dots -->
-  <div class="flex flex-row justify-center items-center gap-[14px] mb-8 w-full" data-area="pin-dots">
-    <div class="pin-dot pin-dot-empty shadow-sm" data-dot="0"></div>
-    <div class="pin-dot pin-dot-empty shadow-sm" data-dot="1"></div>
-    <div class="pin-dot pin-dot-empty shadow-sm" data-dot="2"></div>
-    <div class="pin-dot pin-dot-empty shadow-sm" data-dot="3"></div>
+  <div class="flex flex-row justify-center items-center gap-[22px] mb-9 w-full" data-area="pin-dots">
+    <div class="pin-dot pin-dot-empty" data-dot="0"></div>
+    <div class="pin-dot pin-dot-empty" data-dot="1"></div>
+    <div class="pin-dot pin-dot-empty" data-dot="2"></div>
+    <div class="pin-dot pin-dot-empty" data-dot="3"></div>
   </div>
 
   <!-- PIN Pad -->
@@ -45,6 +45,11 @@
     <button class="pin-btn shadow-sm hover:bg-surface-container-low transition-colors cursor-pointer flex items-center justify-center" data-action="backspace" aria-label="Backspace">
       <span class="material-symbols-outlined text-[#1F2328]">backspace</span>
     </button>
+  </div>
+
+  <!-- Hairline version footer -->
+  <div class="w-full max-w-md px-margin-edge mt-auto pt-4 pb-2 text-center">
+    <span class="text-[10px] text-on-surface-variant tracking-wide" style="font-variant-numeric:tabular-nums;opacity:0.55" data-app-version></span>
   </div>
 
 </div>
@@ -108,25 +113,25 @@
     var avatarTextColors = ['text-on-secondary-container','text-on-tertiary-fixed','text-on-surface-variant','text-on-primary-fixed'];
     var userHtml = _users.map(function (u, idx) {
       var isSelected = u.id === _selectedUserId;
-      var bg = isSelected ? 'bg-primary-container border-2 border-primary' : avatarBgs[idx % avatarBgs.length];
-      var size = isSelected ? 'w-10 h-10' : 'w-8 h-8 mt-1';
-      var textSize = isSelected ? 'text-sm' : 'text-xs';
-      var initialsColor = isSelected ? 'text-primary' : avatarTextColors[idx % avatarTextColors.length];
-      var nameColor = isSelected ? 'text-on-surface' : 'text-on-surface-variant';
-      var opacity = isSelected ? '' : 'opacity-70 hover:opacity-100';
-      return '<div class="flex flex-col items-center flex-shrink-0 cursor-pointer transition-opacity ' + opacity + '" data-action="select-user" data-user-id="' + escHtml(String(u.id)) + '">' +
-        '<div class="' + size + ' rounded-full ' + bg + ' flex items-center justify-center mb-1">' +
-          '<span class="font-title-main text-title-main ' + initialsColor + ' ' + textSize + '">' + escHtml(initials(u.name)) + '</span>' +
+      var bg = avatarBgs[idx % avatarBgs.length];
+      var initialsColor = avatarTextColors[idx % avatarTextColors.length];
+      var nameColor = isSelected ? 'text-on-surface font-semibold' : 'text-on-surface-variant';
+      var ringStyle = isSelected
+        ? 'box-shadow:0 0 0 2px var(--color-primary, #4F46E5);transform:scale(1.06);transition:all 180ms ease;'
+        : 'transition:all 180ms ease;opacity:0.78;';
+      return '<div class="flex flex-col items-center flex-shrink-0 cursor-pointer" data-action="select-user" data-user-id="' + escHtml(String(u.id)) + '" style="min-width:56px">' +
+        '<div class="w-12 h-12 rounded-full ' + bg + ' flex items-center justify-center mb-1.5" style="' + ringStyle + '">' +
+          '<span class="font-title-main ' + initialsColor + '" style="font-size:14px;font-weight:600;letter-spacing:0.02em">' + escHtml(initials(u.name)) + '</span>' +
         '</div>' +
-        '<span class="font-label-bold text-label-bold ' + nameColor + '" style="font-size:11px">' + escHtml((u.name || '').split(' ')[0]) + '</span>' +
+        '<span class="' + nameColor + '" style="font-size:11px;letter-spacing:0.01em;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">' + escHtml((u.name || '').split(' ')[0]) + '</span>' +
       '</div>';
     }).join('');
-    // Append "Add user" affordance (per Stitch reference)
-    var addTile = '<div class="flex flex-col items-center flex-shrink-0 cursor-pointer transition-opacity opacity-70 hover:opacity-100" data-action="add-user">' +
-      '<div class="w-8 h-8 mt-1 rounded-full bg-surface-variant flex items-center justify-center mb-1">' +
-        '<span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px">add</span>' +
+    // Append "Add user" affordance
+    var addTile = '<div class="flex flex-col items-center flex-shrink-0 cursor-pointer" data-action="add-user" style="min-width:56px;opacity:0.6">' +
+      '<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-1.5" style="border:1px dashed var(--color-hairline-strong, #D1D5DB)">' +
+        '<span class="material-symbols-outlined text-on-surface-variant" style="font-size:20px">add</span>' +
       '</div>' +
-      '<span class="font-label-bold text-label-bold text-on-surface-variant" style="font-size:11px">Add</span>' +
+      '<span class="text-on-surface-variant" style="font-size:11px">Add</span>' +
     '</div>';
     area.innerHTML = userHtml + addTile;
   }
@@ -233,6 +238,13 @@
       showError(screen, '');
       updateDots(screen);
       setPadDisabled(screen, false);
+
+      // Version footer
+      var vEl = screen.querySelector('[data-app-version]');
+      if (vEl) {
+        var v = (window.APP && APP.version) || 'v __APP_VERSION__';
+        vEl.textContent = v;
+      }
 
       screen._clickHandler = function (e) { handleClick(e, screen); };
       screen._keyHandler   = function (e) { handleKeydown(e, screen); };

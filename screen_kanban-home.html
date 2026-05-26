@@ -356,90 +356,91 @@
     var session = _activeTimers[task.id] || null;
     var isTimer = !!session;
     var timerStart = session ? session.startedAt : null;
-    var borderClass = priorityBorderClass(task.priority);
+    var priColor = priorityDotColor(task.priority);
     var _assignee0 = (task.assignees && task.assignees[0]) || {};
     var _assigneeName = _assignee0.name || task.assignee || '?';
     var _assigneeAvatar = _assignee0.avatar || task.assigneeAvatar || null;
     var _assigneeStatus = _assignee0.status || 'offline';
     var initials = _assigneeName.split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || '?';
-    // Overdue = strictly BEFORE today (date-only comparison; ignores time-of-day).
-    // A task due today is NOT overdue.
+    // Overdue = strictly BEFORE today (date-only).
     var _today = new Date(); _today.setHours(0,0,0,0);
     var _due = task.dueDate ? new Date(task.dueDate) : null;
     if (_due) _due.setHours(0,0,0,0);
     var isOverdue = !!_due && _due.getTime() < _today.getTime() && task.status !== 'done';
 
-    // Checklist count — defensively parse if stored as JSON string
-    var checklist = task.checklist;
-    if (typeof checklist === 'string') { try { checklist = JSON.parse(checklist); } catch(e) { checklist = []; } }
-    if (!Array.isArray(checklist)) checklist = [];
-    var checklistDone = checklist.filter(function(c) { return c.done; }).length;
-    var checklistHtml = checklist.length > 0
-      ? '<span class="flex items-center gap-0.5 bg-surface-container px-1.5 py-0.5 rounded text-[10px]">' + checklistDone + '/' + checklist.length + ' ✓</span>'
-      : '';
+    // Title — ellipsis after ~36 chars handled by CSS truncate
+    var titleStr = String(task.title || '');
 
-    // Due date with overdue styling
-    var dueDateHtml = task.dueDate
-      ? '<span class="flex items-center gap-0.5' + (isOverdue ? ' text-[#DC2626] font-semibold' : '') + '"><span class="material-symbols-outlined text-[12px]">calendar_today</span> ' + escHtml(task.dueDate) + '</span>'
-      : '';
-
-    // Task-type icon (design_services / code / etc.) per reference
-    var typeIconMap = { design: 'design_services', dev: 'code', design_services: 'design_services', code: 'code', mktg: 'campaign', comms: 'forum' };
-    var taskType = (task.category && task.category.name ? task.category.name : task.type) || '';
-    var typeKey = taskType.toLowerCase().split(' ')[0];
-    var typeIcon = typeIconMap[typeKey] ? '<span class="material-symbols-outlined text-[14px] text-on-surface-variant">' + typeIconMap[typeKey] + '</span>' : '';
-    // task.client is an object {id, name, color, ...} after expandTask
+    // Client chip — ellipsis after ~20 chars
     var clientName = (task.client && task.client.name) ? task.client.name : (typeof task.client === 'string' ? task.client : '');
-    var clientChip = clientName ? '<span class="px-2 py-0.5 bg-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '';
+    var clientDisplay = clientName.length > 20 ? clientName.slice(0, 19) + '…' : clientName;
+    var clientChip = clientName
+      ? '<span class="px-1.5 py-0.5 bg-surface-variant text-on-surface-variant rounded font-normal" style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(clientDisplay) + '</span>'
+      : '';
 
-    var timerHtml = isTimer
-      ? '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-[#DC2626] font-bold mt-1"><span class="animate-pulse" data-live-timer data-start="' + escHtml(timerStart || '') + '">● REC ' + formatElapsed(timerStart) + '</span>' +
-          (clientName ? '<span class="ml-auto px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '') +
-        '</div>'
-      : '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface-variant mt-1">' +
-          clientChip + typeIcon + dueDateHtml + checklistHtml + accumulatedChip(task) +
-        '</div>';
+    var sepDot = (clientChip && task.dueDate) ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' : '';
 
-    // Action buttons keyed by STATUS (not just live timer presence):
-    //  - timer running        → Stop + Mark Done
-    //  - in-progress, no timer→ Resume + Mark Done
-    //  - todo                 → Start
-    //  - done                 → (handled by separate done renderer)
-    var btnStop  = '<button class="w-7 h-7 rounded-full bg-[#DC2626] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">stop</span></button>';
-    var btnDone  = '<button class="w-7 h-7 rounded-full bg-[#10B981] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#10B981] ring-offset-1" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">check</span></button>';
-    var btnStart = '<button class="w-7 h-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center cursor-pointer hover:brightness-90 transition-all focus-visible:ring-2 ring-[#4F46E5] ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:14px;">play_arrow</span></button>';
+    var dueDateHtml = task.dueDate
+      ? '<span class="tf-mono-meta' + (isOverdue ? ' text-[#DC2626] font-semibold' : ' text-on-surface-variant') + '" style="font-size:12px">' + escHtml(task.dueDate) + '</span>'
+      : '';
+
+    // Accumulated time chip — only on in-progress without live timer
+    var accHtml = '';
+    if (task.status === 'in-progress' && !isTimer) {
+      var mins = Number(task.totalLoggedMinutes) || 0;
+      if (mins > 0) {
+        accHtml = '<span class="tf-mono-meta text-on-surface-variant" style="font-size:12px;margin-left:auto">' + formatMinutes(mins) + '</span>';
+      }
+    }
+
+    // Live REC pill
+    var liveHtml = isTimer
+      ? '<span class="tf-mono-meta inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold" style="font-size:12px;background:rgba(220,38,38,0.08);color:#DC2626;margin-left:auto"><span class="animate-pulse" style="display:inline-block;width:6px;height:6px;border-radius:9999px;background:#DC2626"></span><span data-live-timer data-start="' + escHtml(timerStart || '') + '">' + formatElapsed(timerStart) + '</span></span>'
+      : '';
+
+    var metaRow = '<div class="flex items-center gap-1.5 mt-1.5 min-w-0">' +
+        clientChip + sepDot + dueDateHtml + accHtml + liveHtml +
+      '</div>';
+
+    // Action buttons — 28px
+    var btnBase = 'w-7 h-7 rounded-full text-white flex items-center justify-center cursor-pointer hover:brightness-95 transition-all focus-visible:ring-2 ring-offset-1';
+    var btnStop  = '<button class="' + btnBase + ' bg-[#DC2626] ring-[#DC2626]" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:15px;">stop</span></button>';
+    var btnDone  = '<button class="' + btnBase + ' bg-[#10B981] ring-[#10B981]" data-action="mark-done" data-task-id="' + task.id + '" aria-label="Mark complete"><span class="material-symbols-outlined fill-icon" style="font-size:15px;">check</span></button>';
+    var btnStart = '<button class="' + btnBase + ' bg-[#4F46E5] ring-[#4F46E5]" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:15px;">play_arrow</span></button>';
 
     var playStop;
     if (isTimer) {
-      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' + btnStop + btnDone + '</div>';
+      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0">' + btnStop + btnDone + '</div>';
     } else if (task.status === 'in-progress') {
-      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0 mt-auto">' + btnStart + btnDone + '</div>';
+      playStop = '<div class="flex flex-col items-center gap-1.5 shrink-0">' + btnStart + btnDone + '</div>';
     } else {
-      playStop = '<div class="shrink-0 mt-auto">' + btnStart + '</div>';
+      playStop = '<div class="shrink-0 self-center">' + btnStart + '</div>';
     }
 
-    var activeClass = isTimer
-      ? ' border border-[#DC2626] shadow-md'
-      : ' hover:shadow-md';
+    var activeClass = isTimer ? ' shadow-md' : ' hover:shadow-md';
 
-    // Assignee with presence dot (image when available, initials fallback)
+    // Assignee — 22px, 6px presence dot
     var assigneeInner = _assigneeAvatar
       ? '<img alt="' + escHtml(_assigneeName) + '" class="w-full h-full object-cover rounded-full" src="' + escHtml(_assigneeAvatar) + '"/>'
-      : '<div class="w-full h-full flex items-center justify-center text-[9px] font-bold bg-surface-variant text-on-surface-variant rounded-full">' + initials + '</div>';
+      : '<div class="w-full h-full flex items-center justify-center bg-surface-variant text-on-surface-variant rounded-full" style="font-size:9px;font-weight:700">' + initials + '</div>';
     var presenceDotStyle = 'background:' + presenceDotColor(_assigneeStatus);
     var assigneePulse = isTimer ? ' animate-pulse' : '';
-    var assigneeHtml = '<div class="relative w-[20px] h-[20px] shrink-0">' +
+    var assigneeHtml = '<div class="relative shrink-0" style="width:22px;height:22px">' +
       assigneeInner +
-      '<span class="absolute -bottom-0.5 -right-0.5 w-[8px] h-[8px] rounded-full border border-surface' + assigneePulse + '" style="' + presenceDotStyle + '"></span>' +
+      '<span class="absolute rounded-full' + assigneePulse + '" style="bottom:-1px;right:-1px;width:6px;height:6px;border:1.5px solid #FFFFFF;' + presenceDotStyle + '"></span>' +
     '</div>';
 
-    return '<article class="bg-white rounded-xl shadow-sm border-l-4 ' + borderClass + ' p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task">' +
-      '<div class="flex-1 flex flex-col justify-between min-w-0">' +
-        '<div class="flex justify-between items-start mb-2 gap-2">' +
-          '<h3 class="font-body-standard text-[14px] font-semibold leading-tight truncate text-on-surface">' + escHtml(task.title) + '</h3>' +
+    // Status dot — 2.5x2.5 (10px) in priority color, inline with title
+    var statusDot = '<span class="shrink-0 rounded-full" style="width:8px;height:8px;background:' + priColor + ';display:inline-block;margin-top:5px"></span>';
+
+    return '<article class="bg-white rounded-xl p-3 relative flex gap-2 cursor-pointer transition-shadow duration-200 border border-outline-variant' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task" style="box-shadow:0 1px 2px rgba(0,0,0,0.04)">' +
+      '<div class="flex-1 flex flex-col min-w-0">' +
+        '<div class="flex items-start gap-2 min-w-0">' +
+          statusDot +
+          '<h3 class="font-body-standard font-semibold leading-snug truncate text-on-surface flex-1 min-w-0" style="font-size:14px">' + escHtml(titleStr) + '</h3>' +
           assigneeHtml +
         '</div>' +
-        timerHtml +
+        metaRow +
       '</div>' +
       playStop +
     '</article>';
