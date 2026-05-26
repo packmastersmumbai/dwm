@@ -32,7 +32,6 @@
 <div class="bg-surface shrink-0">
 <div class="flex px-margin-edge border-b border-surface-variant">
 <button class="px-4 py-3 border-b-2 border-primary text-primary font-label-bold text-label-bold" data-tb-tab="board">Board</button>
-<button class="px-4 py-3 text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-container-lowest" data-tb-tab="timeline">Timeline</button>
 </div>
 <div id="tb-filter-row" class="flex gap-2 overflow-x-auto px-margin-edge py-3 no-scrollbar items-center">
 <button class="shrink-0 px-3 py-1.5 rounded-full bg-primary text-on-primary font-label-bold text-label-bold tb-filter-btn active-filter" data-filter="all">All</button>
@@ -138,14 +137,7 @@ APP.register('team-board', {
       });
     });
 
-    // Sub-tabs
-    screen.querySelectorAll('[data-tb-tab]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        if (btn.getAttribute('data-tb-tab') === 'timeline') {
-          APP.navigate('team-timeline');
-        }
-      });
-    });
+    // Sub-tabs (Timeline binding removed — team-timeline is no longer linked from nav)
 
     // Filter chips
     screen.querySelector('#tb-filter-row').addEventListener('click', function(e) {

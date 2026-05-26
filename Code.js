@@ -675,6 +675,23 @@ var Internal = (function() {
       var cats = getCategories();
       var allUsers = getUsersStatic();
 
+      // Build per-task accumulated minutes index (sum of all COMPLETED time_log entries).
+      // Wrapped — failures must not break task fetch.
+      var minutesByTask = {};
+      try {
+        var _tl = getSheet('time_log');
+        var _tlData = _tl ? _tl.getDataRange().getValues() : [[]];
+        for (var _j = 1; _j < _tlData.length; _j++) {
+          var _tid = _tlData[_j][1];
+          var _stopped = _tlData[_j][4];
+          var _durSec = _tlData[_j][5];
+          if (!_tid || !_stopped) continue; // skip running timers
+          var _secs = Number(_durSec) || 0;
+          if (_secs <= 0) continue;
+          minutesByTask[_tid] = (minutesByTask[_tid] || 0) + Math.floor(_secs / 60);
+        }
+      } catch(_e) { /* benign — leave map empty */ }
+
       function expandFast(task) {
         task.client = clients.find(function(c){ return c.id === task.clientId; }) || null;
         task.category = cats.find(function(c){ return c.id === task.categoryId; }) || null;
@@ -685,6 +702,7 @@ var Internal = (function() {
             avatarColor: u.avatarColor || u.color || null, status: u.status || 'offline'
           } : null;
         }).filter(Boolean);
+        task.totalLoggedMinutes = minutesByTask[task.id] || 0;
         return task;
       }
 

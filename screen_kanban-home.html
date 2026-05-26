@@ -36,6 +36,20 @@
   </div>
 </div>
 
+<!-- View Mode Tabs -->
+<div class="w-full px-margin-edge pt-2 pb-1 flex gap-1 shrink-0 bg-surface" data-view-tabs>
+  <button class="view-tab flex-1 py-2 rounded-lg bg-secondary-container text-on-secondary-container font-label-bold text-label-bold cursor-pointer transition-colors focus-visible:ring-2 ring-primary flex items-center justify-center gap-1" data-view="board"><span class="material-symbols-outlined text-[16px]">view_kanban</span>Board</button>
+  <button class="view-tab flex-1 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low font-label-bold text-label-bold cursor-pointer transition-colors focus-visible:ring-2 ring-primary flex items-center justify-center gap-1" data-view="list"><span class="material-symbols-outlined text-[16px]">view_list</span>List</button>
+  <button class="view-tab flex-1 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low font-label-bold text-label-bold cursor-pointer transition-colors focus-visible:ring-2 ring-primary flex items-center justify-center gap-1" data-view="timeline"><span class="material-symbols-outlined text-[16px]">schedule</span>Timeline</button>
+</div>
+
+<!-- Scope Toggle -->
+<div class="w-full overflow-x-auto hide-scrollbar py-2 px-margin-edge flex gap-2 shrink-0 bg-surface" data-scope-row>
+  <button class="scope-btn px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-scope="mine">Mine</button>
+  <button class="scope-btn px-3 py-1 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-scope="team">Team</button>
+  <button class="scope-btn px-3 py-1 rounded-full border border-outline text-on-surface-variant font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-scope="shared">Shared</button>
+</div>
+
 <!-- Filter Row -->
 <div class="w-full overflow-x-auto hide-scrollbar py-3 px-margin-edge flex gap-2 shrink-0 border-b border-outline-variant bg-surface" data-filter-row>
   <button class="filter-btn px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-bold text-label-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:ring-2 ring-primary" data-filter="today">Today</button>
@@ -46,8 +60,8 @@
   </button>
 </div>
 
-<!-- Main Kanban Area -->
-<main class="flex-1 overflow-x-auto overflow-y-hidden kanban-snap flex gap-4 px-margin-edge py-4 pb-24">
+<!-- Main Kanban Area (Board view) -->
+<main data-view-area="board" class="flex-1 overflow-x-auto overflow-y-hidden kanban-snap flex gap-4 px-margin-edge py-4 pb-24">
 
   <!-- Column: To Do -->
   <section class="kanban-col shrink-0 w-[280px] h-full flex flex-col bg-col-todo rounded-lg overflow-hidden" data-col-status="todo">
@@ -93,6 +107,12 @@
 
 </main>
 
+<!-- List view -->
+<main data-view-area="list" class="flex-1 overflow-y-auto px-margin-edge py-3 pb-24 flex flex-col gap-2" style="display:none"></main>
+
+<!-- Timeline view -->
+<main data-view-area="timeline" class="flex-1 overflow-y-auto px-margin-edge py-3 pb-24 flex flex-col gap-4" style="display:none"></main>
+
 <!-- FAB -->
 <button class="fixed bottom-[80px] right-margin-edge w-fab-size h-fab-size bg-[#4F46E5] rounded-full flex items-center justify-center text-white z-40 cursor-pointer hover:bg-primary active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary" style="box-shadow:0 4px 12px rgba(26,115,232,0.35)" data-action="add-task" aria-label="Add task">
   <span class="material-symbols-outlined text-[24px]">add</span>
@@ -108,9 +128,9 @@
     <span class="material-symbols-outlined">notifications</span>
     <span class="font-label-bold text-label-bold mt-0.5">Inbox</span>
   </button>
-  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="team-board">
-    <span class="material-symbols-outlined">group</span>
-    <span class="font-label-bold text-label-bold mt-0.5">Team</span>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="quick-capture">
+    <span class="material-symbols-outlined">add_box</span>
+    <span class="font-label-bold text-label-bold mt-0.5">Quick</span>
   </button>
   <button class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 cursor-pointer hover:bg-surface-container-low active:scale-90 transition-all duration-200 rounded-xl focus-visible:ring-2 ring-primary" data-nav="admin-panel">
     <span class="material-symbols-outlined">settings</span>
@@ -129,6 +149,8 @@
   var _timerTickCount = 0; // counts ticks for 60-second heartbeat
   var _allTasks = [];
   var _activeFilter = 'today';
+  var _activeScope = (function(){ try { return sessionStorage.getItem('kh.scope') || 'mine'; } catch(e){ return 'mine'; } })();
+  var _activeView  = (function(){ try { return sessionStorage.getItem('kh.view')  || 'board'; } catch(e){ return 'board'; } })();
   // Multi-timer state: map of taskId → { logId, startedAt }
   // Supports any number of concurrent running timers per user.
   var _activeTimers = {};
@@ -205,7 +227,7 @@
           (clientName ? '<span class="ml-auto px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-md font-normal">' + escHtml(clientName) + '</span>' : '') +
         '</div>'
       : '<div class="flex flex-wrap items-center gap-1.5 text-[11px] text-on-surface-variant mt-1">' +
-          clientChip + typeIcon + dueDateHtml + checklistHtml +
+          clientChip + typeIcon + dueDateHtml + checklistHtml + accumulatedChip(task) +
         '</div>';
 
     // Action buttons keyed by STATUS (not just live timer presence):
@@ -255,6 +277,21 @@
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatMinutes(mins) {
+    var m = Math.max(0, Math.floor(Number(mins) || 0));
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    var rem = m % 60;
+    return rem === 0 ? (h + 'h') : (h + 'h ' + rem + 'm');
+  }
+
+  function accumulatedChip(task) {
+    if (task.status !== 'in-progress') return '';
+    if (_activeTimers[task.id]) return ''; // live REC handles display
+    var mins = Number(task.totalLoggedMinutes) || 0;
+    return '<span class="tf-mono-meta flex items-center gap-0.5 text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[12px]">timer</span>' + formatMinutes(mins) + '</span>';
   }
 
   function applyFilter(tasks, filter) {
@@ -316,6 +353,145 @@
     }
   }
 
+  // ── List / Timeline row renderer (shared) ─────────────────────────────────
+
+  function renderTaskRow(task) {
+    var session = _activeTimers[task.id] || null;
+    var isTimer = !!session;
+    var clientName = (task.client && task.client.name) ? task.client.name : (typeof task.client === 'string' ? task.client : '');
+    var _assignee0 = (task.assignees && task.assignees[0]) || {};
+    var _assigneeName = _assignee0.name || task.assignee || '?';
+    var initials = _assigneeName.split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || '?';
+    var statusColor = task.status === 'done' ? '#10B981' : task.status === 'in-progress' ? '#4F46E5' : '#9CA3AF';
+    var _today = new Date(); _today.setHours(0,0,0,0);
+    var _due = task.dueDate ? new Date(task.dueDate) : null;
+    if (_due) _due.setHours(0,0,0,0);
+    var isOverdue = !!_due && _due.getTime() < _today.getTime() && task.status !== 'done';
+    var dueTxt = task.dueDate ? escHtml(task.dueDate) : '—';
+
+    var rightBtn;
+    if (isTimer) {
+      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-[#DC2626] ring-offset-1" data-action="stop-timer" data-task-id="' + task.id + '" aria-label="Stop timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">stop</span></button>';
+    } else if (task.status === 'in-progress') {
+      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Resume timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+    } else if (task.status === 'todo') {
+      rightBtn = '<button class="w-9 h-9 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shrink-0 focus-visible:ring-2 ring-primary ring-offset-1" data-action="start-timer" data-task-id="' + task.id + '" aria-label="Start timer"><span class="material-symbols-outlined fill-icon" style="font-size:16px;">play_arrow</span></button>';
+    } else {
+      rightBtn = '<span class="material-symbols-outlined text-[20px] text-[#10B981]">check_circle</span>';
+    }
+
+    var liveTime = isTimer
+      ? '<span class="text-[11px] text-[#DC2626] font-bold animate-pulse" data-live-timer data-start="' + escHtml(session.startedAt || '') + '">● ' + formatElapsed(session.startedAt) + '</span>'
+      : '';
+    var accTime = (!isTimer && task.status === 'in-progress')
+      ? '<span class="text-[11px] text-on-surface-variant">⏱ ' + formatMinutes(task.totalLoggedMinutes) + '</span>'
+      : '';
+
+    return '<div class="flex items-center gap-3 p-3 rounded-xl bg-surface border border-outline-variant cursor-pointer hover:bg-surface-container-low transition-colors" data-action="open-task" data-task-id="' + task.id + '">' +
+      '<div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + statusColor + '"></div>' +
+      '<div class="flex-1 min-w-0">' +
+        '<div class="flex items-center gap-2">' +
+          '<p class="text-sm font-semibold text-on-surface truncate">' + escHtml(task.title) + '</p>' +
+        '</div>' +
+        '<div class="flex items-center gap-2 text-[11px] text-on-surface-variant mt-0.5 flex-wrap">' +
+          (clientName ? '<span class="truncate">' + escHtml(clientName) + '</span>' : '') +
+          '<span class="' + (isOverdue ? 'text-[#DC2626] font-semibold' : '') + '">' + dueTxt + '</span>' +
+          liveTime + accTime +
+        '</div>' +
+      '</div>' +
+      '<div class="w-[20px] h-[20px] rounded-full bg-surface-variant text-on-surface-variant text-[9px] font-bold flex items-center justify-center shrink-0">' + initials + '</div>' +
+      rightBtn +
+    '</div>';
+  }
+
+  function renderList(screen, tasks) {
+    var area = screen.querySelector('[data-view-area="list"]');
+    if (!area) return;
+    var sorted = tasks.slice().sort(function(a, b) {
+      var ad = a.dueDate || '9999-99-99';
+      var bd = b.dueDate || '9999-99-99';
+      return ad < bd ? -1 : ad > bd ? 1 : 0;
+    });
+    if (sorted.length === 0) {
+      area.innerHTML = '<p class="text-center text-on-surface-variant text-sm mt-8">No tasks</p>';
+      return;
+    }
+    area.innerHTML = sorted.map(renderTaskRow).join('');
+  }
+
+  function renderTimeline(screen, tasks) {
+    var area = screen.querySelector('[data-view-area="timeline"]');
+    if (!area) return;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    var endOfWeek = new Date(today); endOfWeek.setDate(today.getDate() + 7);
+    var groups = { 'Today': [], 'Tomorrow': [], 'This Week': [], 'Later': [], 'No Date': [] };
+    tasks.forEach(function (t) {
+      if (!t.dueDate) { groups['No Date'].push(t); return; }
+      var d = new Date(t.dueDate); d.setHours(0,0,0,0);
+      if (d.getTime() === today.getTime()) groups['Today'].push(t);
+      else if (d.getTime() === tomorrow.getTime()) groups['Tomorrow'].push(t);
+      else if (d.getTime() > today.getTime() && d.getTime() <= endOfWeek.getTime()) groups['This Week'].push(t);
+      else groups['Later'].push(t);
+    });
+    var order = ['Today', 'Tomorrow', 'This Week', 'Later', 'No Date'];
+    var html = '';
+    order.forEach(function (name) {
+      var arr = groups[name];
+      if (!arr.length) return;
+      arr.sort(function(a,b){ var ad=a.dueDate||'9999'; var bd=b.dueDate||'9999'; return ad<bd?-1:ad>bd?1:0; });
+      html += '<section><h3 class="text-[12px] font-bold uppercase tracking-wide text-on-surface-variant mb-2 px-1">' + name + ' <span class="text-on-surface-variant font-normal">(' + arr.length + ')</span></h3>' +
+        '<div class="flex flex-col gap-2">' + arr.map(renderTaskRow).join('') + '</div></section>';
+    });
+    if (!html) html = '<p class="text-center text-on-surface-variant text-sm mt-8">No tasks</p>';
+    area.innerHTML = html;
+  }
+
+  function renderAll(screen) {
+    var filtered = applyFilter(_allTasks, _activeFilter);
+    if (_activeView === 'board') renderTasks(screen, filtered);
+    else if (_activeView === 'list') renderList(screen, filtered);
+    else if (_activeView === 'timeline') renderTimeline(screen, filtered);
+    // Always keep overdue badge correct (it reads from _allTasks)
+    var overdueCount = _allTasks.filter(function (t) {
+      var s = t.status;
+      return t.dueDate && (function(){var d=new Date();d.setHours(0,0,0,0);var dd=new Date(t.dueDate);dd.setHours(0,0,0,0);return dd.getTime() < d.getTime();})() &&
+             s !== 'done' && s !== 'deleted' && s !== 'archived';
+    }).length;
+    var badge = screen.querySelector('[data-overdue-count]');
+    if (badge) {
+      badge.textContent = overdueCount;
+      if (overdueCount > 0) badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }
+  }
+
+  function applyViewVisibility(screen) {
+    ['board','list','timeline'].forEach(function (v) {
+      var el = screen.querySelector('[data-view-area="' + v + '"]');
+      if (!el) return;
+      if (v === _activeView) el.style.removeProperty('display');
+      else el.style.display = 'none';
+    });
+    screen.querySelectorAll('.view-tab').forEach(function (b) {
+      var on = b.dataset.view === _activeView;
+      b.classList.toggle('bg-secondary-container', on);
+      b.classList.toggle('text-on-secondary-container', on);
+      b.classList.toggle('text-on-surface-variant', !on);
+    });
+  }
+
+  function applyScopeVisibility(screen) {
+    screen.querySelectorAll('.scope-btn').forEach(function (b) {
+      var on = b.dataset.scope === _activeScope;
+      b.classList.toggle('bg-primary-container', on);
+      b.classList.toggle('text-on-primary-container', on);
+      b.classList.toggle('border', !on);
+      b.classList.toggle('border-outline', !on);
+      b.classList.toggle('text-on-surface-variant', !on);
+    });
+  }
+
   // Single interval ticks ALL active per-card timer pills.
   // Each `[data-live-timer]` carries its own `data-start` ISO timestamp.
   function ensureTickerRunning() {
@@ -355,9 +531,20 @@
   }
 
   function loadTasks(screen) {
-    APP.call('getTasks', null, APP.token).then(function (tasks) {
-      _allTasks = tasks || [];
-      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+    var fetchPromise;
+    if (_activeScope === 'mine') {
+      fetchPromise = APP.call('getTasks', null, APP.token);
+    } else {
+      // team and shared both pull team-wide; shared is filtered client-side
+      fetchPromise = APP.call('getTeamTasks', {}, APP.token);
+    }
+    fetchPromise.then(function (tasks) {
+      tasks = tasks || [];
+      if (_activeScope === 'shared') {
+        tasks = tasks.filter(function (t) { return t.isShared === true || t.shared === true; });
+      }
+      _allTasks = tasks;
+      renderAll(screen);
       ensureTickerRunning();
     }).catch(function (err) { APP.showError(err); });
 
@@ -369,7 +556,7 @@
           _activeTimers[s.taskId] = { logId: s.logId, startedAt: s.startedAt || new Date().toISOString() };
         }
       });
-      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+      renderAll(screen);
       ensureTickerRunning();
     }).catch(function () { /* benign — first deploy may not have getActiveTimers yet */ });
   }
@@ -487,13 +674,13 @@
       // Reflect status locally so renderCard puts the task in In Progress
       var localTask = _allTasks.find(function (t) { return t.id === taskId; });
       if (localTask) localTask.status = 'in-progress';
-      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+      renderAll(screen);
 
       APP.call('startTimer', taskId, APP.token).then(function (session) {
         if (!session || !session.logId) {
           deactivateTimer(taskId);
           if (localTask) localTask.status = 'todo';
-          renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+          renderAll(screen);
           if (session && session.error === 'not_claimed') {
             APP.showError('Claim this shared task before starting the timer');
           } else {
@@ -507,7 +694,7 @@
       }).catch(function (err) {
         deactivateTimer(taskId);
         if (localTask) localTask.status = 'todo';
-        renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+        renderAll(screen);
         APP.showError(err);
       });
       return;
@@ -539,14 +726,14 @@
       // OPTIMISTIC: deactivate + re-render instantly
       var snapshot = session;
       deactivateTimer(taskId);
-      renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+      renderAll(screen);
 
       APP.call('stopTimer', session.logId, APP.token).then(function () {
         loadTasks(screen);
       }).catch(function (err) {
         // Roll back optimistic stop
         _activeTimers[taskId] = snapshot;
-        renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+        renderAll(screen);
         ensureTickerRunning();
         APP.showError(err);
       });
@@ -564,7 +751,7 @@
     });
     btn.classList.add('bg-primary-container', 'text-on-primary-container');
     btn.classList.remove('border', 'border-outline', 'text-on-surface-variant');
-    renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+    renderAll(screen);
   }
 
   // ── drag-drop (basic HTML5) ───────────────────────────────────────────────
@@ -586,7 +773,7 @@
         if (task && task.status !== newStatus) {
           task.status = newStatus;
           APP.call('updateTaskStatus', taskId, newStatus, APP.token).then(function () {
-            renderTasks(screen, applyFilter(_allTasks, _activeFilter));
+            renderAll(screen);
           }).catch(function (err) { APP.showError(err); });
         }
       });
@@ -615,11 +802,30 @@
       }
 
       screen._clickHandler = function (e) {
+        var scopeBtn = e.target.closest('.scope-btn');
+        if (scopeBtn) {
+          _activeScope = scopeBtn.dataset.scope || 'mine';
+          try { sessionStorage.setItem('kh.scope', _activeScope); } catch(_) {}
+          applyScopeVisibility(screen);
+          loadTasks(screen);
+          return;
+        }
+        var viewBtn = e.target.closest('.view-tab');
+        if (viewBtn) {
+          _activeView = viewBtn.dataset.view || 'board';
+          try { sessionStorage.setItem('kh.view', _activeView); } catch(_) {}
+          applyViewVisibility(screen);
+          renderAll(screen);
+          ensureTickerRunning();
+          return;
+        }
         handleClick(e, screen);
         handleFilterClick(e, screen);
       };
       screen.addEventListener('click', screen._clickHandler);
 
+      applyScopeVisibility(screen);
+      applyViewVisibility(screen);
       loadTasks(screen);
       setupDragDrop(screen);
     },
