@@ -3,6 +3,169 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-pulse, .animate-ping { animation: none !important; }
   }
+  /* ── Gantt timeline ──────────────────────────────────────────────── */
+  [data-screen="kanban-home"] [data-view-area="timeline"] [data-gantt] {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #FAF9F7;
+    border: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 140px 1fr;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-corner {
+    position: sticky; left: 0; top: 0; z-index: 4;
+    height: 32px; width: 140px;
+    background: #FAF9F7;
+    border-right: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-header {
+    position: sticky; top: 0; z-index: 3;
+    display: flex; height: 32px;
+    background: #FAF9F7;
+    border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day {
+    width: 80px; flex: 0 0 80px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 10px; line-height: 1.1;
+    color: var(--color-on-surface-variant, #5A5651);
+    border-right: 1px dashed var(--color-outline-variant, #E5E1DC);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day.is-today {
+    color: #4F46E5; font-weight: 700;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day.is-weekend {
+    background: rgba(0,0,0,0.025);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-label {
+    position: sticky; left: 0; z-index: 2;
+    width: 140px; height: 32px;
+    display: flex; align-items: center;
+    padding: 0 8px;
+    font-size: 12px; font-weight: 500;
+    color: var(--color-on-surface, #1F1B16);
+    background: #FAF9F7;
+    border-right: 1px solid var(--color-outline-variant, #E5E1DC);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-row-track {
+    position: relative; height: 32px;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    background-image: linear-gradient(to right, transparent 79px, rgba(0,0,0,0.04) 79px, rgba(0,0,0,0.04) 80px);
+    background-size: 80px 100%;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar {
+    position: absolute; top: 6px; height: 20px;
+    border-radius: 6px;
+    display: flex; align-items: center;
+    padding: 0 8px;
+    font-size: 11px; font-weight: 600;
+    color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.status-todo {
+    background: #D3CFC7; color: #1F1B16;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.status-inprogress {
+    background: #4F46E5;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.status-done {
+    background: #10B981;
+    text-decoration: line-through;
+    opacity: 0.85;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.is-overdue {
+    border: 2px solid #DC2626;
+    box-sizing: border-box;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.is-live::after {
+    content: '';
+    position: absolute; right: 2px; top: 50%;
+    width: 6px; height: 6px; margin-top: -3px;
+    background: #DC2626;
+    border-radius: 50%;
+    animation: ganttPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes ganttPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.4); }
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-today-line {
+    position: absolute; top: 0; bottom: 0;
+    width: 2px; background: #4F46E5;
+    z-index: 1; pointer-events: none;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar[data-tooltip]:hover::after,
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar[data-tooltip]:focus::after,
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-bar.tt-open::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0; top: 100%;
+    margin-top: 4px;
+    background: #1F1B16;
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 400;
+    white-space: pre-line;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+    pointer-events: none;
+    max-width: 240px;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-empty {
+    padding: 48px 16px;
+    text-align: center;
+    color: var(--color-on-surface-variant, #5A5651);
+    font-size: 13px;
+  }
+  /* ── Team workload columns ───────────────────────────────────────── */
+  [data-screen="kanban-home"] [data-team-board] {
+    display: flex; gap: 12px;
+    overflow-x: auto;
+    padding: 0 var(--margin-edge, 16px) 96px;
+    height: 100%;
+    align-items: stretch;
+  }
+  [data-screen="kanban-home"] .team-col {
+    flex: 0 0 260px;
+    display: flex; flex-direction: column;
+    background: var(--color-surface-container-low, #F1EFEC);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--color-outline-variant, #E5E1DC);
+  }
+  [data-screen="kanban-home"] .team-col-header {
+    padding: 10px 12px;
+    background: var(--color-surface, #FAF9F7);
+    border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
+    display: flex; align-items: center; gap: 8px;
+  }
+  [data-screen="kanban-home"] .team-col-body {
+    flex: 1; padding: 8px;
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto;
+  }
+  [data-screen="kanban-home"] .team-col-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--color-outline-variant, #E5E1DC);
+    font-size: 11px;
+    color: var(--color-on-surface-variant, #5A5651);
+    background: var(--color-surface, #FAF9F7);
+  }
 </style>
 
 <!-- TopAppBar -->
@@ -107,11 +270,18 @@
 
 </main>
 
+<!-- Board (Team workload variant) -->
+<main data-view-area="board-team" class="flex-1 overflow-hidden py-4" style="display:none">
+  <div data-team-board></div>
+</main>
+
 <!-- List view -->
 <main data-view-area="list" class="flex-1 overflow-y-auto px-margin-edge py-3 pb-24 flex flex-col gap-2" style="display:none"></main>
 
 <!-- Timeline view -->
-<main data-view-area="timeline" class="flex-1 overflow-y-auto px-margin-edge py-3 pb-24 flex flex-col gap-4" style="display:none"></main>
+<main data-view-area="timeline" class="flex-1 overflow-hidden px-margin-edge py-3 pb-24" style="display:none">
+  <div data-gantt></div>
+</main>
 
 <!-- FAB -->
 <button class="fixed bottom-[80px] right-margin-edge w-fab-size h-fab-size bg-[#4F46E5] rounded-full flex items-center justify-center text-white z-40 cursor-pointer hover:bg-primary active:scale-90 transition-all duration-200 focus-visible:ring-2 ring-offset-2 ring-primary" style="box-shadow:0 4px 12px rgba(26,115,232,0.35)" data-action="add-task" aria-label="Add task">
@@ -436,37 +606,238 @@
     area.innerHTML = sorted.map(renderTaskRow).join('');
   }
 
+  // ── Gantt timeline ────────────────────────────────────────────────
+  var DAY_MS = 86400000;
+  var GANTT_DAYS_BACK = 5;
+  var GANTT_DAYS_FWD  = 8;
+  var GANTT_DAY_W = 80;
+  var GANTT_ROW_H = 32;
+  var GANTT_MAX_ROWS = 50;
+
+  function startOfDay(d) { var x = new Date(d); x.setHours(0,0,0,0); return x; }
+  function parseDayOrNull(s) {
+    if (!s) return null;
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return null;
+    return startOfDay(d);
+  }
+  function fmtDay(d) {
+    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    return mo + ' ' + d.getDate();
+  }
+  function fmtDow(d) {
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  }
+
+  function rankForGantt(t) {
+    if (t.status === 'in-progress') return 0;
+    if (t.status === 'todo') return 1;
+    if (t.status === 'done') return 2;
+    return 3;
+  }
+  function sortForGantt(a, b) {
+    var ra = rankForGantt(a), rb = rankForGantt(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 0) { // in-progress: startedAt asc
+      var as = new Date(a.startedAt || a.updatedAt || 0).getTime();
+      var bs = new Date(b.startedAt || b.updatedAt || 0).getTime();
+      return as - bs;
+    }
+    if (ra === 1) { // todo: dueDate asc
+      var ad = a.dueDate || '9999';
+      var bd = b.dueDate || '9999';
+      return ad < bd ? -1 : ad > bd ? 1 : 0;
+    }
+    // done: completedAt desc
+    var ac = new Date(a.completedAt || a.updatedAt || 0).getTime();
+    var bc = new Date(b.completedAt || b.updatedAt || 0).getTime();
+    return bc - ac;
+  }
+
   function renderTimeline(screen, tasks) {
-    var area = screen.querySelector('[data-view-area="timeline"]');
-    if (!area) return;
-    var today = new Date(); today.setHours(0,0,0,0);
-    var tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    var endOfWeek = new Date(today); endOfWeek.setDate(today.getDate() + 7);
-    var groups = { 'Today': [], 'Tomorrow': [], 'This Week': [], 'Later': [], 'No Date': [] };
-    tasks.forEach(function (t) {
-      if (!t.dueDate) { groups['No Date'].push(t); return; }
-      var d = new Date(t.dueDate); d.setHours(0,0,0,0);
-      if (d.getTime() === today.getTime()) groups['Today'].push(t);
-      else if (d.getTime() === tomorrow.getTime()) groups['Tomorrow'].push(t);
-      else if (d.getTime() > today.getTime() && d.getTime() <= endOfWeek.getTime()) groups['This Week'].push(t);
-      else groups['Later'].push(t);
+    var host = screen.querySelector('[data-view-area="timeline"] [data-gantt]');
+    if (!host) return;
+    if (!tasks || !tasks.length) {
+      host.innerHTML = '<div class="gantt-empty">No tasks to plot. Add one with the + Quick button.</div>';
+      return;
+    }
+    var today = startOfDay(new Date());
+    var rangeStart = new Date(today.getTime() - GANTT_DAYS_BACK * DAY_MS);
+    var totalDays = GANTT_DAYS_BACK + GANTT_DAYS_FWD + 1; // includes today
+    var totalW = totalDays * GANTT_DAY_W;
+
+    var sorted = tasks.slice().sort(sortForGantt).slice(0, GANTT_MAX_ROWS);
+
+    // Header row (sticky)
+    var headerCells = '';
+    for (var i = 0; i < totalDays; i++) {
+      var d = new Date(rangeStart.getTime() + i * DAY_MS);
+      var isToday = d.getTime() === today.getTime();
+      var dow = d.getDay();
+      var isWeekend = (dow === 0 || dow === 6);
+      headerCells += '<div class="gantt-day' + (isToday ? ' is-today' : '') + (isWeekend ? ' is-weekend' : '') + '"' +
+        ' style="width:' + GANTT_DAY_W + 'px;flex:0 0 ' + GANTT_DAY_W + 'px">' +
+        '<span>' + fmtDow(d) + '</span><span>' + fmtDay(d) + '</span>' +
+        '</div>';
+    }
+
+    // Rows
+    var rowsHtml = '';
+    sorted.forEach(function (t) {
+      var due = parseDayOrNull(t.dueDate);
+      var startCandidate = t.startDate || t.startedAt || t.createdAt;
+      var start = parseDayOrNull(startCandidate);
+      // Default bar span
+      var barStart, barEnd;
+      if (due && start && start.getTime() <= due.getTime()) {
+        barStart = start; barEnd = due;
+      } else if (due) {
+        barStart = due; barEnd = due;
+      } else if (start) {
+        barStart = start; barEnd = start;
+      } else {
+        barStart = today; barEnd = today;
+      }
+      // Clamp to range
+      var rangeEnd = new Date(rangeStart.getTime() + (totalDays - 1) * DAY_MS);
+      if (barEnd.getTime() < rangeStart.getTime() || barStart.getTime() > rangeEnd.getTime()) {
+        // Completely outside — still draw row but skip bar
+        rowsHtml += '<div class="gantt-row-label" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' + escHtml(t.title) + '</div>' +
+          '<div class="gantt-row-track" style="width:' + totalW + 'px"></div>';
+        return;
+      }
+      var clampedStart = barStart.getTime() < rangeStart.getTime() ? rangeStart : barStart;
+      var clampedEnd = barEnd.getTime() > rangeEnd.getTime() ? rangeEnd : barEnd;
+      var offsetDays = Math.round((clampedStart.getTime() - rangeStart.getTime()) / DAY_MS);
+      var spanDays = Math.max(1, Math.round((clampedEnd.getTime() - clampedStart.getTime()) / DAY_MS) + 1);
+      var left = offsetDays * GANTT_DAY_W + 2;
+      var width = spanDays * GANTT_DAY_W - 4;
+
+      var isOverdue = !!due && due.getTime() < today.getTime() && t.status !== 'done';
+      var statusClass = t.status === 'in-progress' ? 'status-inprogress'
+                     : t.status === 'done' ? 'status-done'
+                     : 'status-todo';
+      var isLive = !!_activeTimers[t.id];
+      var classes = 'gantt-bar ' + statusClass + (isOverdue ? ' is-overdue' : '') + (isLive ? ' is-live' : '');
+
+      var clientName = (t.client && t.client.name) ? t.client.name : (typeof t.client === 'string' ? t.client : '');
+      var asg0 = (t.assignees && t.assignees[0]) || {};
+      var asgName = asg0.name || t.assignee || '—';
+      var dueTxt = t.dueDate ? String(t.dueDate).slice(0,10) : '—';
+      var mins = Number(t.totalLoggedMinutes) || 0;
+      var tip = t.title +
+        '\nClient: ' + (clientName || '—') +
+        '\nAssignee: ' + asgName +
+        '\nDue: ' + dueTxt +
+        '\nLogged: ' + formatMinutes(mins) +
+        '\nStatus: ' + (t.status || '—');
+
+      rowsHtml += '<div class="gantt-row-label" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' + escHtml(t.title) + '</div>' +
+        '<div class="gantt-row-track" style="width:' + totalW + 'px">' +
+          '<div class="' + classes + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '"' +
+          ' style="left:' + left + 'px;width:' + width + 'px"' +
+          ' data-tooltip="' + escHtml(tip) + '" tabindex="0">' + escHtml(t.title) + '</div>' +
+        '</div>';
     });
-    var order = ['Today', 'Tomorrow', 'This Week', 'Later', 'No Date'];
-    var html = '';
-    order.forEach(function (name) {
-      var arr = groups[name];
-      if (!arr.length) return;
-      arr.sort(function(a,b){ var ad=a.dueDate||'9999'; var bd=b.dueDate||'9999'; return ad<bd?-1:ad>bd?1:0; });
-      html += '<section><h3 class="text-[12px] font-bold uppercase tracking-wide text-on-surface-variant mb-2 px-1">' + name + ' <span class="text-on-surface-variant font-normal">(' + arr.length + ')</span></h3>' +
-        '<div class="flex flex-col gap-2">' + arr.map(renderTaskRow).join('') + '</div></section>';
+
+    // Today line position (within the right column)
+    var todayOffsetDays = Math.round((today.getTime() - rangeStart.getTime()) / DAY_MS);
+    var todayLeft = todayOffsetDays * GANTT_DAY_W;
+
+    var html =
+      '<div class="gantt-grid" style="grid-template-columns:140px ' + totalW + 'px">' +
+        '<div class="gantt-corner"></div>' +
+        '<div class="gantt-header" style="width:' + totalW + 'px">' + headerCells + '</div>' +
+        rowsHtml +
+      '</div>' +
+      '<div class="gantt-today-line" style="left:' + (140 + todayLeft + GANTT_DAY_W / 2 - 1) + 'px;top:0;height:' + (32 + sorted.length * GANTT_ROW_H) + 'px"></div>';
+
+    host.innerHTML = html;
+
+    // Mobile tap-and-hold tooltip toggle
+    host.querySelectorAll('.gantt-bar[data-tooltip]').forEach(function (bar) {
+      bar.addEventListener('touchstart', function () {
+        host.querySelectorAll('.gantt-bar.tt-open').forEach(function (b) { if (b !== bar) b.classList.remove('tt-open'); });
+        bar.classList.toggle('tt-open');
+      }, { passive: true });
     });
-    if (!html) html = '<p class="text-center text-on-surface-variant text-sm mt-8">No tasks</p>';
-    area.innerHTML = html;
+  }
+
+  // ── Team workload view (per-person columns) ──────────────────────
+  function renderTeamBoard(screen, tasks) {
+    var host = screen.querySelector('[data-view-area="board-team"] [data-team-board]');
+    if (!host) return;
+
+    APP.call('getTeamPresence', APP.token).then(function (members) {
+      members = members || [];
+      if (!members.length) {
+        host.innerHTML = '<div class="gantt-empty">No team members found.</div>';
+        return;
+      }
+      // Map status rank for ordering within a column
+      function rank(t) { return t.status === 'in-progress' ? 0 : t.status === 'todo' ? 1 : t.status === 'done' ? 2 : 3; }
+
+      var html = members.map(function (m) {
+        var memberTasks = tasks.filter(function (t) {
+          var ids = t.assigneeIds || (t.assignees ? t.assignees.map(function(a){ return a && a.id; }) : []);
+          return ids && ids.indexOf(m.id) !== -1;
+        });
+        memberTasks.sort(function (a, b) {
+          var r = rank(a) - rank(b);
+          if (r) return r;
+          var ad = a.dueDate || '9999', bd = b.dueDate || '9999';
+          return ad < bd ? -1 : ad > bd ? 1 : 0;
+        });
+        var activeCount = memberTasks.filter(function (t) { return t.status !== 'done'; }).length;
+        var today = todayStr();
+        var minsToday = memberTasks.reduce(function (sum, t) {
+          if (t.status === 'in-progress' || (t.completedAt && String(t.completedAt).slice(0,10) === today)) {
+            return sum + (Number(t.totalLoggedMinutes) || 0);
+          }
+          return sum;
+        }, 0);
+        // Map server presence (active/idle/offline) to UI dot
+        var presence = m.presence === 'active' ? 'online' : m.presence === 'idle' ? 'away' : 'offline';
+        var dotColor = presenceDotColor(presence);
+        var initials = (m.name || '?').split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+        var avatarBg = m.avatarColor || '#D3CFC7';
+
+        var cards = memberTasks.length
+          ? memberTasks.map(renderCard).join('')
+          : '<div class="text-center text-on-surface-variant text-[12px] py-6">No tasks</div>';
+
+        return '<section class="team-col" data-team-col-id="' + escHtml(m.id) + '">' +
+          '<div class="team-col-header">' +
+            '<div class="relative w-8 h-8 shrink-0">' +
+              '<div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style="background:' + escHtml(avatarBg) + '">' + escHtml(initials) + '</div>' +
+              '<span class="absolute -bottom-0.5 -right-0.5 w-[10px] h-[10px] rounded-full border-2 border-surface" style="background:' + dotColor + '"></span>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<div class="text-[13px] font-semibold text-on-surface truncate">' + escHtml(m.name || '?') + '</div>' +
+              '<div class="text-[11px] text-on-surface-variant">' + activeCount + ' active</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="team-col-body">' + cards + '</div>' +
+          '<div class="team-col-footer">' + formatMinutes(minsToday) + ' logged today</div>' +
+        '</section>';
+      }).join('');
+      host.innerHTML = html;
+    }).catch(function (err) {
+      host.innerHTML = '<div class="gantt-empty">Could not load team presence.</div>';
+    });
+  }
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
 
   function renderAll(screen) {
     var filtered = applyFilter(_allTasks, _activeFilter);
-    if (_activeView === 'board') renderTasks(screen, filtered);
+    if (_activeView === 'board') {
+      if (_activeScope === 'team') renderTeamBoard(screen, filtered);
+      else renderTasks(screen, filtered);
+    }
     else if (_activeView === 'list') renderList(screen, filtered);
     else if (_activeView === 'timeline') renderTimeline(screen, filtered);
     // Always keep overdue badge correct (it reads from _allTasks)
@@ -484,10 +855,15 @@
   }
 
   function applyViewVisibility(screen) {
-    ['board','list','timeline'].forEach(function (v) {
+    // Special handling for Board view: team scope uses board-team area, else regular board.
+    var areas = ['board','board-team','list','timeline'];
+    var showArea = _activeView === 'board'
+      ? (_activeScope === 'team' ? 'board-team' : 'board')
+      : _activeView;
+    areas.forEach(function (v) {
       var el = screen.querySelector('[data-view-area="' + v + '"]');
       if (!el) return;
-      if (v === _activeView) el.style.removeProperty('display');
+      if (v === showArea) el.style.removeProperty('display');
       else el.style.display = 'none';
     });
     screen.querySelectorAll('.view-tab').forEach(function (b) {
@@ -545,6 +921,21 @@
   }
   function deactivateTimer(taskId) {
     delete _activeTimers[taskId];
+  }
+
+  // Quiet refetch — reconciles state without spinners or visual reset.
+  function quietReconcile(screen) {
+    var fetchPromise = (_activeScope === 'mine')
+      ? APP.call('getTasks', null, APP.token)
+      : APP.call('getTeamTasks', {}, APP.token);
+    fetchPromise.then(function (tasks) {
+      tasks = tasks || [];
+      if (_activeScope === 'shared') {
+        tasks = tasks.filter(function (t) { return t.isShared === true || t.shared === true; });
+      }
+      _allTasks = tasks;
+      renderAll(screen);
+    }).catch(function () { /* silent */ });
   }
 
   function loadTasks(screen) {
@@ -681,51 +1072,46 @@
     }
 
     if (action === 'start-timer') {
-      var taskId = btn.dataset.taskId;
       e.stopPropagation();
       e.preventDefault();
-
-      // OPTIMISTIC: activate inline timer + re-render so play→stop instantly
-      var optimisticStart = new Date().toISOString();
-      activateTimer(taskId, 'PENDING', optimisticStart);
-      // Reflect status locally so renderCard puts the task in In Progress
+      if (btn._busy) return; btn._busy = true;
+      var taskId = btn.dataset.taskId;
       var localTask = _allTasks.find(function (t) { return t.id === taskId; });
+      var priorStatus = localTask ? localTask.status : 'todo';
+      var pendingId = 'PENDING-' + Date.now();
+      var optimisticStart = new Date().toISOString();
+      _activeTimers[taskId] = { logId: pendingId, startedAt: optimisticStart, priorStatus: priorStatus };
       if (localTask) localTask.status = 'in-progress';
       renderAll(screen);
+      ensureTickerRunning();
 
       APP.call('startTimer', taskId, APP.token).then(function (session) {
         if (!session || !session.logId) {
-          deactivateTimer(taskId);
-          if (localTask) localTask.status = 'todo';
+          // rollback
+          delete _activeTimers[taskId];
+          if (localTask) localTask.status = priorStatus;
           renderAll(screen);
-          if (session && session.error === 'not_claimed') {
-            APP.showError('Claim this shared task before starting the timer');
-          } else {
-            APP.showError((session && session.error) || 'Could not start timer');
-          }
+          APP.showError((session && session.error === 'not_claimed')
+            ? 'Claim this shared task before starting the timer'
+            : ((session && session.error) || 'Could not start timer'));
           return;
         }
-        // Reconcile with real logId + startedAt from server
-        _activeTimers[taskId] = { logId: session.logId, startedAt: session.startedAt || optimisticStart };
-        loadTasks(screen);
+        // Reconcile with real logId + startedAt; keep ticker uninterrupted
+        var cur = _activeTimers[taskId];
+        if (cur && cur.logId === pendingId) {
+          cur.logId = session.logId;
+          if (session.startedAt) cur.startedAt = session.startedAt;
+          // Update any live timer DOM nodes' start attribute
+          screen.querySelectorAll('[data-live-timer]').forEach(function (el) {
+            if (el.getAttribute('data-start') === optimisticStart && session.startedAt) {
+              el.setAttribute('data-start', session.startedAt);
+            }
+          });
+        }
       }).catch(function (err) {
-        deactivateTimer(taskId);
-        if (localTask) localTask.status = 'todo';
+        delete _activeTimers[taskId];
+        if (localTask) localTask.status = priorStatus;
         renderAll(screen);
-        APP.showError(err);
-      });
-      return;
-    }
-
-    if (action === 'mark-done') {
-      e.stopPropagation();
-      e.preventDefault();
-      var taskId = btn.dataset.taskId;
-      if (btn._busy) return; btn._busy = true;
-      APP.call('markTaskDone', taskId, APP.token).then(function () {
-        deactivateTimer(taskId);
-        loadTasks(screen);
-      }).catch(function (err) {
         APP.showError(err);
       }).then(function () { btn._busy = false; });
       return;
@@ -734,26 +1120,67 @@
     if (action === 'stop-timer') {
       e.stopPropagation();
       e.preventDefault();
+      if (btn._busy) return; btn._busy = true;
       var taskId = btn.dataset.taskId;
       var session = _activeTimers[taskId];
-      if (!session || !session.logId || session.logId === 'PENDING') {
+      if (!session) { btn._busy = false; return; }
+      if (!session.logId || /^PENDING/.test(session.logId)) {
+        btn._busy = false;
         APP.showError('Timer for this task is still starting — try again in a moment');
         return;
       }
-      // OPTIMISTIC: deactivate + re-render instantly
       var snapshot = session;
-      deactivateTimer(taskId);
+      var localTask = _allTasks.find(function (t) { return t.id === taskId; });
+      // Don't snap status back — server keeps it in-progress until marked done.
+      delete _activeTimers[taskId];
       renderAll(screen);
 
       APP.call('stopTimer', session.logId, APP.token).then(function () {
-        loadTasks(screen);
+        // Quietly reconcile totals (totalLoggedMinutes) without flicker
+        quietReconcile(screen);
       }).catch(function (err) {
-        // Roll back optimistic stop
         _activeTimers[taskId] = snapshot;
         renderAll(screen);
         ensureTickerRunning();
         APP.showError(err);
-      });
+      }).then(function () { btn._busy = false; });
+      return;
+    }
+
+    if (action === 'mark-done') {
+      e.stopPropagation();
+      e.preventDefault();
+      if (btn._busy) return; btn._busy = true;
+      var taskId = btn.dataset.taskId;
+      var localTask = _allTasks.find(function (t) { return t.id === taskId; });
+      var priorStatus = localTask ? localTask.status : 'todo';
+      var priorCompletedAt = localTask ? localTask.completedAt : null;
+      var priorCompletedBy = localTask ? localTask.completedBy : null;
+      var priorTimer = _activeTimers[taskId] || null;
+
+      if (localTask) {
+        localTask.status = 'done';
+        localTask.completedAt = new Date().toISOString();
+        localTask.completedBy = APP.currentUser
+          ? { id: APP.currentUser.id, name: APP.currentUser.name }
+          : null;
+      }
+      delete _activeTimers[taskId];
+      renderAll(screen);
+
+      APP.call('markTaskDone', taskId, APP.token).then(function () {
+        quietReconcile(screen);
+      }).catch(function (err) {
+        if (localTask) {
+          localTask.status = priorStatus;
+          localTask.completedAt = priorCompletedAt;
+          localTask.completedBy = priorCompletedBy;
+        }
+        if (priorTimer) _activeTimers[taskId] = priorTimer;
+        renderAll(screen);
+        ensureTickerRunning();
+        APP.showError(err);
+      }).then(function () { btn._busy = false; });
       return;
     }
   }
@@ -830,6 +1257,7 @@
           _activeScope = scopeBtn.dataset.scope || 'mine';
           try { sessionStorage.setItem('kh.scope', _activeScope); } catch(_) {}
           applyScopeVisibility(screen);
+          applyViewVisibility(screen);
           loadTasks(screen);
           return;
         }
