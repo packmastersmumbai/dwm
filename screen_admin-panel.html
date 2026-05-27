@@ -14,6 +14,20 @@
 <span class="material-symbols-outlined text-[20px]">more_vert</span>
 </button>
 </div>
+<!-- Consolidated WhatsApp digest (admin only) -->
+<button data-ref="btn-wa-digest" type="button" aria-label="Share team digest on WhatsApp"
+  class="hidden w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex items-center justify-between active:scale-[0.98] transition-[transform] duration-160 mb-2">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="w-9 h-9 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+      <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">forum</span>
+    </div>
+    <div class="min-w-0 text-left">
+      <div class="font-body-standard text-body-standard font-semibold text-on-surface truncate">Share team digest on WhatsApp</div>
+      <div class="font-label-bold text-label-bold text-on-surface-variant truncate">Today's per-user roll-up · pick recipient on send</div>
+    </div>
+  </div>
+  <span class="material-symbols-outlined text-on-surface-variant shrink-0">chevron_right</span>
+</button>
 <!-- Shift Handover Quick-Action (admin only) -->
 <div data-ref="shift-handover-card" class="hidden bg-primary-container rounded-xl p-4 flex items-center justify-between border border-primary shadow-sm active:scale-95 transition-transform cursor-pointer">
 <div class="flex items-center gap-3">
@@ -649,6 +663,59 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         _shCard.classList.remove('hidden');
         _shCard.addEventListener('click', function() {
           APP.navigate('shift-handover');
+        });
+      }
+
+      // Consolidated WhatsApp digest (admin)
+      var _waBtn = qs(screen, 'btn-wa-digest');
+      if (_waBtn && isAdmin) {
+        _waBtn.classList.remove('hidden');
+        _waBtn.addEventListener('click', function() {
+          var prevHtml = _waBtn.innerHTML;
+          _waBtn.disabled = true;
+          APP.call('getDailyCompanyReport', null, APP.token).then(function(report) {
+            report = report || {};
+            var date = report.date || '';
+            var c = report.company || {};
+            var lines = [];
+            lines.push('*TaskFlow Team Digest — ' + date + '*');
+            lines.push('');
+            lines.push('Completed: ' + (c.tasksCompleted || 0) +
+                       '  ·  Added: ' + (c.tasksAdded || 0));
+            lines.push('Logged: ' + (c.totalMinutesLogged || 0) + 'm' +
+                       '  ·  Overdue: ' + (c.overdueAtEod || 0));
+            lines.push('');
+            var users = (report.users || []).slice().sort(function(a,b){
+              return (b.score || 0) - (a.score || 0);
+            });
+            if (users.length) {
+              lines.push('*Per member:*');
+              users.forEach(function(u) {
+                lines.push('• ' + (u.name || '?') + ' — ' +
+                  (u.tasksCompleted || 0) + ' done · ' +
+                  (u.onTimeRate || 0) + '% on-time · ' +
+                  (u.minutesLogged || 0) + 'm · score ' + (u.score || 0));
+              });
+              lines.push('');
+            }
+            if (report.topPerformers && report.topPerformers.length) {
+              lines.push('🏆 Top: ' + report.topPerformers.map(function(p){
+                return p.name + ' (' + p.score + ')';
+              }).join(', '));
+            }
+            if (report.needsAttention && report.needsAttention.length) {
+              lines.push('⚠️ Needs attention: ' + report.needsAttention.map(function(p){
+                return p.name + ' (' + p.overdue + ' overdue)';
+              }).join(', '));
+            }
+            var text = lines.join('\n');
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+            _waBtn.disabled = false;
+          }).catch(function(err) {
+            APP.showError(err);
+            _waBtn.disabled = false;
+            _waBtn.innerHTML = prevHtml;
+          });
         });
       }
 
