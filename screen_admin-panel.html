@@ -99,6 +99,7 @@
 <button data-tab="masters" data-ref="tab-masters" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Masters</button>
 <button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
 <button data-tab="activity" data-ref="tab-activity" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Activity</button>
+<button data-tab="roles" data-ref="tab-roles" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Roles</button>
 </div>
 
 <!-- Tab: Workload (default visible) -->
@@ -261,6 +262,43 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   </div>
 </div>
 
+<!-- Tab: Roles (hidden by default) -->
+<div data-ref="panel-roles" class="hidden space-y-4">
+  <!-- Card A: Permission Matrix -->
+  <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+    <div>
+      <h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Roles &amp; Permissions</h3>
+      <p class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">Toggle which actions each role can perform. Admin always has full access.</p>
+    </div>
+    <!-- Loading skeleton -->
+    <div data-ref="roles-matrix-loading" class="space-y-2">
+      <div class="tf-skeleton h-[40px] w-full"></div>
+      <div class="tf-skeleton h-[40px] w-full opacity-80"></div>
+      <div class="tf-skeleton h-[40px] w-full opacity-60"></div>
+      <div class="tf-skeleton h-[40px] w-full opacity-40"></div>
+    </div>
+    <!-- Matrix table (populated by JS) -->
+    <div data-ref="roles-matrix-wrap" class="hidden overflow-x-auto -mx-4 px-4">
+      <table data-ref="roles-matrix-table" class="w-full border-collapse" style="min-width:420px">
+        <!-- thead and tbody injected by JS -->
+      </table>
+    </div>
+  </div>
+
+  <!-- Card B: User Role Assignment -->
+  <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+    <h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">User Roles</h3>
+    <!-- Loading skeleton -->
+    <div data-ref="roles-users-loading" class="space-y-2">
+      <div class="tf-skeleton h-[52px] w-full"></div>
+      <div class="tf-skeleton h-[52px] w-full opacity-80"></div>
+      <div class="tf-skeleton h-[52px] w-full opacity-60"></div>
+    </div>
+    <!-- User list (populated by JS) -->
+    <div data-ref="roles-users-list" class="hidden space-y-2"></div>
+  </div>
+</div>
+
 <!-- Edit User Bottom Sheet (shared, hidden by default) -->
 <div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
   <!-- Scrim -->
@@ -361,7 +399,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false }; // reports tab removed
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false }; // reports tab removed
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
@@ -404,7 +442,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   }
 
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity'];
+    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -848,8 +886,221 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         var _tabAct = qs(screen, 'tab-activity'); if (_tabAct) _tabAct.classList.add('hidden');
       }
 
+      // ── Roles tab cache ──
+      var _rolesCache = null; // { roles, capabilities, matrix } from getRoleMatrix
+
+      function renderRolesMatrix(screen, data) {
+        var roles = data.roles || [];
+        var caps = data.capabilities || [];
+        var matrix = data.matrix || {};
+        var table = qs(screen, 'roles-matrix-table');
+        if (!table) return;
+
+        // Group capabilities by section in order
+        var sections = [];
+        var sectionMap = {};
+        caps.forEach(function(c) {
+          if (!sectionMap[c.section]) {
+            sectionMap[c.section] = [];
+            sections.push(c.section);
+          }
+          sectionMap[c.section].push(c);
+        });
+
+        // Build thead
+        var theadHtml = '<thead><tr><th class="text-left py-2 pr-3 font-label-bold text-label-bold text-on-surface-variant sticky left-0 bg-surface-container-lowest z-10 min-w-[130px]"></th>';
+        roles.forEach(function(r) {
+          theadHtml += '<th class="text-center py-2 px-2 font-label-bold text-label-bold text-on-surface min-w-[60px]">' + r.label + '</th>';
+        });
+        theadHtml += '</tr></thead>';
+
+        // Build tbody
+        var tbodyHtml = '<tbody>';
+        sections.forEach(function(section) {
+          // Section header row
+          tbodyHtml += '<tr><td colspan="' + (roles.length + 1) + '" class="py-2 pt-3">' +
+            '<span class="text-[10px] font-label-bold tracking-widest uppercase text-on-surface-variant">' + section + '</span>' +
+            '</td></tr>';
+          sectionMap[section].forEach(function(cap) {
+            tbodyHtml += '<tr class="border-t border-outline-variant/30" data-cap="' + cap.key + '">';
+            tbodyHtml += '<td class="py-2 pr-3 font-body-standard text-[13px] text-on-surface sticky left-0 bg-surface-container-lowest z-10">' + cap.label + '</td>';
+            roles.forEach(function(role) {
+              var isAdminRole = role.id === 'admin';
+              var allowed = !!(matrix[role.id] && matrix[role.id][cap.key]);
+              var isLocked = isAdminRole;
+              var cellId = 'perm-' + role.id + '-' + cap.key.replace(/\./g, '_');
+              if (isLocked) {
+                tbodyHtml += '<td class="text-center py-2 px-2">' +
+                  '<span class="opacity-50 inline-flex items-center justify-center w-8 h-8" title="Admin always has this permission">' +
+                  '<span class="material-symbols-outlined text-[18px] text-on-surface-variant">lock</span>' +
+                  '</span></td>';
+              } else {
+                var activeClass = allowed
+                  ? 'bg-primary-container text-primary border-primary-container'
+                  : 'bg-surface-container-high text-on-surface-variant border-outline-variant';
+                tbodyHtml += '<td class="text-center py-2 px-2">' +
+                  '<button id="' + cellId + '" data-role="' + role.id + '" data-cap="' + cap.key + '" data-allowed="' + (allowed ? '1' : '0') + '"' +
+                  ' class="perm-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ' + activeClass + '">' +
+                  (allowed ? '<span class="material-symbols-outlined text-[16px]">check</span>' : '') +
+                  '</button></td>';
+              }
+            });
+            tbodyHtml += '</tr>';
+          });
+        });
+        tbodyHtml += '</tbody>';
+
+        table.innerHTML = theadHtml + tbodyHtml;
+
+        // Wire toggle clicks
+        table.querySelectorAll('.perm-toggle').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var roleId = btn.dataset.role;
+            var capKey = btn.dataset.cap;
+            var wasAllowed = btn.dataset.allowed === '1';
+            var nowAllowed = !wasAllowed;
+
+            // Optimistic update
+            btn.dataset.allowed = nowAllowed ? '1' : '0';
+            if (nowAllowed) {
+              btn.className = 'perm-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors bg-primary-container text-primary border-primary-container';
+              btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span>';
+            } else {
+              btn.className = 'perm-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors bg-surface-container-high text-on-surface-variant border-outline-variant';
+              btn.innerHTML = '';
+            }
+            // Update cache
+            if (_rolesCache && _rolesCache.matrix[roleId]) {
+              _rolesCache.matrix[roleId][capKey] = nowAllowed;
+            }
+
+            APP.call('setPermission', roleId, capKey, nowAllowed, APP.token)
+              .then(function(res) {
+                if (res && res.error) {
+                  // Revert
+                  revertPermBtn(btn, wasAllowed);
+                  if (res.error === 'cannot_lock_out_admin') {
+                    APP.showError("Admin's permission cannot be removed.");
+                  } else {
+                    APP.showError(res.error);
+                  }
+                }
+              })
+              .catch(function(err) {
+                revertPermBtn(btn, wasAllowed);
+                APP.showError(err);
+              });
+          });
+        });
+      }
+
+      function revertPermBtn(btn, wasAllowed) {
+        btn.dataset.allowed = wasAllowed ? '1' : '0';
+        if (wasAllowed) {
+          btn.className = 'perm-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors bg-primary-container text-primary border-primary-container';
+          btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span>';
+        } else {
+          btn.className = 'perm-toggle inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors bg-surface-container-high text-on-surface-variant border-outline-variant';
+          btn.innerHTML = '';
+        }
+        if (_rolesCache) {
+          var roleId = btn.dataset.role;
+          var capKey = btn.dataset.cap;
+          if (_rolesCache.matrix[roleId]) _rolesCache.matrix[roleId][capKey] = wasAllowed;
+        }
+      }
+
+      function renderRolesUsers(screen, users, roles) {
+        var container = qs(screen, 'roles-users-list');
+        if (!container) return;
+        container.innerHTML = '';
+        (users || []).forEach(function(u) {
+          var avatarBg = u.avatarColor || 'bg-primary-fixed';
+          var row = document.createElement('div');
+          row.className = 'flex items-center justify-between gap-3 min-h-[44px] py-1';
+          var avatarHtml = u.avatar
+            ? '<img alt="' + (u.name || '') + '" class="w-9 h-9 rounded-full object-cover shrink-0" src="' + u.avatar + '"/>'
+            : '<div class="w-9 h-9 rounded-full ' + avatarBg + ' flex items-center justify-center text-primary font-bold shrink-0">' + (u.name || '?').charAt(0).toUpperCase() + '</div>';
+          var selectHtml = '<select data-uid="' + u.id + '" class="role-user-select bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-[13px] text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">';
+          (roles || []).forEach(function(r) {
+            var sel = (u.role === r.id || u.roleId === r.id) ? ' selected' : '';
+            selectHtml += '<option value="' + r.id + '"' + sel + '>' + r.label + '</option>';
+          });
+          selectHtml += '</select>';
+          row.innerHTML = '<div class="flex items-center gap-3 min-w-0 flex-1">' + avatarHtml +
+            '<span class="font-body-standard text-[13px] text-on-surface truncate">' + (u.name || 'Unknown') + '</span></div>' +
+            selectHtml;
+          container.appendChild(row);
+
+          // Wire dropdown change
+          var sel = row.querySelector('.role-user-select');
+          var prevRole = sel.value;
+          sel.addEventListener('change', function() {
+            var newRoleId = sel.value;
+            var oldRole = prevRole;
+            prevRole = newRoleId;
+            // Optimistic: already changed visually by browser
+            APP.call('setUserRole', u.id, newRoleId, APP.token)
+              .then(function(res) {
+                if (res && res.error) {
+                  sel.value = oldRole;
+                  prevRole = oldRole;
+                  APP.showError(res.error);
+                }
+              })
+              .catch(function(err) {
+                sel.value = oldRole;
+                prevRole = oldRole;
+                APP.showError(err);
+              });
+          });
+        });
+        if (!users || users.length === 0) {
+          container.innerHTML = '<div class="text-center text-on-surface-variant py-4 font-body-standard">No team members found.</div>';
+        }
+      }
+
+      function loadRolesTab(screen) {
+        qs(screen, 'roles-matrix-loading').classList.remove('hidden');
+        qs(screen, 'roles-matrix-wrap').classList.add('hidden');
+        qs(screen, 'roles-users-loading').classList.remove('hidden');
+        qs(screen, 'roles-users-list').classList.add('hidden');
+
+        var p1 = APP.call('getRoleMatrix', APP.token);
+        var p2 = APP.call('getTeamMembers', APP.token);
+
+        p1.then(function(data) {
+          _rolesCache = data;
+          qs(screen, 'roles-matrix-loading').classList.add('hidden');
+          qs(screen, 'roles-matrix-wrap').classList.remove('hidden');
+          renderRolesMatrix(screen, data);
+        }).catch(function(err) {
+          qs(screen, 'roles-matrix-loading').classList.add('hidden');
+          APP.showError(err);
+        });
+
+        p2.then(function(users) {
+          qs(screen, 'roles-users-loading').classList.add('hidden');
+          var rolesForDropdown = _rolesCache ? _rolesCache.roles : [];
+          qs(screen, 'roles-users-list').classList.remove('hidden');
+          renderRolesUsers(screen, users, rolesForDropdown);
+          // If matrix came back after users, re-render with correct roles
+          if (!rolesForDropdown.length) {
+            p1.then(function(data) { renderRolesUsers(screen, users, data.roles || []); }).catch(function(){});
+          }
+        }).catch(function(err) {
+          qs(screen, 'roles-users-loading').classList.add('hidden');
+          APP.showError(err);
+        });
+      }
+
+      // Hide Roles tab for non-admins
+      if (!isAdmin) {
+        var _tabRoles = qs(screen, 'tab-roles'); if (_tabRoles) _tabRoles.classList.add('hidden');
+      }
+
       // Tab switching
-      ['tasks', 'workload', 'masters', 'sla', 'activity'].forEach(function(tab) {
+      ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles'].forEach(function(tab) {
         qs(screen, 'tab-' + tab).addEventListener('click', function() {
           setActiveTab(screen, tab);
 
@@ -886,6 +1137,11 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
             var refreshBtn = qs(screen, 'activity-refresh');
             if (refreshBtn) refreshBtn.addEventListener('click', function(){ loadActivityLog(screen); });
             loadActivityLog(screen);
+          }
+
+          if (tab === 'roles' && !LOAD_LABELS_PER_TAB.roles) {
+            LOAD_LABELS_PER_TAB.roles = true;
+            loadRolesTab(screen);
           }
 
           if (tab === 'sla' && !LOAD_LABELS_PER_TAB.sla) {
@@ -1017,7 +1273,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
     },
 
     unmount: function() {
-      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false }; // reports tab removed
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false }; // reports tab removed
       document.body.style.overflow = '';
       _editUserId = null;
     }

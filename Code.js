@@ -5,6 +5,32 @@
 
 var SHEET_ID = '1a17AzXT60a5tYZFlxODHwA4ZCBT3QATrtrf1GcaGHI0';
 
+// ── Capability keys ───────────────────────────────────────────
+var CAPABILITY_KEYS = [
+  'tasks.view.all',
+  'tasks.view.own',
+  'tasks.view.pool',
+  'tasks.view.security',
+  'tasks.create',
+  'tasks.assign',
+  'tasks.edit.any',
+  'tasks.edit.own',
+  'tasks.delete',
+  'tasks.claim',
+  'tasks.done.any',
+  'tasks.done.own',
+  'tasks.bulkImport',
+  'users.manage',
+  'roles.manage',
+  'clients.manage',
+  'categories.manage',
+  'activity.view',
+  'reports.view',
+  'digests.send',
+  'triggers.install',
+  'calendar.configure'
+];
+
 // ── Helpers ──────────────────────────────────────────────────
 
 function getSpreadsheet() {
@@ -69,7 +95,7 @@ function logActivity(taskId, userId, action, detail) {
 // Returns recent activity rows joined with task title + user name.
 // filters: { limit, taskId, userId, action, fromDate (yyyy-MM-dd), toDate (yyyy-MM-dd) }
 function getActivityLog(filters, token) {
-  requireAdmin(token);
+  requireCapability(token, 'activity.view');
   filters = filters || {};
   var limit = Math.min(Math.max(parseInt(filters.limit, 10) || 200, 1), 1000);
 
@@ -159,7 +185,9 @@ function initializeSheets() {
     activity: ['id','task_id','user_id','action','detail','created_at'],
     notifications: ['id','user_id','type','task_id','message','is_read','created_at'],
     settings: ['key','value'],
-    attachments: ['id','task_id','user_id','file_id','file_url','kind','created_at']
+    attachments: ['id','task_id','user_id','file_id','file_url','kind','created_at'],
+    roles: ['id','name','label','sort_order','locked'],
+    permissions: ['role_id','capability_key','allowed']
   };
 
   Object.keys(schemas).forEach(function(name) {
@@ -231,6 +259,111 @@ function initializeSheets() {
       true, now(), 0, ''
     ]);
   }
+}
+
+// ── seedDefaultRolesAndPermissions ───────────────────────────
+// Idempotent: inserts only missing rows; never overwrites existing.
+function seedDefaultRolesAndPermissions() {
+  var ss = getSpreadsheet();
+
+  // ── Seed roles ──────────────────────────────────────────────
+  var rolesSheet = ss.getSheetByName('roles');
+  if (!rolesSheet) {
+    rolesSheet = ss.insertSheet('roles');
+    rolesSheet.appendRow(['id','name','label','sort_order','locked']);
+  }
+  var rolesData = rolesSheet.getDataRange().getValues();
+  var existingRoleIds = {};
+  for (var ri = 1; ri < rolesData.length; ri++) {
+    if (rolesData[ri][0]) existingRoleIds[rolesData[ri][0]] = true;
+  }
+  var defaultRoles = [
+    ['admin',    'admin',    'Admin',    0,  true],
+    ['owner',    'owner',    'Owner',    10, false],
+    ['office',   'office',   'Office',   20, false],
+    ['ops',      'ops',      'Ops',      30, false],
+    ['security', 'security', 'Security', 40, false]
+  ];
+  defaultRoles.forEach(function(r) {
+    if (!existingRoleIds[r[0]]) rolesSheet.appendRow(r);
+  });
+
+  // ── Seed permissions ─────────────────────────────────────────
+  var permsSheet = ss.getSheetByName('permissions');
+  if (!permsSheet) {
+    permsSheet = ss.insertSheet('permissions');
+    permsSheet.appendRow(['role_id','capability_key','allowed']);
+  }
+  var permsData = permsSheet.getDataRange().getValues();
+  var existingPerms = {};
+  for (var pi = 1; pi < permsData.length; pi++) {
+    if (permsData[pi][0] && permsData[pi][1]) {
+      existingPerms[permsData[pi][0] + '|' + permsData[pi][1]] = true;
+    }
+  }
+
+  // Default permission matrix: [roleId, capKey, allowed]
+  var matrix = [
+    // tasks.view.all
+    ['admin','tasks.view.all',true],['owner','tasks.view.all',true],['office','tasks.view.all',true],
+    // tasks.view.own
+    ['admin','tasks.view.own',true],['owner','tasks.view.own',true],['office','tasks.view.own',true],['ops','tasks.view.own',true],['security','tasks.view.own',true],
+    // tasks.view.pool
+    ['admin','tasks.view.pool',true],['owner','tasks.view.pool',true],['office','tasks.view.pool',true],['ops','tasks.view.pool',true],
+    // tasks.view.security
+    ['admin','tasks.view.security',true],['owner','tasks.view.security',true],['office','tasks.view.security',true],['security','tasks.view.security',true],
+    // tasks.create
+    ['admin','tasks.create',true],['owner','tasks.create',true],['office','tasks.create',true],
+    // tasks.assign
+    ['admin','tasks.assign',true],['owner','tasks.assign',true],['office','tasks.assign',true],
+    // tasks.edit.any
+    ['admin','tasks.edit.any',true],['owner','tasks.edit.any',true],['office','tasks.edit.any',true],
+    // tasks.edit.own
+    ['admin','tasks.edit.own',true],['owner','tasks.edit.own',true],['office','tasks.edit.own',true],['ops','tasks.edit.own',true],['security','tasks.edit.own',true],
+    // tasks.delete
+    ['admin','tasks.delete',true],['owner','tasks.delete',true],['office','tasks.delete',true],
+    // tasks.claim
+    ['admin','tasks.claim',true],['owner','tasks.claim',true],['office','tasks.claim',true],['ops','tasks.claim',true],
+    // tasks.done.any
+    ['admin','tasks.done.any',true],['owner','tasks.done.any',true],['office','tasks.done.any',true],
+    // tasks.done.own
+    ['admin','tasks.done.own',true],['owner','tasks.done.own',true],['office','tasks.done.own',true],['ops','tasks.done.own',true],['security','tasks.done.own',true],
+    // tasks.bulkImport
+    ['admin','tasks.bulkImport',true],['owner','tasks.bulkImport',true],
+    // users.manage
+    ['admin','users.manage',true],
+    // roles.manage
+    ['admin','roles.manage',true],
+    // clients.manage
+    ['admin','clients.manage',true],['owner','clients.manage',true],
+    // categories.manage
+    ['admin','categories.manage',true],['owner','categories.manage',true],
+    // activity.view
+    ['admin','activity.view',true],['owner','activity.view',true],
+    // reports.view
+    ['admin','reports.view',true],['owner','reports.view',true],['office','reports.view',true],
+    // digests.send
+    ['admin','digests.send',true],
+    // triggers.install
+    ['admin','triggers.install',true],
+    // calendar.configure
+    ['admin','calendar.configure',true]
+  ];
+
+  matrix.forEach(function(row) {
+    var key = row[0] + '|' + row[1];
+    if (!existingPerms[key]) {
+      permsSheet.appendRow(row);
+      existingPerms[key] = true; // avoid double-insert if matrix has duplicates
+    }
+  });
+
+  // Invalidate all role-permission caches
+  CAPABILITY_KEYS.forEach(function(cap) {
+    ['admin','owner','office','ops','security'].forEach(function(role) {
+      cacheBust('perms.' + role);
+    });
+  });
 }
 
 // ── createTriggers (run once after deploy) ───────────────────
@@ -457,7 +590,7 @@ function validatePin(userId, pin) {
 
 function createUser(payload, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'users.manage');
     // FIX D — removed dead privilege-escalation block (unreachable: non-admins already threw above)
     var assignedRole = payload.role || 'member';
     var lock = LockService.getScriptLock();
@@ -485,7 +618,7 @@ function createUser(payload, token) {
 
 function updateUser(userId, fields, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'users.manage');
 
     // FIX C — prevent removing the last admin's admin role
     if (fields.role !== undefined && fields.role !== 'admin') {
@@ -537,7 +670,7 @@ function updateUser(userId, fields, token) {
  */
 function resetTestPins(token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'users.manage');
     var allUsers = getUsersStatic() || [];
     var adminUser = null;
     var nonAdmins = [];
@@ -579,7 +712,7 @@ function resetTestPins(token) {
 
 function removeUser(userId, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'users.manage');
     // Prevent removing last admin
     var admins = Internal.getUsers().filter(function(u) { return u.role === 'admin'; });
     var target = getUserById(userId);
@@ -713,12 +846,87 @@ function requireSession(token) {
 }
 
 /**
- * Requires the caller to be an admin. Returns the session.
+ * Requires the caller to be an admin. Kept as thin wrapper so forgotten call
+ * sites still work — routes through the users.manage capability.
  */
 function requireAdmin(token) {
+  return requireCapability(token, 'users.manage');
+}
+
+/**
+ * Requires the session to have a specific capability. Returns the session.
+ */
+function requireCapability(token, capKey) {
   var sess = requireSession(token);
-  if (sess.role !== 'admin') throw new Error('Admin access required');
+  if (!Internal.hasCapability(sess.userId, capKey)) {
+    throw new Error('Permission denied: ' + capKey);
+  }
   return sess;
+}
+
+// ── Role/Permission management (admin-facing) ─────────────────
+
+/**
+ * Returns the full matrix for the roles admin UI.
+ * { roles, capabilities, matrix: { roleId: { capKey: bool } } }
+ */
+function getRoleMatrix(token) {
+  requireCapability(token, 'roles.manage');
+  var roles = Internal.getRoles();
+  var capSections = CAPABILITY_KEYS.map(function(k) {
+    var section = 'admin';
+    if (k.indexOf('tasks.view.') === 0) section = 'visibility';
+    else if (k.indexOf('tasks.') === 0) section = 'tasks';
+    return { key: k, section: section };
+  });
+  var matrix = {};
+  roles.forEach(function(role) {
+    matrix[role.id] = Internal.getRolePermissions(role.id);
+  });
+  return { roles: roles, capabilities: capSections, matrix: matrix };
+}
+
+/**
+ * Set a single permission cell. Admin only. Refuses to remove admin's roles.manage.
+ */
+function setPermission(roleId, capKey, allowed, token) {
+  requireCapability(token, 'roles.manage');
+  if (roleId === 'admin' && capKey === 'roles.manage' && !allowed) {
+    return { error: 'cannot_lock_out_admin' };
+  }
+  var s = getSheet('permissions');
+  if (!s) throw new Error('permissions sheet missing');
+  var data = s.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === roleId && data[i][1] === capKey) {
+      s.getRange(i + 1, 3).setValue(allowed);
+      cacheBust('perms.' + roleId);
+      return { ok: true };
+    }
+  }
+  // Row not found — insert
+  s.appendRow([roleId, capKey, allowed]);
+  cacheBust('perms.' + roleId);
+  return { ok: true };
+}
+
+/**
+ * Assign a role to a user. Requires users.manage.
+ */
+function setUserRole(userId, roleId, token) {
+  requireCapability(token, 'users.manage');
+  var s = getSheet('users');
+  if (!s) throw new Error('users sheet missing');
+  var data = s.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
+      s.getRange(i + 1, 5).setValue(roleId);
+      cacheBust('users');
+      cacheBust('perms.' + roleId);
+      return { ok: true };
+    }
+  }
+  throw new Error('User not found: ' + userId);
 }
 
 /**
@@ -738,6 +946,64 @@ function logout(token) {
 // ============================================================
 
 var Internal = (function() {
+
+  // ── getRoles ─────────────────────────────────────────────────
+  function getRoles() {
+    try {
+      var s = getSheet('roles');
+      if (!s) return [];
+      var data = s.getDataRange().getValues();
+      var result = [];
+      for (var i = 1; i < data.length; i++) {
+        if (!data[i][0]) continue;
+        result.push({
+          id: data[i][0], name: data[i][1], label: data[i][2],
+          sortOrder: data[i][3], locked: data[i][4] === true || data[i][4] === 'TRUE'
+        });
+      }
+      result.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+      return result;
+    } catch(e) {
+      return [];
+    }
+  }
+
+  // ── getRolePermissions ───────────────────────────────────────
+  // Returns { capKey: bool, ... } for a role. Cached 300s per role.
+  function getRolePermissions(roleId) {
+    var cacheKey = 'perms.' + roleId;
+    return cachedRead(cacheKey, 300, function() {
+      var map = {};
+      // Default all caps to false
+      CAPABILITY_KEYS.forEach(function(k) { map[k] = false; });
+      try {
+        var s = getSheet('permissions');
+        if (!s) return map;
+        var data = s.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          if (data[i][0] === roleId && data[i][1]) {
+            map[data[i][1]] = (data[i][2] === true || data[i][2] === 'TRUE');
+          }
+        }
+      } catch(e) { /* return defaults on error */ }
+      return map;
+    });
+  }
+
+  // ── hasCapability ────────────────────────────────────────────
+  // Admin role bypasses sheet entirely for safety — can never be locked out.
+  function hasCapability(userId, capKey) {
+    try {
+      var user = getUserById(userId);
+      if (!user) return false;
+      var roleId = user.role || 'member';
+      if (roleId === 'admin') return true;
+      var perms = getRolePermissions(roleId);
+      return perms[capKey] === true;
+    } catch(e) {
+      return false;
+    }
+  }
 
   // ── getClients ──────────────────────────────────────────────
   function getClients() {
@@ -1559,7 +1825,10 @@ var Internal = (function() {
     triggerRateLimited:        triggerRateLimited,
     createNotification:        createNotification,
     getUserPerformance:        getUserPerformance,
-    getDailyCompanyReport:     getDailyCompanyReport
+    getDailyCompanyReport:     getDailyCompanyReport,
+    getRoles:                  getRoles,
+    getRolePermissions:        getRolePermissions,
+    hasCapability:             hasCapability
   };
 })();
 
@@ -1575,7 +1844,7 @@ function getClients(token) {
 // FIX 2 — admin-only gate added
 function createClient(payload, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'clients.manage');
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -1594,7 +1863,7 @@ function createClient(payload, token) {
 // FIX 2 — admin-only gate added
 function updateClient(id, fields, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'clients.manage');
     var s = getSheet('clients');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -1622,7 +1891,7 @@ function getCategories(token) {
 // FIX 2 — admin-only gate added
 function createCategory(payload, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'categories.manage');
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
@@ -1641,7 +1910,7 @@ function createCategory(payload, token) {
 // FIX 2 — admin-only gate added
 function updateCategory(id, fields, token) {
   try {
-    requireAdmin(token);
+    requireCapability(token, 'categories.manage');
     var s = getSheet('categories');
     var data = s.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
@@ -1787,7 +2056,7 @@ function createTask(payload, token) {
 // ── Bulk task import (admin-only) ────────────────────────────
 // Returns a CSV template string with header + 2 example rows.
 function getImportTemplate(token) {
-  requireAdmin(token);
+  requireCapability(token, 'tasks.bulkImport');
   var header = 'title,project,assignee,priority,status,startDate,dueDate,description';
   var example1 = 'Print PE corrugated dieline,Godrej Consumer,Priya,high,todo,2026-06-01,2026-06-03,"Sample row — replace with your own"';
   var example2 = 'Client review call,ITC Foods,"Priya,Ravi",medium,todo,,2026-06-04,"Assign to multiple by comma-separating names"';
@@ -1819,8 +2088,7 @@ function _parseCsv(text) {
 // Imports tasks from CSV. Returns { ok: [...], errors: [{row, reason}] }.
 // Per-row validation; valid rows commit; invalid rows are reported and skipped.
 function importTasks(csvText, token) {
-  var sess = requireSession(token);
-  requireAdmin(token);
+  var sess = requireCapability(token, 'tasks.bulkImport');
 
   var rows = _parseCsv(csvText);
   if (rows.length < 2) {
@@ -1978,12 +2246,12 @@ function updateTask(taskId, fields, token) {
       if (data[i][0] !== taskId) continue;
       var oldRow = data[i];
 
-      // Authorization: requester must be creator, an assignee, or an admin
-      var isAdmin = sess.role === 'admin';
+      // Authorization: requester must be creator, an assignee, or have tasks.edit.any
+      var canEditAny = Internal.hasCapability(sess.userId, 'tasks.edit.any');
       var isCreator = oldRow[8] === userId;
       var existingAssignees = parseAssigneeIds(oldRow[7]);
       var isAssignee = existingAssignees.indexOf(userId) !== -1;
-      if (!isAdmin && !isCreator && !isAssignee) {
+      if (!canEditAny && !isCreator && !isAssignee) {
         throw new Error('Not authorized to update this task');
       }
 
@@ -3083,10 +3351,10 @@ function uploadTaskPhoto(taskId, base64Data, mimeType, token) {
 
     // FIX 4 — verify caller relationship to the task (throws if task not found)
     var task = Internal.getTask(taskId);
-    var isAdmin = sess.role === 'admin';
+    var canEditAny = Internal.hasCapability(sess.userId, 'tasks.edit.any');
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
-    if (!isAdmin && !isCreator && !isAssignee) {
+    if (!canEditAny && !isCreator && !isAssignee) {
       throw new Error('Not authorized to upload to this task');
     }
 
@@ -3125,10 +3393,10 @@ function getTaskAttachments(taskId, token) {
     var sess = requireSession(token);
     // Load the task — throws 'Task not found' if missing
     var task = Internal.getTask(taskId);
-    var isAdmin = sess.role === 'admin';
+    var canEditAny = Internal.hasCapability(sess.userId, 'tasks.edit.any');
     var isCreator = task.createdBy === sess.userId;
     var isAssignee = (task.assigneeIds || []).indexOf(sess.userId) !== -1;
-    if (!isAdmin && !isCreator && !isAssignee) {
+    if (!canEditAny && !isCreator && !isAssignee) {
       throw new Error('Not authorized to view attachments for this task');
     }
     var s = getSheet('attachments');
@@ -3281,7 +3549,7 @@ function checkEscalations() {
 // FIX 7 — admin-only gate; single client map built before loop; corrected counts
 function getShiftHandover(token) {
   try {
-    var sess = requireAdmin(token); // shift handover is a supervisor function
+    var sess = requireCapability(token, 'reports.view'); // TODO: refine capability
     var tasksSheet = getSheet('tasks');
     if (!tasksSheet) throw new Error('tasks sheet missing');
     var taskData = tasksSheet.getDataRange().getValues();
@@ -3377,7 +3645,7 @@ function getUserPerformance(userId, period, dateIso, token) {
 
 // Admin-only company report
 function getDailyCompanyReport(dateIso, token) {
-  requireAdmin(token);
+  requireCapability(token, 'reports.view');
   return Internal.getDailyCompanyReport(dateIso);
 }
 
@@ -3594,7 +3862,7 @@ function sendUserDailyDigests() {
 // ============================================================
 
 function seedDemoData(confirmToken, token) {
-  requireAdmin(token);
+  requireCapability(token, 'users.manage');
   if (confirmToken !== 'WIPE_AND_SEED') {
     throw new Error('seedDemoData requires confirmToken === "WIPE_AND_SEED"');
   }
@@ -3864,7 +4132,7 @@ function seedDemoData(confirmToken, token) {
  * Requires admin token.
  */
 function getSettings(token) {
-  requireAdmin(token);
+  requireCapability(token, 'users.manage'); // TODO: refine capability
   var s = getSheet('settings');
   if (!s) return {};
   var data = s.getDataRange().getValues();
@@ -3890,7 +4158,7 @@ function getSettings(token) {
  * Returns { ok: true }.
  */
 function updateSettings(payload, token) {
-  requireAdmin(token);
+  requireCapability(token, 'users.manage'); // TODO: refine capability
 
   var ALLOWED_KEYS = {
     sla_urgent_hours:    'number',
@@ -3951,3 +4219,107 @@ function updateSettings(payload, token) {
   return { ok: true };
 }
 
+// ── migrateExistingUsersAndSeedRoles ─────────────────────────
+// One-time idempotent installer. Run from the Apps Script editor.
+// Running twice is safe — all steps are guarded by existence checks.
+function migrateExistingUsersAndSeedRoles() {
+  var renamedCount = 0;
+  var createdCount = 0;
+  var rolesAssigned = 0;
+
+  // Step 1: seed roles and permissions
+  try {
+    seedDefaultRolesAndPermissions();
+  } catch(e) {
+    console.error('migrateExistingUsersAndSeedRoles: seedDefaultRolesAndPermissions failed: ' + e.message);
+  }
+
+  var s = getSheet('users');
+  if (!s) return 'Failed: users sheet missing.';
+  var data = s.getDataRange().getValues();
+  var headers = data[0]; // ['id','name','pin_hash','salt','role',...]
+
+  // Build a name→rowIndex map (case-insensitive)
+  function buildNameMap() {
+    var d = s.getDataRange().getValues();
+    var map = {};
+    for (var i = 1; i < d.length; i++) {
+      if (d[i][0]) map[(d[i][1] || '').toLowerCase()] = { rowIndex: i + 1, row: d[i] };
+    }
+    return map;
+  }
+
+  // Step 2: rename users
+  var renames = [
+    { from: 'priya',  to: 'Khushi' },
+    { from: 'ravi',   to: 'Anuj'   },
+    { from: 'meena',  to: 'Santosh' }
+  ];
+  try {
+    var nameMap = buildNameMap();
+    renames.forEach(function(pair) {
+      var entry = nameMap[pair.from];
+      if (entry) {
+        s.getRange(entry.rowIndex, 2).setValue(pair.to);
+        renamedCount++;
+      }
+    });
+    cacheBust('users');
+  } catch(e) {
+    console.error('migrateExistingUsersAndSeedRoles: rename failed: ' + e.message);
+  }
+
+  // Step 3 & 4: assign roles and create new users
+  var roleAssignments = [
+    { name: 'admin',   role: 'admin'    },
+    { name: 'khushi',  role: 'office'   },
+    { name: 'anuj',    role: 'ops'      },
+    { name: 'santosh', role: 'ops'      }
+  ];
+
+  try {
+    var nameMap2 = buildNameMap();
+    roleAssignments.forEach(function(pair) {
+      var entry = nameMap2[pair.name];
+      if (entry) {
+        s.getRange(entry.rowIndex, 5).setValue(pair.role);
+        rolesAssigned++;
+      }
+    });
+    cacheBust('users');
+  } catch(e) {
+    console.error('migrateExistingUsersAndSeedRoles: role assignment failed: ' + e.message);
+  }
+
+  // Step 4: create new users if they don't exist
+  var newUsers = [
+    { name: 'Rajesh', pin: '4444', role: 'security', color: '#10B981' },
+    { name: 'TBM',    pin: '0000', role: 'admin',    color: '#1A73E8' },
+    { name: 'BBM',    pin: '9999', role: 'owner',    color: '#7C3AED' }
+  ];
+
+  try {
+    var nameMap3 = buildNameMap();
+    newUsers.forEach(function(u) {
+      if (nameMap3[u.name.toLowerCase()]) return; // already exists
+      try {
+        var salt = newId();
+        var hash = hashPin(u.pin, salt);
+        var id = newId();
+        s.appendRow([
+          id, u.name, hash, salt, u.role, u.color, '',
+          JSON.stringify({onAssign:true, onDue:true, onMention:true, onShared:true}),
+          true, now(), 0, ''
+        ]);
+        createdCount++;
+      } catch(e2) {
+        console.error('migrateExistingUsersAndSeedRoles: create user ' + u.name + ' failed: ' + e2.message);
+      }
+    });
+    cacheBust('users');
+  } catch(e) {
+    console.error('migrateExistingUsersAndSeedRoles: create users failed: ' + e.message);
+  }
+
+  return 'Migrated. Renamed: ' + renamedCount + '. Created: ' + createdCount + '. Roles assigned: ' + rolesAssigned + '.';
+}
