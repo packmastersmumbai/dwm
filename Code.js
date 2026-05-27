@@ -939,6 +939,7 @@ var Internal = (function() {
       var id = newId();
       var ts = now();
       var s = getSheet('tasks');
+      var _estMin = Number(payload.estimatedMinutes) > 0 ? Number(payload.estimatedMinutes) : 20;
       s.appendRow([
         id, payload.title, payload.description || '',
         payload.clientId || '', payload.categoryId || '',
@@ -946,7 +947,7 @@ var Internal = (function() {
         (payload.assigneeIds || []).join(','), payload.createdBy || '',
         ts, payload.dueDate || '', payload.scheduledTime || '',
         payload.isShared ? true : false, '', '',
-        payload.estimatedMinutes || '',
+        _estMin,
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
         ts, '', payload.requiresPhoto ? true : false, ''
@@ -976,7 +977,7 @@ var Internal = (function() {
         payload.priority || 'medium', taskStatus,
         (payload.assigneeIds || []).join(','), payload.createdBy || '',
         ts, payload.dueDate || '', payload.scheduledTime || '',
-        payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
+        payload.isShared ? true : false, '', '', _estMin,
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
         ts, '', payload.requiresPhoto ? true : false, ''

@@ -81,6 +81,8 @@
 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">list</span> <span data-summary-left>0</span> left</span>
 <span>·</span>
 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> <span data-summary-logged>0h</span> logged today</span>
+<span>·</span>
+<span class="flex items-center gap-1" title="Rolling efficiency over last 10 completed tasks">⚡ <span data-summary-eff>—</span></span>
 </div>
 <!-- Mobile Bottom Summary Bar -->
 <div class="fixed bottom-[56px] w-full h-[40px] bg-surface-container flex md:hidden items-center justify-center gap-2 text-on-surface-variant font-label-bold text-label-bold z-40 border-t border-outline-variant shadow-[0_-2px_4px_rgba(0,0,0,0.05)] text-[10px]">
@@ -89,6 +91,8 @@
 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">list</span> <span data-summary-left-mob>0</span> left</span>
 <span>·</span>
 <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> <span data-summary-logged-mob>0h</span> today</span>
+<span>·</span>
+<span class="flex items-center gap-1">⚡ <span data-summary-eff-mob>—</span></span>
 </div>
 <!-- FAB -->
 <button class="fixed right-margin-edge bottom-[112px] w-fab-size h-fab-size rounded-full bg-primary-container text-on-primary-container shadow-lg flex items-center justify-center z-50 hover:bg-primary transition-colors active:scale-95" data-action="add-task">
@@ -227,6 +231,26 @@
     var leftCount = _myTasks.length - doneCount;
     ['[data-summary-done]','[data-summary-done-mob]'].forEach(function (sel) { var el = screen.querySelector(sel); if (el) el.textContent = doneCount; });
     ['[data-summary-left]','[data-summary-left-mob]'].forEach(function (sel) { var el = screen.querySelector(sel); if (el) el.textContent = leftCount; });
+
+    // Rolling efficiency — last 10 done tasks with both target and actual
+    var recent = done.slice().sort(function(a,b){
+      return new Date(b.completedAt || b.updatedAt || 0) - new Date(a.completedAt || a.updatedAt || 0);
+    }).slice(0, 10);
+    var samples = [];
+    recent.forEach(function(t) {
+      var target = Number(t.estimatedMinutes) || 0;
+      var actual = Number(t.totalLoggedMinutes) || 0;
+      if (!actual && t.completedAt && t.createdAt) {
+        actual = Math.round((new Date(t.completedAt) - new Date(t.createdAt)) / 60000);
+      }
+      if (target > 0 && actual > 0) samples.push((target / actual) * 100);
+    });
+    var effText = '—';
+    if (samples.length) {
+      var avg = samples.reduce(function(a,b){return a+b;}, 0) / samples.length;
+      effText = Math.round(avg) + '%';
+    }
+    ['[data-summary-eff]','[data-summary-eff-mob]'].forEach(function (sel) { var el = screen.querySelector(sel); if (el) el.textContent = effText; });
 
     var countEl = screen.querySelector('[data-summary-counts]');
     if (countEl) countEl.textContent = _myTasks.length + ' tasks';

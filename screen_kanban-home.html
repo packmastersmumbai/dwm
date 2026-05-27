@@ -679,6 +679,24 @@
       ? '<span class="tf-mono-meta inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold" style="font-size:12px;background:rgba(220,38,38,0.08);color:#DC2626;margin-left:auto"><span class="animate-pulse" style="display:inline-block;width:6px;height:6px;border-radius:9999px;background:#DC2626"></span><span data-live-timer data-start="' + escHtml(timerStart || '') + '">' + formatElapsed(timerStart) + '</span></span>'
       : '';
 
+    // Efficiency chip — done tasks only, optimistic framing
+    var effChip = '';
+    if (task.status === 'done') {
+      var target = Number(task.estimatedMinutes) || 0;
+      var actual = Number(task.totalLoggedMinutes) || 0;
+      if (!actual && task.completedAt && task.createdAt) {
+        actual = Math.round((new Date(task.completedAt) - new Date(task.createdAt)) / 60000);
+      }
+      if (target > 0 && actual > 0) {
+        var pct = Math.round((target / actual) * 100);
+        var beat = pct >= 100;
+        var style = beat
+          ? 'background:rgba(16,185,129,0.10);color:#047857'
+          : 'background:rgba(0,0,0,0.04);color:#6B7280';
+        effChip = '<span class="tf-mono-meta inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-semibold" aria-label="Efficiency ' + pct + ' percent" style="font-size:11px;' + style + '">⚡' + pct + '%</span>';
+      }
+    }
+
     // Checklist progress chip
     var clChip = '';
     if (Array.isArray(task.checklist) && task.checklist.length > 0) {
@@ -698,7 +716,7 @@
 
     var metaRow = '<div class="flex items-center gap-1.5 mt-1.5 min-w-0">' +
         priChip + (priChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' : '') +
-        clientChip + sepDot + dueDateHtml + (clChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' + clChip : '') + accHtml + liveHtml +
+        clientChip + sepDot + dueDateHtml + (clChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' + clChip : '') + (effChip ? '<span class="text-on-surface-variant" style="opacity:0.5;font-size:10px">·</span>' + effChip : '') + accHtml + liveHtml +
       '</div>';
 
     // Action buttons — 28px
