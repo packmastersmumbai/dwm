@@ -37,8 +37,8 @@
 <script>
 // Deep-link params injected by doGet from URL ?task=... &action=...
 window.TF_INITIAL = {
-  taskId: <?= JSON.stringify(initialTaskId || '') ?>,
-  action: <?= JSON.stringify(initialAction || '') ?>
+  taskId: <?!= JSON.stringify(initialTaskId || '') ?>,
+  action: <?!= JSON.stringify(initialAction || '') ?>
 };
 // ─── APP OBJECT ───────────────────────────────────────────────
 var APP = (function() {
