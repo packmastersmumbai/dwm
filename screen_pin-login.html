@@ -256,7 +256,9 @@
       } catch(se) {}
       _pin = [];
       _attempts = 0;
+      var _dlTask = window.TF_INITIAL && window.TF_INITIAL.taskId;
       APP.navigate('kanban-home');
+      if (_dlTask) setTimeout(function(){ APP.navigate('task-detail-sheet', { taskId: _dlTask }); }, 50);
     }).catch(function (err) {
       _pin = [];
       updateDots(screen);

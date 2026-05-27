@@ -307,8 +307,10 @@ function doGet(e) {
     }
   }
 
-  return HtmlService.createTemplateFromFile('index')
-    .evaluate()
+  var tmpl = HtmlService.createTemplateFromFile('index');
+  tmpl.initialTaskId = (e && e.parameter && e.parameter.task) ? e.parameter.task : '';
+  tmpl.initialAction = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+  return tmpl.evaluate()
     .setTitle('TaskFlow')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)

@@ -35,6 +35,11 @@
 <?!= include('shared-styles') ?>
 
 <script>
+// Deep-link params injected by doGet from URL ?task=... &action=...
+window.TF_INITIAL = {
+  taskId: <?= JSON.stringify(initialTaskId || '') ?>,
+  action: <?= JSON.stringify(initialAction || '') ?>
+};
 // ─── APP OBJECT ───────────────────────────────────────────────
 var APP = (function() {
   var _screens = {};
@@ -280,6 +285,10 @@ var APP = (function() {
 <!-- Init: runs after all screen IIFEs have registered via APP.register() -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  function _deepLinkTarget() {
+    var t = window.TF_INITIAL && window.TF_INITIAL.taskId;
+    return t ? { screen: 'task-detail-sheet', params: { taskId: t } } : null;
+  }
   // Attempt to restore session from sessionStorage (survives accidental reload)
   try {
     var storedToken = sessionStorage.getItem('tf_token');
@@ -287,7 +296,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (storedToken && storedUser) {
       APP.token = storedToken;
       APP.currentUser = JSON.parse(storedUser);
-      APP.navigate('kanban-home');
+      var dl = _deepLinkTarget();
+      if (dl) { APP.navigate('kanban-home'); setTimeout(function(){ APP.navigate(dl.screen, dl.params); }, 50); }
+      else APP.navigate('kanban-home');
       return;
     }
   } catch(e) { /* ignore storage errors */ }
