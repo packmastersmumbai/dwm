@@ -154,6 +154,48 @@
     font-size: 10px; line-height: 1.1;
     color: var(--color-on-surface-variant, #5A5651);
     border-right: 1px dashed var(--color-outline-variant, #E5E1DC);
+    cursor: zoom-in;
+    transition: background-color 120ms var(--ease-out-strong, ease-out);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day:hover {
+    background: rgba(79, 70, 229, 0.06);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day.is-zoomed {
+    cursor: zoom-out;
+    background: rgba(79, 70, 229, 0.10);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-hour-cell {
+    width: 80px; flex: 0 0 80px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 10px; line-height: 1.1;
+    color: var(--color-on-surface-variant, #5A5651);
+    border-right: 1px dashed var(--color-outline-variant, #E5E1DC);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-hour-cell.is-current {
+    color: #4F46E5; font-weight: 700;
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-zoom-back {
+    position: absolute; top: 4px; left: 4px; z-index: 5;
+    height: 24px; padding: 0 10px;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    color: #4F46E5;
+    background: var(--color-surface, #FAF9F7);
+    border: 1px solid #4F46E5;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 120ms var(--ease-out-strong, ease-out);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-zoom-back:hover {
+    background: rgba(79, 70, 229, 0.08);
+  }
+  [data-screen="kanban-home"] [data-view-area="timeline"] .grl-rec-chip {
+    flex-shrink: 0;
+    font-size: 9px; font-weight: 600;
+    padding: 1px 5px; border-radius: 4px;
+    background: var(--color-surface-container-high, #E9E5E0);
+    color: var(--color-on-surface-variant, #5A5651);
+    margin-left: 4px;
   }
   [data-screen="kanban-home"] [data-view-area="timeline"] .gantt-day.is-today {
     color: #4F46E5; font-weight: 700;
@@ -1157,9 +1199,13 @@
 
   // ── Gantt timeline ────────────────────────────────────────────────
   var DAY_MS = 86400000;
+  var HOUR_MS = 3600000;
   var GANTT_DAYS_BACK = 5;
   var GANTT_DAYS_FWD  = 8;
   var GANTT_DAY_W = 80;
+  var GANTT_HOUR_W = 80;
+  // Day-zoom state: null = week view, or { dateKey: 'yyyy-mm-dd' } = hour view
+  var _ganttZoom = null;
   var GANTT_ROW_H = 32;
   var GANTT_MAX_ROWS = 50;
 
@@ -1214,6 +1260,70 @@
     return (name || '?').split(/\s+/).map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
   }
 
+  // Format yyyy-mm-dd from a Date (local).
+  function _dayKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  // Stable signature for a recurrence rule (object or string). Empty when none.
+  function _recSig(rec) {
+    if (!rec) return '';
+    if (typeof rec === 'string') return rec;
+    try { return JSON.stringify(rec); } catch(e) { return String(rec); }
+  }
+  // Parse 'HH:MM' (24h) → fractional hour, or null
+  function _parseHour(s) {
+    if (!s) return null;
+    var m = String(s).match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    var h = parseInt(m[1],10), mm = parseInt(m[2],10);
+    if (isNaN(h) || isNaN(mm)) return null;
+    return h + mm/60;
+  }
+  // Collapse recurring series: one row per (title + clientId + rec-signature).
+  // Returns the active (non-done, earliest dueDate) instance, or most-recent done.
+  // Attaches `_seriesDoneCount` and `_seriesTotal` for the chip.
+  function _collapseRecurringSeries(tasks) {
+    var seriesMap = {};
+    var seriesOrder = [];
+    tasks.forEach(function(t) {
+      var sig = _recSig(t.recurrence);
+      if (!sig) {
+        var k = '__one__:' + t.id;
+        if (!seriesMap[k]) { seriesMap[k] = []; seriesOrder.push(k); }
+        seriesMap[k].push(t);
+        return;
+      }
+      var key = 'rec:' + (t.title || '') + '|' + (t.clientId || '') + '|' + sig;
+      if (!seriesMap[key]) { seriesMap[key] = []; seriesOrder.push(key); }
+      seriesMap[key].push(t);
+    });
+    var out = [];
+    seriesOrder.forEach(function(k) {
+      var arr = seriesMap[k];
+      if (arr.length === 1) { out.push(arr[0]); return; }
+      // Multi-instance series: prefer active, then most-recent done
+      var active = arr.filter(function(t){ return t.status !== 'done'; })
+        .sort(function(a,b){
+          var ad = a.dueDate || '9999', bd = b.dueDate || '9999';
+          return ad < bd ? -1 : ad > bd ? 1 : 0;
+        });
+      var done = arr.filter(function(t){ return t.status === 'done'; })
+        .sort(function(a,b){
+          var ac = new Date(a.completedAt || a.updatedAt || 0).getTime();
+          var bc = new Date(b.completedAt || b.updatedAt || 0).getTime();
+          return bc - ac;
+        });
+      var representative = active.length ? active[0] : done[0];
+      // Shallow clone so we don't pollute the upstream task object
+      var clone = {};
+      Object.keys(representative).forEach(function(kk){ clone[kk] = representative[kk]; });
+      clone._seriesDoneCount = done.length;
+      clone._seriesTotal = arr.length;
+      out.push(clone);
+    });
+    return out;
+  }
+
   function renderTimeline(screen, tasks) {
     var host = screen.querySelector('[data-view-area="timeline"] [data-gantt]');
     if (!host) return;
@@ -1221,25 +1331,80 @@
       host.innerHTML = '<div class="gantt-empty">No tasks to plot. Add one with the + Quick button.</div>';
       return;
     }
+    // Collapse recurring series → one row per (title + client + recurrence)
+    tasks = _collapseRecurringSeries(tasks);
+
     var today = startOfDay(new Date());
-    var rangeStart = new Date(today.getTime() - GANTT_DAYS_BACK * DAY_MS);
-    var totalDays = GANTT_DAYS_BACK + GANTT_DAYS_FWD + 1; // 14 days
-    var totalW = totalDays * GANTT_DAY_W;
-    var rangeEnd = new Date(rangeStart.getTime() + (totalDays - 1) * DAY_MS);
+    var isZoomed = !!(_ganttZoom && _ganttZoom.dateKey);
+    var zoomDay = isZoomed ? parseDayOrNull(_ganttZoom.dateKey) : null;
+    if (isZoomed && !zoomDay) { _ganttZoom = null; isZoomed = false; }
+
+    var rangeStart, totalDays, totalW, rangeEnd, headerCells = '';
     var LABEL_W = 200;
     var ROW_H = 36;
 
-    // Header row (sticky)
-    var headerCells = '';
-    for (var i = 0; i < totalDays; i++) {
-      var d = new Date(rangeStart.getTime() + i * DAY_MS);
-      var isToday = d.getTime() === today.getTime();
-      var dow = d.getDay();
-      var isWeekend = (dow === 0 || dow === 6);
-      headerCells += '<div class="gantt-day' + (isToday ? ' is-today' : '') + (isWeekend ? ' is-weekend' : '') + '"' +
-        ' style="width:' + GANTT_DAY_W + 'px;flex:0 0 ' + GANTT_DAY_W + 'px">' +
-        '<span>' + fmtDow(d) + '</span><span>' + fmtDay(d) + '</span>' +
-        '</div>';
+    if (isZoomed) {
+      // Hour view: 24 columns covering the zoomed day
+      rangeStart = new Date(zoomDay);
+      totalDays = 1;
+      totalW = 24 * GANTT_HOUR_W;
+      rangeEnd = new Date(rangeStart.getTime() + DAY_MS - 1);
+      var nowD = new Date();
+      var nowDayKey = _dayKey(nowD);
+      var currentHour = (nowDayKey === _ganttZoom.dateKey) ? nowD.getHours() : -1;
+      for (var h = 0; h < 24; h++) {
+        var label12 = (h === 0 ? '12a' : h < 12 ? h + 'a' : h === 12 ? '12p' : (h - 12) + 'p');
+        headerCells += '<div class="gantt-hour-cell' + (h === currentHour ? ' is-current' : '') + '"' +
+          ' style="width:' + GANTT_HOUR_W + 'px;flex:0 0 ' + GANTT_HOUR_W + 'px">' +
+          '<span>' + label12 + '</span><span>' + String(h).padStart(2,'0') + ':00</span>' +
+          '</div>';
+      }
+    } else {
+      rangeStart = new Date(today.getTime() - GANTT_DAYS_BACK * DAY_MS);
+      totalDays = GANTT_DAYS_BACK + GANTT_DAYS_FWD + 1; // 14 days
+      totalW = totalDays * GANTT_DAY_W;
+      rangeEnd = new Date(rangeStart.getTime() + (totalDays - 1) * DAY_MS);
+      for (var i = 0; i < totalDays; i++) {
+        var d = new Date(rangeStart.getTime() + i * DAY_MS);
+        var isToday = d.getTime() === today.getTime();
+        var dow = d.getDay();
+        var isWeekend = (dow === 0 || dow === 6);
+        headerCells += '<div class="gantt-day' + (isToday ? ' is-today' : '') + (isWeekend ? ' is-weekend' : '') + '"' +
+          ' data-day-key="' + _dayKey(d) + '"' +
+          ' style="width:' + GANTT_DAY_W + 'px;flex:0 0 ' + GANTT_DAY_W + 'px">' +
+          '<span>' + fmtDow(d) + '</span><span>' + fmtDay(d) + '</span>' +
+          '</div>';
+      }
+    }
+
+    // When zoomed, only show tasks whose [start, end] interval intersects the zoomed day.
+    if (isZoomed) {
+      var dayStartMs = zoomDay.getTime();
+      var dayEndMs = dayStartMs + DAY_MS - 1;
+      tasks = tasks.filter(function(t) {
+        var due = parseDayOrNull(t.dueDate);
+        var startCandidate = t.startDate || t.startedAt || t.createdAt;
+        var start = parseDayOrNull(startCandidate);
+        var doneDay = (t.status === 'done') ? (parseDayOrNull(t.completedAt) || today) : null;
+        var bs = doneDay || start || due || today;
+        var be = doneDay || due || start || today;
+        if (be.getTime() < bs.getTime()) { var tmp = bs; bs = be; be = tmp; }
+        return !(be.getTime() < dayStartMs || bs.getTime() > dayEndMs);
+      });
+      if (!tasks.length) {
+        host.innerHTML =
+          '<button class="gantt-zoom-back" data-action="gantt-zoom-back" type="button">' +
+            '<span class="material-symbols-outlined" style="font-size:14px">arrow_back</span>' +
+            fmtDow(zoomDay) + ' ' + fmtDay(zoomDay) + ' · Back to week' +
+          '</button>' +
+          '<div class="gantt-empty" style="padding-top:48px">No tasks scheduled for this day.</div>';
+        var backBtnEmpty = host.querySelector('[data-action="gantt-zoom-back"]');
+        if (backBtnEmpty) backBtnEmpty.addEventListener('click', function() {
+          _ganttZoom = null;
+          renderAll(screen);
+        });
+        return;
+      }
     }
 
     // ── Group tasks by project (client.name) ───────────────────────
@@ -1313,27 +1478,63 @@
           ? '<span class="grl-avatar" style="background:' + escHtml(asgColor) + '" title="' + escHtml(asgName) + '">' + escHtml(_initialsOf(asgName)) + '</span>'
           : '';
 
+        var recChip = (t._seriesTotal && t._seriesTotal > 1)
+          ? '<span class="grl-rec-chip" title="' + t._seriesTotal + ' instances in series">×' + t._seriesTotal +
+              (t._seriesDoneCount ? ' · ' + t._seriesDoneCount + ' done' : '') + '</span>'
+          : '';
         var labelHtml =
           '<div class="gantt-row-label gantt-row" data-row-group="' + gid + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '" title="' + escHtml(t.title) + '">' +
             priChip +
             '<span class="grl-title">' + escHtml(t.title) + '</span>' +
+            recChip +
             asgAvatar +
           '</div>';
 
         var trackInner = '';
-        if (!(barEnd.getTime() < rangeStart.getTime() || barStart.getTime() > rangeEnd.getTime())) {
+        var isOverdue = !!due && due.getTime() < today.getTime() && t.status !== 'done';
+        var statusClass = t.status === 'in-progress' ? 'status-inprogress'
+                       : t.status === 'done' ? 'status-done'
+                       : 'status-todo';
+        var isLive = !!_activeTimers[t.id];
+        var classes = 'gantt-bar ' + statusClass + (isOverdue ? ' is-overdue' : '') + (isLive ? ' is-live' : '');
+
+        if (isZoomed) {
+          // Hour view: place by scheduledTime (if set) + estimatedMinutes (or default 60 min).
+          // Falls back to full-day span at low opacity when no time info is available.
+          var dayStartMs = rangeStart.getTime();
+          var dayEndMs = dayStartMs + DAY_MS;
+          var schedHour = _parseHour(t.scheduledTime);
+          var estMin = Number(t.estimatedMinutes) || 0;
+          var hourLeft, hourWidth, opacity = '1';
+          if (schedHour !== null) {
+            var startMs = dayStartMs + schedHour * HOUR_MS;
+            var durMs = (estMin > 0 ? estMin : 60) * 60 * 1000;
+            var endMs = Math.min(dayEndMs, startMs + durMs);
+            startMs = Math.max(dayStartMs, startMs);
+            hourLeft = ((startMs - dayStartMs) / HOUR_MS) * GANTT_HOUR_W + 2;
+            hourWidth = Math.max(24, ((endMs - startMs) / HOUR_MS) * GANTT_HOUR_W - 4);
+          } else if (t.status === 'done' && t.completedAt) {
+            var completedDate = new Date(t.completedAt);
+            var compHour = completedDate.getHours() + completedDate.getMinutes()/60;
+            hourLeft = compHour * GANTT_HOUR_W + 2;
+            hourWidth = Math.max(24, (estMin > 0 ? estMin/60 : 1) * GANTT_HOUR_W - 4);
+          } else {
+            // No time info → soft full-day band so the row is still visible.
+            hourLeft = 2;
+            hourWidth = 24 * GANTT_HOUR_W - 4;
+            opacity = '0.45';
+          }
+          trackInner =
+            '<div class="' + classes + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '"' +
+            ' style="left:' + hourLeft + 'px;width:' + hourWidth + 'px;top:8px;height:20px;opacity:' + opacity + '"' +
+            ' data-hover-task="' + escHtml(t.id) + '" tabindex="0">' + escHtml(t.title) + '</div>';
+        } else if (!(barEnd.getTime() < rangeStart.getTime() || barStart.getTime() > rangeEnd.getTime())) {
           var clampedStart = barStart.getTime() < rangeStart.getTime() ? rangeStart : barStart;
           var clampedEnd = barEnd.getTime() > rangeEnd.getTime() ? rangeEnd : barEnd;
           var offsetDays = Math.round((clampedStart.getTime() - rangeStart.getTime()) / DAY_MS);
           var spanDays = Math.max(1, Math.round((clampedEnd.getTime() - clampedStart.getTime()) / DAY_MS) + 1);
           var left = offsetDays * GANTT_DAY_W + 2;
           var width = spanDays * GANTT_DAY_W - 4;
-          var isOverdue = !!due && due.getTime() < today.getTime() && t.status !== 'done';
-          var statusClass = t.status === 'in-progress' ? 'status-inprogress'
-                         : t.status === 'done' ? 'status-done'
-                         : 'status-todo';
-          var isLive = !!_activeTimers[t.id];
-          var classes = 'gantt-bar ' + statusClass + (isOverdue ? ' is-overdue' : '') + (isLive ? ' is-live' : '');
           trackInner =
             '<div class="' + classes + '" data-action="open-task" data-task-id="' + escHtml(t.id) + '"' +
             ' style="left:' + left + 'px;width:' + width + 'px;top:8px;height:20px"' +
@@ -1357,22 +1558,59 @@
       });
     });
 
-    // Today line
-    var todayOffsetDays = Math.round((today.getTime() - rangeStart.getTime()) / DAY_MS);
-    var todayLeft = todayOffsetDays * GANTT_DAY_W;
-    // Approx height: 32px header + each row (36px) + each group header (32px)
+    // Now-line: today (week view) or current hour (zoomed view)
+    var nowLeft = -1000;
     var fullHeight = 32 + totalRowCount * ROW_H + groupOrder.length * 32;
+    if (isZoomed) {
+      var nowZ = new Date();
+      if (_dayKey(nowZ) === _ganttZoom.dateKey) {
+        var nowHourFrac = nowZ.getHours() + nowZ.getMinutes()/60;
+        nowLeft = nowHourFrac * GANTT_HOUR_W;
+      }
+    } else {
+      var todayOffsetDays = Math.round((today.getTime() - rangeStart.getTime()) / DAY_MS);
+      nowLeft = todayOffsetDays * GANTT_DAY_W + GANTT_DAY_W / 2;
+    }
+
+    var backBtnHtml = isZoomed
+      ? '<button class="gantt-zoom-back" data-action="gantt-zoom-back" type="button">' +
+          '<span class="material-symbols-outlined" style="font-size:14px">arrow_back</span>' +
+          fmtDow(zoomDay) + ' ' + fmtDay(zoomDay) + ' · Back to week' +
+        '</button>'
+      : '';
 
     var html =
+      backBtnHtml +
       '<div class="gantt-grid" style="grid-template-columns:' + LABEL_W + 'px ' + totalW + 'px">' +
         '<div class="gantt-corner"></div>' +
         '<div class="gantt-header" style="width:' + totalW + 'px">' + headerCells + '</div>' +
         sectionsHtml +
       '</div>' +
-      '<div class="gantt-today-line" style="left:' + (LABEL_W + todayLeft + GANTT_DAY_W / 2 - 1) + 'px;top:0;height:' + fullHeight + 'px"></div>' +
+      (nowLeft >= 0
+        ? '<div class="gantt-today-line" style="left:' + (LABEL_W + nowLeft - 1) + 'px;top:0;height:' + fullHeight + 'px"></div>'
+        : '') +
       '<div data-task-hover style="left:0;top:0"></div>';
 
     host.innerHTML = html;
+
+    // Day-header click → toggle zoom (week-view only)
+    if (!isZoomed) {
+      host.querySelectorAll('.gantt-day[data-day-key]').forEach(function(cell) {
+        cell.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _ganttZoom = { dateKey: cell.dataset.dayKey };
+          renderAll(screen);
+        });
+      });
+    }
+    // Back-to-week button (zoomed view only)
+    var backBtn = host.querySelector('[data-action="gantt-zoom-back"]');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        _ganttZoom = null;
+        renderAll(screen);
+      });
+    }
 
     // Project group expand/collapse
     host.querySelectorAll('[data-project-header]').forEach(function(h) {
