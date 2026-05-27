@@ -1775,7 +1775,7 @@
         return;
       }
       // Map status rank for ordering within a column
-      function rank(t) { return t.status === 'in-progress' ? 0 : t.status === 'todo' ? 1 : t.status === 'done' ? 2 : 3; }
+      function rank(t) { return t.status === 'todo' ? 0 : t.status === 'in-progress' ? 1 : t.status === 'awaiting_check' ? 2 : t.status === 'done' ? 3 : 4; }
 
       var html = members.map(function (m) {
         var memberTasks = tasks.filter(function (t) {
