@@ -65,6 +65,67 @@ function logActivity(taskId, userId, action, detail) {
   s.appendRow([newId(), taskId, userId, action, detail || '', now()]);
 }
 
+// ── getActivityLog (admin-only) ─────────────────────────────
+// Returns recent activity rows joined with task title + user name.
+// filters: { limit, taskId, userId, action, fromDate (yyyy-MM-dd), toDate (yyyy-MM-dd) }
+function getActivityLog(filters, token) {
+  requireAdmin(token);
+  filters = filters || {};
+  var limit = Math.min(Math.max(parseInt(filters.limit, 10) || 200, 1), 1000);
+
+  var s = getSheet('activity');
+  if (!s) return [];
+  var data = s.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  // Build lookup maps once for the join
+  var taskTitles = {};
+  try {
+    var ts = getSheet('tasks');
+    var tdata = ts ? ts.getDataRange().getValues() : [];
+    for (var ti = 1; ti < tdata.length; ti++) {
+      if (tdata[ti][0]) taskTitles[tdata[ti][0]] = tdata[ti][1] || '';
+    }
+  } catch(_e) {}
+
+  var userNames = {};
+  try {
+    var us = getSheet('users');
+    var udata = us ? us.getDataRange().getValues() : [];
+    for (var ui = 1; ui < udata.length; ui++) {
+      if (udata[ui][0]) userNames[udata[ui][0]] = udata[ui][1] || '';
+    }
+  } catch(_e) {}
+
+  var out = [];
+  // Walk newest-first so limit is meaningful
+  for (var i = data.length - 1; i >= 1 && out.length < limit; i--) {
+    var row = data[i];
+    if (!row[0]) continue;
+    var taskId = row[1], userId = row[2], action = row[3], detail = row[4];
+    var createdAt = row[5] ? String(row[5]) : '';
+    var createdAtDay = createdAt.slice(0, 10);
+
+    if (filters.taskId && taskId !== filters.taskId) continue;
+    if (filters.userId && userId !== filters.userId) continue;
+    if (filters.action && action !== filters.action) continue;
+    if (filters.fromDate && createdAtDay && createdAtDay < filters.fromDate) continue;
+    if (filters.toDate && createdAtDay && createdAtDay > filters.toDate) continue;
+
+    out.push({
+      id: row[0],
+      taskId: taskId,
+      taskTitle: taskTitles[taskId] || '(deleted task)',
+      userId: userId,
+      userName: userId ? (userNames[userId] || '(system)') : '(system)',
+      action: action,
+      detail: detail || '',
+      createdAt: createdAt
+    });
+  }
+  return out;
+}
+
 // ── doGet / include ──────────────────────────────────────────
 
 function doGet(e) {

@@ -84,6 +84,7 @@
 </button>
 <button data-tab="masters" data-ref="tab-masters" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Masters</button>
 <button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
+<button data-tab="activity" data-ref="tab-activity" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Activity</button>
 </div>
 
 <!-- Tab: Workload (default visible) -->
@@ -215,6 +216,37 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 </div>
 </div>
 
+<!-- Tab: Activity (hidden by default) -->
+<div data-ref="panel-activity" class="hidden space-y-3">
+  <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+    <div class="flex items-center justify-between gap-2">
+      <h3 class="font-title-main-mobile text-[14px] font-semibold text-on-surface">Activity log</h3>
+      <button data-ref="activity-refresh" type="button"
+        class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface text-on-surface font-label-bold text-label-bold flex items-center gap-1 active:scale-[0.98] transition-[transform] duration-160">
+        <span class="material-symbols-outlined text-[14px]">refresh</span>Refresh
+      </button>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <select data-ref="activity-user" class="bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-[12px] text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">
+        <option value="">All users</option>
+      </select>
+      <select data-ref="activity-action" class="bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-[12px] text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">
+        <option value="">All actions</option>
+        <option value="created">Created</option>
+        <option value="status_changed">Status changed</option>
+        <option value="claimed">Claimed</option>
+        <option value="timer_started">Timer started</option>
+        <option value="timer_stopped">Timer stopped</option>
+      </select>
+      <input data-ref="activity-from" type="date" class="bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-[12px] text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none" placeholder="From"/>
+      <input data-ref="activity-to" type="date" class="bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-[12px] text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none" placeholder="To"/>
+    </div>
+  </div>
+  <div data-ref="activity-list" class="space-y-1">
+    <div class="text-center text-on-surface-variant py-6 font-body-standard">No data yet.</div>
+  </div>
+</div>
+
 <!-- Edit User Bottom Sheet (shared, hidden by default) -->
 <div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
   <!-- Scrim -->
@@ -315,7 +347,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false }; // reports tab removed
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false }; // reports tab removed
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
@@ -358,7 +390,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   }
 
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'masters', 'sla'];
+    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -697,8 +729,60 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         }
       }
 
+      // ── Activity log wiring (admin-only) ──
+      function loadActivityLog(screen) {
+        var container = qs(screen, 'activity-list');
+        if (!container) return;
+        container.innerHTML = '<div class="text-center text-on-surface-variant py-4 font-body-standard">Loading…</div>';
+        var filters = {
+          limit: 200,
+          userId: qs(screen, 'activity-user').value || undefined,
+          action: qs(screen, 'activity-action').value || undefined,
+          fromDate: qs(screen, 'activity-from').value || undefined,
+          toDate: qs(screen, 'activity-to').value || undefined
+        };
+        APP.call('getActivityLog', filters, APP.token).then(function(rows) {
+          if (!rows || !rows.length) {
+            container.innerHTML = '<div class="text-center text-on-surface-variant py-6 font-body-standard">No activity matches these filters.</div>';
+            return;
+          }
+          function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+          function fmtAction(a) {
+            return String(a || '').replace(/_/g,' ').replace(/^\w/, function(c){ return c.toUpperCase(); });
+          }
+          function fmtWhen(s) {
+            if (!s) return '';
+            var d = new Date(s);
+            if (isNaN(d.getTime())) return esc(s);
+            return d.toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+          }
+          container.innerHTML = rows.map(function(r) {
+            return '<div class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 flex items-start gap-3">' +
+              '<div class="flex-1 min-w-0">' +
+                '<div class="font-body-standard text-body-standard text-on-surface truncate">' +
+                  '<span class="font-medium">' + esc(r.userName) + '</span>' +
+                  ' <span class="text-on-surface-variant">' + esc(fmtAction(r.action)) + '</span>' +
+                  ' <span class="text-on-surface">' + esc(r.taskTitle) + '</span>' +
+                '</div>' +
+                (r.detail
+                  ? '<div class="text-[11px] text-on-surface-variant mt-0.5 truncate">' + esc(r.detail) + '</div>'
+                  : '') +
+              '</div>' +
+              '<div class="text-[11px] text-on-surface-variant shrink-0">' + fmtWhen(r.createdAt) + '</div>' +
+            '</div>';
+          }).join('');
+        }).catch(function(err) {
+          container.innerHTML = '<div class="px-3 py-2 rounded-lg bg-error-container text-error">' + (err && err.message ? err.message : String(err)) + '</div>';
+        });
+      }
+
+      // Hide Activity tab for non-admins (admin-only endpoint)
+      if (!isAdmin) {
+        var _tabAct = qs(screen, 'tab-activity'); if (_tabAct) _tabAct.classList.add('hidden');
+      }
+
       // Tab switching
-      ['tasks', 'workload', 'masters', 'sla'].forEach(function(tab) {
+      ['tasks', 'workload', 'masters', 'sla', 'activity'].forEach(function(tab) {
         qs(screen, 'tab-' + tab).addEventListener('click', function() {
           setActiveTab(screen, tab);
 
@@ -714,6 +798,27 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
             APP.call('getUsers', APP.token)
               .then(function(users) { renderUsers(screen, users); })
               .catch(function(err) { APP.showError(err); });
+          }
+
+          if (tab === 'activity' && !LOAD_LABELS_PER_TAB.activity) {
+            LOAD_LABELS_PER_TAB.activity = true;
+            // Populate user dropdown once
+            APP.call('getUsers', APP.token).then(function(users) {
+              var sel = qs(screen, 'activity-user');
+              if (!sel) return;
+              (users || []).forEach(function(u) {
+                var opt = document.createElement('option');
+                opt.value = u.id; opt.textContent = u.name || '(unknown)';
+                sel.appendChild(opt);
+              });
+            }).catch(function(){});
+            // Wire filter changes + refresh
+            ['activity-user','activity-action','activity-from','activity-to'].forEach(function(ref){
+              var el = qs(screen, ref); if (el) el.addEventListener('change', function(){ loadActivityLog(screen); });
+            });
+            var refreshBtn = qs(screen, 'activity-refresh');
+            if (refreshBtn) refreshBtn.addEventListener('click', function(){ loadActivityLog(screen); });
+            loadActivityLog(screen);
           }
 
           if (tab === 'sla' && !LOAD_LABELS_PER_TAB.sla) {
