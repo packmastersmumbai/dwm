@@ -38,7 +38,9 @@
 // Deep-link params injected by doGet from URL ?task=... &action=...
 window.TF_INITIAL = {
   taskId: <?!= JSON.stringify(initialTaskId || '') ?>,
-  action: <?!= JSON.stringify(initialAction || '') ?>
+  action: <?!= JSON.stringify(initialAction || '') ?>,
+  toast: <?!= JSON.stringify(initialToast || '') ?>,
+  toastKind: <?!= JSON.stringify(initialToastKind || 'success') ?>
 };
 // ─── APP OBJECT ───────────────────────────────────────────────
 var APP = (function() {
@@ -289,6 +291,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var t = window.TF_INITIAL && window.TF_INITIAL.taskId;
     return t ? { screen: 'task-detail-sheet', params: { taskId: t } } : null;
   }
+  function _flashDeepLinkToast() {
+    var t = window.TF_INITIAL && window.TF_INITIAL.toast;
+    if (!t) return;
+    var kind = (window.TF_INITIAL.toastKind === 'error') ? 'error' : 'success';
+    setTimeout(function(){
+      try {
+        if (kind === 'error') APP.showError(t); else APP.showSuccess(t);
+      } catch(_) {}
+    }, 350);
+  }
   // Attempt to restore session from sessionStorage (survives accidental reload)
   try {
     var storedToken = localStorage.getItem('tf_token') || sessionStorage.getItem('tf_token');
@@ -299,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var dl = _deepLinkTarget();
       if (dl) { APP.navigate('kanban-home'); setTimeout(function(){ APP.navigate(dl.screen, dl.params); }, 50); }
       else APP.navigate('kanban-home');
+      _flashDeepLinkToast();
       return;
     }
   } catch(e) { /* ignore storage errors */ }

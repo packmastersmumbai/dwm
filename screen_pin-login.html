@@ -257,8 +257,11 @@
       _pin = [];
       _attempts = 0;
       var _dlTask = window.TF_INITIAL && window.TF_INITIAL.taskId;
+      var _dlToast = window.TF_INITIAL && window.TF_INITIAL.toast;
+      var _dlToastKind = (window.TF_INITIAL && window.TF_INITIAL.toastKind === 'error') ? 'error' : 'success';
       APP.navigate('kanban-home');
       if (_dlTask) setTimeout(function(){ APP.navigate('task-detail-sheet', { taskId: _dlTask }); }, 50);
+      if (_dlToast) setTimeout(function(){ try { _dlToastKind === 'error' ? APP.showError(_dlToast) : APP.showSuccess(_dlToast); } catch(_){} }, 400);
     }).catch(function (err) {
       _pin = [];
       updateDots(screen);

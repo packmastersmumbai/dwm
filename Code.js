@@ -199,6 +199,19 @@ function _verifyActionToken(token) {
   }
 }
 
+function _renderAppWithToast(taskId, toastMsg, toastKind) {
+  var tmpl = HtmlService.createTemplateFromFile('index');
+  tmpl.initialTaskId = taskId || '';
+  tmpl.initialAction = '';
+  tmpl.initialToast = toastMsg || '';
+  tmpl.initialToastKind = toastKind || 'success';
+  return tmpl.evaluate()
+    .setTitle('TaskFlow')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function _actionResultPage(title, body, isError) {
   var color = isError ? '#DC2626' : '#10B981';
   var icon = isError ? '&#x26A0;&#xFE0F;' : '&#x2705;';
@@ -272,9 +285,9 @@ function doGet(e) {
           Internal.updateTaskFields(taskId, { status: 'in-progress', claimedBy: userId, claimedAt: now() });
           try { Internal.startTimerForUser(taskId, userId); } catch(_) {}
           try { syncTaskToCalendar(taskId); } catch(_) {}
-          return _actionResultPage('Started', 'Task started. Get to it!', false);
+          return _renderAppWithToast(taskId, 'Started — timer running', 'success');
         }
-        return _actionResultPage('Already Started', 'This task is already ' + currentStatus + '.', false);
+        return _renderAppWithToast(taskId, 'Already ' + currentStatus, 'info');
       }
 
       if (action === 'done') {
@@ -295,9 +308,9 @@ function doGet(e) {
             } catch(_) {}
           }
           try { syncTaskToCalendar(taskId); } catch(_) {}
-          return _actionResultPage('Done!', canApprove ? 'Task marked complete.' : 'Task submitted for review.', false);
+          return _renderAppWithToast(taskId, canApprove ? 'Task marked complete' : 'Submitted for review', 'success');
         }
-        return _actionResultPage('Not In Progress', 'This task is ' + currentStatus + ' and cannot be marked done.', false);
+        return _renderAppWithToast(taskId, 'Cannot mark done — status is ' + currentStatus, 'info');
       }
 
       if (action === 'claim') {
@@ -306,7 +319,7 @@ function doGet(e) {
         var newStatus = currentStatus === 'todo' ? 'in-progress' : currentStatus;
         Internal.updateTaskFields(taskId, { assigneeIds: ids, status: newStatus, claimedBy: userId, claimedAt: now() });
         try { syncTaskToCalendar(taskId); } catch(_) {}
-        return _actionResultPage('Claimed!', 'Task claimed and added to your list.', false);
+        return _renderAppWithToast(taskId, 'Task claimed', 'success');
       }
 
       if (action === 'photo') {
@@ -326,6 +339,8 @@ function doGet(e) {
   var tmpl = HtmlService.createTemplateFromFile('index');
   tmpl.initialTaskId = (e && e.parameter && e.parameter.task) ? e.parameter.task : '';
   tmpl.initialAction = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+  tmpl.initialToast = '';
+  tmpl.initialToastKind = 'success';
   return tmpl.evaluate()
     .setTitle('TaskFlow')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
