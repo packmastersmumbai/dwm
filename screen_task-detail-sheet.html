@@ -6,9 +6,9 @@
 <div class="flex-1 bg-surface-container-low rounded-lg w-full mt-4 border-l-4 border-l-[#10B981]"></div>
 </div>
 <!-- Scrim (Dim Background) -->
-<div class="absolute inset-0 bg-black/40 z-40 transition-opacity duration-300" data-ref="scrim"></div>
+<div class="absolute inset-0 bg-black/40 z-40" data-ref="scrim" style="opacity:0;transition:opacity 320ms cubic-bezier(0.32, 0.72, 0, 1)"></div>
 <!-- Bottom Sheet Container -->
-<div class="absolute bottom-0 w-full max-w-md bg-surface h-[85%] rounded-t-2xl z-50 flex flex-col shadow-2xl overflow-hidden transition-transform duration-300 transform translate-y-0">
+<div data-ref="sheet" class="absolute bottom-0 w-full max-w-md bg-surface h-[85%] rounded-t-2xl z-50 flex flex-col shadow-2xl overflow-hidden" style="transform:translateY(100%);transition:transform 360ms cubic-bezier(0.32, 0.72, 0, 1);will-change:transform">
 <!-- Drag Handle Area -->
 <div class="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing bg-surface sticky top-0 z-10">
 <div class="w-8 h-1 bg-outline-variant rounded-full"></div>
@@ -27,8 +27,8 @@
 <button data-ref="btn-edit" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
 <span class="material-symbols-outlined text-[20px]">edit</span>
 </button>
-<button data-ref="btn-close" class="p-2 rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-low">
-<span class="material-symbols-outlined text-[20px]">close</span>
+<button data-ref="btn-close" aria-label="Close" class="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors bg-surface-container-low active:scale-90 focus-visible:ring-2 ring-primary">
+<span class="material-symbols-outlined text-[22px]">close</span>
 </button>
 </div>
 </div>
@@ -727,9 +727,40 @@ Share via WhatsApp
 
       // Close / back — return to the previous screen if known
       var _returnTo = (params && params.returnTo) || 'kanban-home';
-      qs(screen, 'btn-close').addEventListener('click', function() {
-        APP.navigate(_returnTo);
-      });
+
+      // ── Motion: spring entrance + snappier exit, reduced-motion aware ──
+      var _scrim = qs(screen, 'scrim');
+      var _sheet = qs(screen, 'sheet');
+      var _reduce = false;
+      try { _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(_) {}
+      if (_reduce) {
+        if (_scrim) { _scrim.style.transition = 'none'; _scrim.style.opacity = '1'; }
+        if (_sheet) { _sheet.style.transition = 'none'; _sheet.style.transform = 'translateY(0)'; }
+      } else {
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            if (_scrim) _scrim.style.opacity = '1';
+            if (_sheet) _sheet.style.transform = 'translateY(0)';
+          });
+        });
+      }
+
+      function closeSheet() {
+        if (screen._closing) return;
+        screen._closing = true;
+        if (_reduce) { APP.navigate(_returnTo); return; }
+        if (_scrim) { _scrim.style.transition = 'opacity 220ms cubic-bezier(0.4, 0, 1, 1)'; _scrim.style.opacity = '0'; }
+        if (_sheet) { _sheet.style.transition = 'transform 260ms cubic-bezier(0.4, 0, 1, 1)'; _sheet.style.transform = 'translateY(100%)'; }
+        setTimeout(function() { APP.navigate(_returnTo); }, 240);
+      }
+      screen._closeSheet = closeSheet;
+
+      // ESC key
+      var _onEsc = function(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSheet(); } };
+      document.addEventListener('keydown', _onEsc);
+      screen._onEsc = _onEsc;
+
+      qs(screen, 'btn-close').addEventListener('click', closeSheet);
 
       // Edit button
       qs(screen, 'btn-edit').addEventListener('click', function() {
@@ -940,11 +971,16 @@ Share via WhatsApp
 
       // Scrim click — close sheet
       qs(screen, 'scrim').addEventListener('click', function() {
-        APP.navigate('kanban-home');
+        if (screen._closeSheet) screen._closeSheet(); else APP.navigate(_returnTo);
       });
     },
 
     unmount: function() {
+      try {
+        var screen = document.querySelector('[data-screen="task-detail-sheet"]');
+        if (screen && screen._onEsc) document.removeEventListener('keydown', screen._onEsc);
+        if (screen) { screen._closing = false; screen._onEsc = null; screen._closeSheet = null; }
+      } catch(_) {}
       if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
       if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
       _taskId = null;

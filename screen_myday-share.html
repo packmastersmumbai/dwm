@@ -317,7 +317,7 @@
     if (action === 'add-task') { APP.navigate('add-edit-task'); return; }
 
     if (action === 'open-task') {
-      APP.navigate('task-detail-sheet', { taskId: taskId });
+      APP.navigate('task-detail-sheet', { taskId: taskId, returnTo: 'myday-share' });
       return;
     }
 
