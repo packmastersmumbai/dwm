@@ -4913,9 +4913,21 @@ function getOrCreateTaskFlowCalendar() {
   return calId;
 }
 
+function _getPublishedWebAppUrl() {
+  try {
+    var override = PropertiesService.getScriptProperties().getProperty('taskflow_web_app_url');
+    if (override) return override;
+  } catch(_) {}
+  try { return ScriptApp.getService().getUrl(); } catch(_) { return ''; }
+}
+
+function setPublishedWebAppUrl(url) {
+  PropertiesService.getScriptProperties().setProperty('taskflow_web_app_url', url);
+  return { ok: true, url: url };
+}
+
 function _calEventDescription(task) {
-  var webAppUrl = '';
-  try { webAppUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+  var webAppUrl = _getPublishedWebAppUrl();
   var assigneeUserId = '';
   var assigneeName = '';
   try {
@@ -4937,21 +4949,21 @@ function _calEventDescription(task) {
     if (cl) clientName = cl.name;
   } catch(_) {}
   var link = webAppUrl ? (webAppUrl + '?task=' + task.id) : '';
-  var base = 'Status: ' + (task.status || '') +
-    ' | Assignee: ' + assigneeName +
-    ' | Client: ' + clientName +
-    (link ? '\n\nLink: ' + link : '');
+  var base = '<b>Status:</b> ' + (task.status || '') +
+    ' &nbsp;·&nbsp; <b>Assignee:</b> ' + assigneeName +
+    ' &nbsp;·&nbsp; <b>Client:</b> ' + clientName +
+    (link ? '<br><br><a href="' + link + '">Open in TaskFlow</a>' : '');
 
   // Append deep-link action buttons if we have a URL and a user to act as
   if (webAppUrl && assigneeUserId) {
     try {
-      var startToken  = _makeActionToken(task.id, assigneeUserId, 'start');
-      var doneToken   = _makeActionToken(task.id, assigneeUserId, 'done');
-      var photoToken  = _makeActionToken(task.id, assigneeUserId, 'photo');
-      base += '\n\n━━━━━━━━━━━━\n' +
-        '▶ Start: ' + webAppUrl + '?act=start&t=' + startToken + '\n' +
-        '✓ Done:  ' + webAppUrl + '?act=done&t='  + doneToken  + '\n' +
-        '📷 Photo: ' + webAppUrl + '?act=photo&t=' + photoToken;
+      var startUrl = webAppUrl + '?act=start&t=' + _makeActionToken(task.id, assigneeUserId, 'start');
+      var doneUrl  = webAppUrl + '?act=done&t='  + _makeActionToken(task.id, assigneeUserId, 'done');
+      var photoUrl = webAppUrl + '?act=photo&t=' + _makeActionToken(task.id, assigneeUserId, 'photo');
+      base += '<br><br>━━━━━━━━━━━━<br>' +
+        '<a href="' + startUrl + '">▶ Start</a> &nbsp;·&nbsp; ' +
+        '<a href="' + doneUrl  + '">✓ Done</a> &nbsp;·&nbsp; ' +
+        '<a href="' + photoUrl + '">📷 Photo</a>';
     } catch(_) {}
   }
   return base;
