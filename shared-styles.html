@@ -406,6 +406,42 @@ body:not([data-role="admin"]) [data-nav="admin-panel"] {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
+/* Skeleton loaders — replaces empty-state during initial fetch. */
+[data-screen="kanban-home"] .kh-skel-bar {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    rgba(0,0,0,0.06) 0%,
+    rgba(0,0,0,0.12) 50%,
+    rgba(0,0,0,0.06) 100%);
+  background-size: 200% 100%;
+  animation: kh-skel-shimmer 1.4s linear infinite;
+}
+[data-screen="kanban-home"] .kh-skel-row {
+  display: grid;
+  grid-template-columns: 46% 22% 14% 18%;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--color-outline-variant, #E5E1DC);
+}
+[data-screen="kanban-home"] .kh-skel-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-outline-variant, #E5E1DC);
+  border-radius: 12px;
+  padding: 14px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@keyframes kh-skel-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-screen="kanban-home"] .kh-skel-bar { animation: none; }
+}
 [data-screen="kanban-home"] .hide-scrollbar::-webkit-scrollbar {
             display: none;
         }

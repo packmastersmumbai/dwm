@@ -583,6 +583,7 @@
   var _timerInterval = null;
   var _timerTickCount = 0; // counts ticks for 60-second heartbeat
   var _allTasks = [];
+  var _loading = true; // true until first fetch resolves/rejects
   var _activeFilter = (function(){ try { return sessionStorage.getItem('kh.filter') || 'all'; } catch(e){ return 'all'; } })();
   var _activeScope = (function(){ try { return sessionStorage.getItem('kh.scope') || 'mine'; } catch(e){ return 'mine'; } })();
   var _activeView  = (function(){ try { return sessionStorage.getItem('kh.view')  || 'board'; } catch(e){ return 'board'; } })();
@@ -836,7 +837,13 @@
           '</article>';
         }).join('') + (col.length > 6 ? '<div class="text-center mt-4 mb-2"><a class="text-[12px] text-primary hover:underline cursor-pointer" data-action="archive-done">Archive older tasks</a></div>' : '');
       } else {
-        if (col.length === 0) {
+        if (_loading && _allTasks.length === 0) {
+          var skel = '';
+          for (var _sj = 0; _sj < 3; _sj++) {
+            skel += '<div class="kh-skel-card"><div class="kh-skel-bar" style="width:75%"></div><div class="kh-skel-bar" style="width:45%"></div></div>';
+          }
+          area.innerHTML = skel;
+        } else if (col.length === 0) {
           var emptyCopy = status === 'todo'
             ? { line: 'No tasks to do', sub: 'Tap + to add one.' }
             : { line: 'No timers running', sub: 'Tap a To Do task and Start.' };
@@ -852,7 +859,7 @@
         }
       }
       // Done column: show empty hint when nothing has been finished.
-      if (status === 'done' && col.length === 0) {
+      if (status === 'done' && col.length === 0 && !(_loading && _allTasks.length === 0)) {
         area.innerHTML =
           '<div class="flex flex-col items-center justify-center text-center px-3 py-8 text-on-surface-variant select-none">' +
             '<div class="text-[12px] font-medium text-on-surface mb-0.5">Nothing finished yet</div>' +
@@ -1191,9 +1198,20 @@
       return '<button type="button" class="kh-list-h" data-list-sort="' + c[0] + '">' + c[1] + sortArrow(c[0]) + '</button>';
     }).join('') + '<div class="kh-list-h kh-c-act-h">Action</div>';
 
-    var bodyHtml = filtered.length === 0
-      ? '<div class="text-center text-on-surface-variant text-sm py-10">No tasks match these filters.</div>'
-      : filtered.map(_renderListRow).join('');
+    var bodyHtml;
+    if (_loading && _allTasks.length === 0) {
+      bodyHtml = (function() {
+        var rows = '';
+        for (var _si = 0; _si < 8; _si++) {
+          rows += '<div class="kh-skel-row"><div class="kh-skel-bar" style="width:46%"></div><div class="kh-skel-bar" style="width:22%"></div><div class="kh-skel-bar" style="width:14%"></div><div class="kh-skel-bar" style="width:18%"></div></div>';
+        }
+        return rows;
+      })();
+    } else if (filtered.length === 0) {
+      bodyHtml = '<div class="text-center text-on-surface-variant text-sm py-10">No tasks match these filters.</div>';
+    } else {
+      bodyHtml = filtered.map(_renderListRow).join('');
+    }
 
     area.innerHTML =
       '<div class="kh-list-sticky">' +
@@ -1966,15 +1984,18 @@
       // team and shared both pull team-wide; shared is filtered client-side
       fetchPromise = APP.call('getTeamTasks', {}, APP.token);
     }
+    _loading = true;
+    renderAll(screen); // paint skeletons immediately
     fetchPromise.then(function (tasks) {
       tasks = tasks || [];
       if (_activeScope === 'shared') {
         tasks = tasks.filter(function (t) { return t.isShared === true || t.shared === true; });
       }
       _allTasks = _coerceGuardedTasks(tasks);
+      _loading = false;
       renderAll(screen);
       ensureTickerRunning();
-    }).catch(function (err) { APP.showError(err); });
+    }).catch(function (err) { _loading = false; renderAll(screen); APP.showError(err); });
 
     // Hydrate ALL active timers for current user (multi-timer)
     APP.call('getActiveTimers', APP.currentUser.id, APP.token).then(function (sessions) {
