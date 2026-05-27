@@ -19,6 +19,7 @@ var CAPABILITY_KEYS = [
   'tasks.claim',
   'tasks.done.any',
   'tasks.done.own',
+  'tasks.approve',
   'tasks.bulkImport',
   'users.manage',
   'roles.manage',
@@ -154,7 +155,158 @@ function getActivityLog(filters, token) {
 
 // ── doGet / include ──────────────────────────────────────────
 
+// ── HMAC helpers (Phase 2) ─────────────────────────────────────
+
+function _getHmacSecret() {
+  var props = PropertiesService.getScriptProperties();
+  var key = 'taskflow_hmac_secret';
+  var secret = props.getProperty(key);
+  if (!secret) {
+    var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
+      Utilities.getUuid() + Date.now().toString(), Utilities.Charset.UTF_8);
+    secret = Utilities.base64EncodeWebSafe(bytes).replace(/=/g, '');
+    props.setProperty(key, secret);
+  }
+  return secret;
+}
+
+function _makeActionToken(taskId, userId, action) {
+  var secret = _getHmacSecret();
+  var payload = taskId + '|' + userId + '|' + action;
+  var sigBytes = Utilities.computeHmacSha256Signature(payload, secret, Utilities.Charset.UTF_8);
+  var sig = Utilities.base64EncodeWebSafe(sigBytes).replace(/=/g, '');
+  return taskId + '.' + userId + '.' + action + '.' + sig;
+}
+
+function _verifyActionToken(token) {
+  try {
+    var parts = token.split('.');
+    // sig is last part; taskId and userId may contain hyphens so split carefully
+    // format: taskId.userId.action.sig where taskId and userId are UUIDs (no dots)
+    if (parts.length < 4) return { ok: false, error: 'malformed token' };
+    var sig = parts[parts.length - 1];
+    var action = parts[parts.length - 2];
+    var userId = parts[parts.length - 3];
+    var taskId = parts.slice(0, parts.length - 3).join('.');
+    var secret = _getHmacSecret();
+    var payload = taskId + '|' + userId + '|' + action;
+    var expectedBytes = Utilities.computeHmacSha256Signature(payload, secret, Utilities.Charset.UTF_8);
+    var expected = Utilities.base64EncodeWebSafe(expectedBytes).replace(/=/g, '');
+    if (sig !== expected) return { ok: false, error: 'invalid signature' };
+    return { ok: true, taskId: taskId, userId: userId, action: action };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function _actionResultPage(title, body, isError) {
+  var color = isError ? '#DC2626' : '#10B981';
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + title + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F9FAFB}' +
+    '.card{background:#fff;border-radius:12px;padding:32px 24px;max-width:360px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.1)}' +
+    'h2{color:' + color + ';margin:0 0 12px}p{color:#374151;margin:0 0 16px;font-size:14px}' +
+    '.close{color:#6B7280;font-size:12px}</style></head><body>' +
+    '<div class="card"><h2>' + title + '</h2><p>' + body + '</p>' +
+    '<div class="close">This tab will close automatically&hellip;</div></div>' +
+    '<script>setTimeout(function(){window.close();},2000);</script>' +
+    '</body></html>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function doGet(e) {
+  // Phase 2: handle action deep-links
+  if (e && e.parameter && e.parameter.act) {
+    try {
+      var actParam = e.parameter.act;
+      var tokenParam = e.parameter.t || '';
+      var verified = _verifyActionToken(tokenParam);
+      if (!verified.ok) {
+        return _actionResultPage('Invalid Link', 'This link is invalid or has been tampered with.', true);
+      }
+      var taskId = verified.taskId;
+      var userId = verified.userId;
+      var action = verified.action;
+
+      // Validate action matches URL param (extra safety)
+      if (action !== actParam) {
+        return _actionResultPage('Invalid Link', 'Action mismatch.', true);
+      }
+
+      // Get the task (check for template)
+      var task;
+      try { task = Internal.getTask(taskId); } catch(ex) {
+        return _actionResultPage('Task Not Found', 'This task no longer exists.', true);
+      }
+
+      // Template handling: spawn instance first
+      if (task.isTemplate || task.status === 'template') {
+        task = _spawnInstanceFromTemplate(taskId, userId, action);
+        taskId = task.id;
+      }
+
+      var currentStatus = task.status;
+
+      if (action === 'start') {
+        if (currentStatus === 'todo' || currentStatus === 'rejected') {
+          Internal.updateTaskFields(taskId, { status: 'in-progress', claimedBy: userId, claimedAt: now() });
+          try { Internal.startTimerForUser(taskId, userId); } catch(_) {}
+          try { syncTaskToCalendar(taskId); } catch(_) {}
+          return _actionResultPage('Started', 'Task started. Get to it!', false);
+        }
+        return _actionResultPage('Already Started', 'This task is already ' + currentStatus + '.', false);
+      }
+
+      if (action === 'done') {
+        if (currentStatus === 'in-progress') {
+          var canApprove = Internal.hasCapability(userId, 'tasks.approve');
+          Internal.updateTaskFields(taskId, { status: canApprove ? 'done' : 'awaiting_check' });
+          if (!canApprove) {
+            try {
+              var allUsers2 = getUsersStatic();
+              var worker2 = getUserById(userId);
+              var workerName2 = worker2 ? worker2.name : 'Someone';
+              allUsers2.forEach(function(u) {
+                if (Internal.hasCapability(u.id, 'tasks.approve')) {
+                  Internal.createNotification(u.id, 'check_needed', taskId,
+                    workerName2 + ' marked done — needs check: ' + task.title);
+                }
+              });
+            } catch(_) {}
+          }
+          try { syncTaskToCalendar(taskId); } catch(_) {}
+          return _actionResultPage('Done!', canApprove ? 'Task marked complete.' : 'Task submitted for review.', false);
+        }
+        return _actionResultPage('Not In Progress', 'This task is ' + currentStatus + ' and cannot be marked done.', false);
+      }
+
+      if (action === 'claim') {
+        var ids = task.assigneeIds || [];
+        if (ids.indexOf(userId) === -1) ids.push(userId);
+        var newStatus = currentStatus === 'todo' ? 'in-progress' : currentStatus;
+        Internal.updateTaskFields(taskId, { assigneeIds: ids, status: newStatus, claimedBy: userId, claimedAt: now() });
+        try { syncTaskToCalendar(taskId); } catch(_) {}
+        return _actionResultPage('Claimed!', 'Task claimed and added to your list.', false);
+      }
+
+      if (action === 'photo') {
+        var webUrl = '';
+        try { webUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+        return HtmlService.createHtmlOutput(
+          '<meta http-equiv="refresh" content="0;url=' + webUrl + '?task=' + taskId + '&action=photo">'
+        ).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      }
+
+      return _actionResultPage('Unknown Action', 'Unrecognized action: ' + action, true);
+    } catch(ex) {
+      return _actionResultPage('Error', 'Something went wrong: ' + ex.message, true);
+    }
+  }
+
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
     .setTitle('TaskFlow')
@@ -204,7 +356,8 @@ function initializeSheets() {
     var tasksSheet = ss.getSheetByName('tasks');
     if (!tasksSheet) return;
     var headerRow = tasksSheet.getRange(1, 1, 1, tasksSheet.getLastColumn()).getValues()[0];
-    ['requires_photo', 'completed_at', 'pdca', 'calendar_event_id'].forEach(function(colName) {
+    ['requires_photo', 'completed_at', 'pdca', 'calendar_event_id',
+     'check_by', 'check_at', 'check_reason', 'is_template', 'template_id'].forEach(function(colName) {
       if (headerRow.indexOf(colName) === -1) {
         var nextCol = tasksSheet.getLastColumn() + 1;
         tasksSheet.getRange(1, nextCol).setValue(colName);
@@ -329,6 +482,8 @@ function seedDefaultRolesAndPermissions() {
     ['admin','tasks.done.any',true],['owner','tasks.done.any',true],['office','tasks.done.any',true],
     // tasks.done.own
     ['admin','tasks.done.own',true],['owner','tasks.done.own',true],['office','tasks.done.own',true],['ops','tasks.done.own',true],['security','tasks.done.own',true],
+    // tasks.approve
+    ['admin','tasks.approve',true],['owner','tasks.approve',true],['office','tasks.approve',true],
     // tasks.bulkImport
     ['admin','tasks.bulkImport',true],['owner','tasks.bulkImport',true],
     // users.manage
@@ -1109,6 +1264,7 @@ var Internal = (function() {
         if (!row[0]) continue;
         var status = row[6];
         if (status === 'deleted') continue;
+        if (status === 'template' && !filters.includeTemplates) continue;
         if (status === 'archived' && !filters.includeArchived) continue;
 
         var task = rowToTask(row);
@@ -1198,7 +1354,7 @@ var Internal = (function() {
     var lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
-      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived', 'awaiting_check', 'rejected', 'template'];
       var taskStatus = payload.status || 'todo';
       if (VALID_STATUSES.indexOf(taskStatus) === -1) {
         throw new Error('Invalid status: ' + taskStatus);
@@ -1218,7 +1374,10 @@ var Internal = (function() {
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
         ts, '', payload.requiresPhoto ? true : false, '',
-        payload.pdca || ''
+        payload.pdca || '', '',
+        '', '', '',
+        payload.isTemplate ? true : false,
+        payload.templateId || ''
       ]);
 
       logActivity(id, payload.createdBy, 'created', payload.title);
@@ -1249,7 +1408,10 @@ var Internal = (function() {
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
         ts, '', payload.requiresPhoto ? true : false, '',
-        payload.pdca || ''
+        payload.pdca || '', '',
+        '', '', '',
+        payload.isTemplate ? true : false,
+        payload.templateId || ''
       ]));
     } catch(e) {
       throw new Error('Internal.createTask: ' + e.message);
@@ -1265,7 +1427,7 @@ var Internal = (function() {
     try {
       var s = getSheet('tasks');
       var data = s.getDataRange().getValues();
-      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived'];
+      var VALID_STATUSES = ['todo', 'in-progress', 'done', 'blocked', 'deleted', 'archived', 'awaiting_check', 'rejected', 'template'];
 
       for (var i = 1; i < data.length; i++) {
         if (data[i][0] !== taskId) continue;
@@ -1332,6 +1494,11 @@ var Internal = (function() {
             }
           }
         }
+        if (fields.checkBy !== undefined) s.getRange(i + 1, 25).setValue(fields.checkBy);
+        if (fields.checkAt !== undefined) s.getRange(i + 1, 26).setValue(fields.checkAt);
+        if (fields.checkReason !== undefined) s.getRange(i + 1, 27).setValue(fields.checkReason);
+        if (fields.isTemplate !== undefined) s.getRange(i + 1, 28).setValue(fields.isTemplate ? true : false);
+        if (fields.templateId !== undefined) s.getRange(i + 1, 29).setValue(fields.templateId);
         if (fields.assigneeIds !== undefined) s.getRange(i + 1, 8).setValue(fields.assigneeIds.join(','));
         if (fields.dueDate !== undefined) s.getRange(i + 1, 11).setValue(fields.dueDate);
         if (fields.scheduledTime !== undefined) s.getRange(i + 1, 12).setValue(fields.scheduledTime);
@@ -1346,7 +1513,7 @@ var Internal = (function() {
 
         s.getRange(i + 1, 19).setValue(now());
 
-        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 23).getValues()[0]));
+        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 29).getValues()[0]));
       }
       throw new Error('Task not found: ' + taskId);
     } catch(e) {
@@ -1941,15 +2108,31 @@ function updateCategory(id, fields, token) {
 //       is_shared(12) claimed_by(13) claimed_at(14) estimated_minutes(15) checklist(16)
 //       recurrence(17) updated_at(18) archived_at(19) requires_photo(20)
 
+// Derive PDCA letter from status (computed; overrides stored value for live reads)
+function _pdcaFromStatus(status) {
+  switch (status) {
+    case 'todo': return 'P';
+    case 'in-progress': return 'D';
+    case 'awaiting_check': return 'C';
+    case 'done': return 'A';
+    case 'rejected': return 'D';
+    default: return '';
+  }
+}
+
 function rowToTask(row) {
   var desc = row[2] ? row[2].toString() : '';
-  var pdca = row[22] ? row[22].toString().trim() : '';
-  // Backfill-on-read: if pdca column is empty and description starts with [PDCA:X], parse it out
+  var status = row[6] ? row[6].toString() : '';
+  // Compute pdca from status (live, authoritative); fall back to stored col 22 for legacy/blank statuses
+  var pdca = _pdcaFromStatus(status);
   if (!pdca) {
-    var pdcaMatch = desc.match(/^\[PDCA:([PDCA])\]/);
-    if (pdcaMatch) {
-      pdca = pdcaMatch[1];
-      desc = desc.replace(/^\[PDCA:[PDCA]\]\s*/, '');
+    pdca = row[22] ? row[22].toString().trim() : '';
+    if (!pdca) {
+      var pdcaMatch = desc.match(/^\[PDCA:([PDCA])\]/);
+      if (pdcaMatch) {
+        pdca = pdcaMatch[1];
+        desc = desc.replace(/^\[PDCA:[PDCA]\]\s*/, '');
+      }
     }
   }
   return {
@@ -1959,7 +2142,7 @@ function rowToTask(row) {
     clientId: row[3],
     categoryId: row[4],
     priority: row[5],
-    status: row[6],
+    status: status,
     assigneeIds: parseAssigneeIds(row[7]),
     createdBy: row[8],
     createdAt: row[9] ? row[9].toString() : '',
@@ -1975,7 +2158,13 @@ function rowToTask(row) {
     archivedAt: row[19] ? row[19].toString() : '',
     requiresPhoto: row[20] === true || row[20] === 'TRUE',
     completedAt: row[21] ? (row[21] instanceof Date ? row[21].toISOString() : row[21].toString()) : '',
-    pdca: pdca
+    pdca: pdca,
+    calendarEventId: row[23] ? row[23].toString() : '',
+    checkBy: row[24] ? row[24].toString() : '',
+    checkAt: row[25] ? row[25].toString() : '',
+    checkReason: row[26] ? row[26].toString() : '',
+    isTemplate: row[27] === true || row[27] === 'TRUE',
+    templateId: row[28] ? row[28].toString() : ''
   };
 }
 
@@ -2292,8 +2481,125 @@ function updateTaskStatus(taskId, newStatus, token) {
 }
 
 // Client-facing markTaskDone: token in place of userId.
+// If caller has tasks.approve, goes straight to done.
+// Otherwise transitions to awaiting_check and notifies approvers.
 function markTaskDone(taskId, token) {
-  return updateTaskStatus(taskId, 'done', token);
+  try {
+    var sess = requireSession(token);
+    if (Internal.hasCapability(sess.userId, 'tasks.approve')) {
+      return updateTask(taskId, { status: 'done' }, token);
+    }
+    var updated = updateTask(taskId, { status: 'awaiting_check' }, token);
+    // Notify all users with tasks.approve
+    try {
+      var task = Internal.getTask(taskId);
+      var allUsers = getUsersStatic();
+      var worker = getUserById(sess.userId);
+      var workerName = worker ? worker.name : 'Someone';
+      allUsers.forEach(function(u) {
+        if (Internal.hasCapability(u.id, 'tasks.approve')) {
+          Internal.createNotification(u.id, 'check_needed', taskId,
+            workerName + ' marked done — needs check: ' + task.title);
+        }
+      });
+    } catch(_e) { /* notification failure is non-critical */ }
+    return updated;
+  } catch(e) {
+    throw new Error('markTaskDone: ' + e.message);
+  }
+}
+
+// ── PDCA Check Queue ─────────────────────────────────────────
+
+function listTasksAwaitingCheck(token) {
+  try {
+    requireCapability(token, 'tasks.approve');
+    var allUsers = getUsersStatic();
+    var tasks = Internal.getTasks({ teamView: true });
+    return tasks
+      .filter(function(t) { return t.status === 'awaiting_check'; })
+      .sort(function(a, b) { return a.updatedAt > b.updatedAt ? -1 : 1; })
+      .map(function(t) {
+        var assignee = (t.assigneeIds && t.assigneeIds.length)
+          ? allUsers.filter(function(u) { return u.id === t.assigneeIds[0]; })[0] || null
+          : null;
+        return {
+          id: t.id,
+          title: t.title,
+          assignee_id: t.assigneeIds && t.assigneeIds[0] || '',
+          assignee_name: assignee ? assignee.name : '',
+          completed_at: t.updatedAt,
+          client: t.client ? t.client.name : '',
+          category: t.category ? t.category.name : '',
+          check_reason: t.checkReason || ''
+        };
+      });
+  } catch(e) {
+    throw new Error('listTasksAwaitingCheck: ' + e.message);
+  }
+}
+
+function approveTask(token, taskId, comment) {
+  try {
+    var sess = requireCapability(token, 'tasks.approve');
+    var updated = updateTask(taskId, { status: 'done' }, token);
+    Internal.updateTaskFields(taskId, {
+      checkBy: sess.userId,
+      checkAt: now(),
+      checkReason: comment || ''
+    });
+    try { syncTaskToCalendar(taskId); } catch(_e) {}
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function rejectTask(token, taskId, reason) {
+  try {
+    var sess = requireCapability(token, 'tasks.approve');
+    if (!reason || !reason.toString().trim()) {
+      return { ok: false, error: 'Rejection reason is required' };
+    }
+    var updated = updateTask(taskId, { status: 'rejected' }, token);
+    Internal.updateTaskFields(taskId, {
+      checkBy: sess.userId,
+      checkAt: now(),
+      checkReason: reason.toString().trim()
+    });
+    // Notify original assignees
+    try {
+      var task = Internal.getTask(taskId);
+      var approver = getUserById(sess.userId);
+      var approverName = approver ? approver.name : 'Supervisor';
+      (task.assigneeIds || []).forEach(function(uid) {
+        Internal.createNotification(uid, 'task_rejected', taskId,
+          approverName + ' rejected: ' + task.title + ' — ' + reason);
+      });
+    } catch(_e) { /* non-critical */ }
+    try { syncTaskToCalendar(taskId); } catch(_e) {}
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Returns the current user's capability map for UI gating.
+function getMyCapabilities(token) {
+  try {
+    var sess = requireSession(token);
+    var caps = {};
+    CAPABILITY_KEYS.forEach(function(k) {
+      caps[k.replace(/\./g, '_')] = Internal.hasCapability(sess.userId, k);
+    });
+    // Also expose the raw key form for any callers that use dot notation
+    CAPABILITY_KEYS.forEach(function(k) {
+      caps[k] = Internal.hasCapability(sess.userId, k);
+    });
+    return caps;
+  } catch(e) {
+    throw new Error('getMyCapabilities: ' + e.message);
+  }
 }
 
 // Client-facing deleteTask: token in place of userId.
@@ -3488,7 +3794,7 @@ function checkEscalations() {
     if (!tasksSheet) return;
     var taskData = tasksSheet.getDataRange().getValues();
 
-    var openStatuses = ['todo', 'in-progress', 'blocked'];
+    var openStatuses = ['todo', 'in-progress', 'blocked', 'awaiting_check', 'rejected'];
     var allUsers = getUsersStatic();
     var admins = allUsers.filter(function(u) { return u.role === 'admin'; });
 
@@ -3546,7 +3852,7 @@ function checkEscalations() {
         });
 
         // FIX 9 — prune IDs of tasks that are no longer open so the blob cannot grow unbounded
-        var openStatusSet = { 'todo': true, 'in-progress': true, 'blocked': true };
+        var openStatusSet = { 'todo': true, 'in-progress': true, 'blocked': true, 'awaiting_check': true, 'rejected': true };
         var taskIdToStatus = {};
         for (var pi = 1; pi < taskData.length; pi++) {
           if (taskData[pi][0]) taskIdToStatus[taskData[pi][0]] = taskData[pi][6];
@@ -3637,7 +3943,7 @@ function getShiftHandover(token) {
         // done-but-not-today tasks are not placed in any bucket — do not count them
       } else if (status === 'blocked') {
         blocked.push(taskSummary);
-      } else if (status === 'todo' || status === 'in-progress') {
+      } else if (status === 'todo' || status === 'in-progress' || status === 'awaiting_check' || status === 'rejected') {
         stillOpen.push(taskSummary);
       }
     }
@@ -4610,12 +4916,18 @@ function getOrCreateTaskFlowCalendar() {
 function _calEventDescription(task) {
   var webAppUrl = '';
   try { webAppUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+  var assigneeUserId = '';
   var assigneeName = '';
   try {
     var ids = task.assigneeIds || [];
     if (ids.length) {
-      var u = Internal.getUserById ? Internal.getUserById(ids[0]) : getUserById(ids[0]);
+      assigneeUserId = ids[0];
+      var u = getUserById(ids[0]);
       if (u) assigneeName = u.name;
+    } else if (task.createdBy) {
+      assigneeUserId = task.createdBy;
+      var cu = getUserById(task.createdBy);
+      if (cu) assigneeName = cu.name;
     }
   } catch(_) {}
   var clientName = '';
@@ -4625,10 +4937,24 @@ function _calEventDescription(task) {
     if (cl) clientName = cl.name;
   } catch(_) {}
   var link = webAppUrl ? (webAppUrl + '?task=' + task.id) : '';
-  return 'Status: ' + (task.status || '') +
+  var base = 'Status: ' + (task.status || '') +
     ' | Assignee: ' + assigneeName +
     ' | Client: ' + clientName +
     (link ? '\n\nLink: ' + link : '');
+
+  // Append deep-link action buttons if we have a URL and a user to act as
+  if (webAppUrl && assigneeUserId) {
+    try {
+      var startToken  = _makeActionToken(task.id, assigneeUserId, 'start');
+      var doneToken   = _makeActionToken(task.id, assigneeUserId, 'done');
+      var photoToken  = _makeActionToken(task.id, assigneeUserId, 'photo');
+      base += '\n\n━━━━━━━━━━━━\n' +
+        '▶ Start: ' + webAppUrl + '?act=start&t=' + startToken + '\n' +
+        '✓ Done:  ' + webAppUrl + '?act=done&t='  + doneToken  + '\n' +
+        '📷 Photo: ' + webAppUrl + '?act=photo&t=' + photoToken;
+    } catch(_) {}
+  }
+  return base;
 }
 
 function _calEventTimes(task) {
@@ -4677,6 +5003,19 @@ function syncTaskToCalendar(taskId) {
   var desc = _calEventDescription(task);
   var title = task.title || '(no title)';
 
+  // Map status to CalendarApp.EventColor
+  function _statusColor(st) {
+    switch (st) {
+      case 'todo':           return CalendarApp.EventColor.PALE_BLUE;
+      case 'in-progress':    return CalendarApp.EventColor.BLUE;
+      case 'awaiting_check': return CalendarApp.EventColor.YELLOW;
+      case 'done':           return CalendarApp.EventColor.SAGE;
+      case 'rejected':       return CalendarApp.EventColor.FLAMINGO;
+      default:               return null;
+    }
+  }
+  var eventColor = _statusColor(task.status);
+
   if (calEventId) {
     try {
       var existing = cal.getEventById(calEventId);
@@ -4684,6 +5023,7 @@ function syncTaskToCalendar(taskId) {
         existing.setTitle(title);
         existing.setDescription(desc);
         existing.setTime(times.start, times.end);
+        if (eventColor) { try { existing.setColor(eventColor); } catch(_) {} }
         return;
       }
     } catch(_) {}
@@ -4691,6 +5031,7 @@ function syncTaskToCalendar(taskId) {
   }
 
   var newEvent = cal.createEvent(title, times.start, times.end, { description: desc });
+  if (eventColor) { try { newEvent.setColor(eventColor); } catch(_) {} }
   s.getRange(rowIdx + 1, calColIdx + 1).setValue(newEvent.getId());
 }
 
@@ -4854,4 +5195,176 @@ function bulkReassignTasks(fromUserId, toUserId, opts) {
     } catch(e) { errors++; Logger.log('reassign err: ' + e.message); }
   }
   return { reassigned: reassigned, errors: errors, fromUserId: fromUserId, toUserId: toUserId };
+}
+
+// ============================================================
+//  PHASE 3 — DWM Recurring Calendar Events
+// ============================================================
+
+// Spawn a fresh task row from a template task and apply the given action.
+// Returns the newly created task object.
+function _spawnInstanceFromTemplate(templateId, userId, action) {
+  var tmpl = Internal.getTask(templateId);
+  var actionStatus = (action === 'start') ? 'in-progress' : 'todo';
+  var today = todayStr();
+  var claimedBy = (action === 'start' || action === 'claim') ? userId : '';
+  var claimedAt = claimedBy ? now() : '';
+  var newTask = Internal.createTask({
+    title: tmpl.title,
+    description: tmpl.description,
+    clientId: tmpl.clientId,
+    categoryId: tmpl.categoryId,
+    priority: tmpl.priority,
+    status: actionStatus,
+    assigneeIds: tmpl.assigneeIds && tmpl.assigneeIds.length ? tmpl.assigneeIds : (userId ? [userId] : []),
+    createdBy: tmpl.createdBy,
+    dueDate: today,
+    scheduledTime: tmpl.scheduledTime,
+    isShared: tmpl.isShared,
+    estimatedMinutes: tmpl.estimatedMinutes,
+    checklist: (tmpl.checklist || []).map(function(item) {
+      return { id: newId(), text: item.text, done: false };
+    }),
+    recurrence: null,
+    requiresPhoto: tmpl.requiresPhoto,
+    pdca: tmpl.pdca,
+    isTemplate: false,
+    templateId: templateId
+  });
+  if (action === 'start') {
+    try { Internal.startTimerForUser(newTask.id, userId); } catch(_) {}
+  }
+  try { syncTaskToCalendar(newTask.id); } catch(_) {}
+  return newTask;
+}
+
+// Determine RRULE frequency string from a recurrence object or description prefix
+function _dwmRrule(recurrence, descPrefix) {
+  if (recurrence) {
+    if (recurrence.type === 'daily')   return 'RRULE:FREQ=DAILY';
+    if (recurrence.type === 'weekly')  return 'RRULE:FREQ=WEEKLY';
+    if (recurrence.type === 'monthly') return 'RRULE:FREQ=MONTHLY';
+  }
+  // Parse from [Daily]/[Weekly]/[Monthly] prefix in description
+  if (descPrefix) {
+    var d = descPrefix.toLowerCase();
+    if (d.indexOf('daily')   !== -1) return 'RRULE:FREQ=DAILY';
+    if (d.indexOf('weekly')  !== -1) return 'RRULE:FREQ=WEEKLY';
+    if (d.indexOf('monthly') !== -1) return 'RRULE:FREQ=MONTHLY';
+  }
+  return 'RRULE:FREQ=DAILY'; // default for DWM tasks
+}
+
+/**
+ * One-time migration. For each DWM-tagged task row:
+ *   1. Marks the row as a template (status='template', is_template=true).
+ *   2. Creates a recurring CalendarEventSeries on the TaskFlow calendar.
+ *   3. Event description includes HMAC deep-link buttons using the template task id.
+ * Admin-only, callable via clasp run.
+ * Returns JSON string for clasp compatibility.
+ */
+function convertDwmToRecurring() {
+  try {
+    var calId = getOrCreateTaskFlowCalendar();
+    var cal = CalendarApp.getCalendarById(calId);
+    if (!cal) throw new Error('Could not open TaskFlow calendar');
+
+    var s = getSheet('tasks');
+    var data = s.getDataRange().getValues();
+    var header = data[0];
+    var idCol         = header.indexOf('id');
+    var titleCol      = header.indexOf('title');
+    var descCol       = header.indexOf('description');
+    var statusCol     = header.indexOf('status');
+    var assigneeCol   = header.indexOf('assignee_ids');
+    var createdByCol  = header.indexOf('created_by');
+    var dueDateCol    = header.indexOf('due_date');
+    var estMinCol     = header.indexOf('estimated_minutes');
+    var recCol        = header.indexOf('recurrence');
+    var isTemplateCol = header.indexOf('is_template');
+    var calEventCol   = header.indexOf('calendar_event_id');
+
+    if (isTemplateCol === -1 || calEventCol === -1) {
+      return JSON.stringify({ error: 'Run initializeSheets() first to add new columns' });
+    }
+
+    var webAppUrl = '';
+    try { webAppUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+
+    var templatesCreated = 0, eventsCreated = 0, skipped = 0;
+    var errors = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[idCol]) continue;
+      var desc = row[descCol] ? row[descCol].toString() : '';
+      if (desc.indexOf('[dwm:') === -1) continue; // not a DWM task
+
+      var currentStatus = row[statusCol] ? row[statusCol].toString() : '';
+      if (currentStatus === 'template') { skipped++; continue; } // already converted
+
+      var taskId = row[idCol].toString();
+      var title  = row[titleCol] ? row[titleCol].toString() : '(no title)';
+      var recurrence = safeParseJson(row[recCol], null);
+      var rrule = _dwmRrule(recurrence, desc);
+
+      // Mark as template
+      s.getRange(i + 1, statusCol + 1).setValue('template');
+      s.getRange(i + 1, isTemplateCol + 1).setValue(true);
+      s.getRange(i + 1, statusCol + 1).setValue('template'); // belt-and-suspenders
+      templatesCreated++;
+
+      // Determine assignee for token generation
+      var assigneeIdRaw = row[assigneeCol] ? row[assigneeCol].toString() : '';
+      var assigneeIds = parseAssigneeIds(assigneeIdRaw);
+      var tokenUserId = assigneeIds.length ? assigneeIds[0] : (row[createdByCol] ? row[createdByCol].toString() : '');
+
+      // Build event times
+      var dueDateStr = row[dueDateCol] ? row[dueDateCol].toString().substring(0, 10) : todayStr();
+      var estMin = Number(row[estMinCol]) > 0 ? Number(row[estMinCol]) : 60;
+      var startDate = new Date(dueDateStr + 'T09:00:00');
+      var endDate = new Date(startDate.getTime() + estMin * 60000);
+
+      // Build description with deep-link buttons
+      var eventDesc = 'DWM Template: ' + title + '\n' + desc;
+      if (webAppUrl && tokenUserId) {
+        try {
+          var startTok = _makeActionToken(taskId, tokenUserId, 'start');
+          var doneTok  = _makeActionToken(taskId, tokenUserId, 'done');
+          var photoTok = _makeActionToken(taskId, tokenUserId, 'photo');
+          eventDesc += '\n\n━━━━━━━━━━━━\n' +
+            '▶ Start: ' + webAppUrl + '?act=start&t=' + startTok + '\n' +
+            '✓ Done:  ' + webAppUrl + '?act=done&t='  + doneTok  + '\n' +
+            '📷 Photo: ' + webAppUrl + '?act=photo&t=' + photoTok;
+        } catch(e2) { errors.push('token gen for ' + taskId + ': ' + e2.message); }
+      }
+
+      // Create recurring calendar event series
+      try {
+        var recurrence2 = CalendarApp.newRecurrence();
+        if (rrule === 'RRULE:FREQ=DAILY')        recurrence2.addDailyRule();
+        else if (rrule === 'RRULE:FREQ=WEEKLY')  recurrence2.addWeeklyRule();
+        else if (rrule === 'RRULE:FREQ=MONTHLY') recurrence2.addMonthlyRule();
+        else recurrence2.addDailyRule();
+
+        var series = cal.createEventSeries(title, startDate, endDate, recurrence2, { description: eventDesc });
+        // Store series ID in the template row's calendar_event_id
+        s.getRange(i + 1, calEventCol + 1).setValue(series.getId());
+        eventsCreated++;
+      } catch(e3) {
+        errors.push('calendar series for ' + taskId + ': ' + e3.message);
+      }
+    }
+
+    var result = {
+      templatesCreated: templatesCreated,
+      eventsCreated: eventsCreated,
+      skipped: skipped,
+      errors: errors
+    };
+    Logger.log(JSON.stringify(result));
+    return JSON.stringify(result);
+  } catch(e) {
+    return JSON.stringify({ error: e.message });
+  }
 }

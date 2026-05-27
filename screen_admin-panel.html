@@ -100,6 +100,7 @@
 <button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
 <button data-tab="activity" data-ref="tab-activity" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Activity</button>
 <button data-tab="roles" data-ref="tab-roles" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Roles</button>
+<button data-tab="check-queue" data-ref="tab-check-queue" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2 hidden">Check Queue</button>
 <button data-tab="calendar" data-ref="tab-calendar" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Calendar</button>
 </div>
 
@@ -365,6 +366,68 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   </div>
 </div>
 
+<!-- Tab: Check Queue (hidden by default, tasks.approve capability gated) -->
+<div data-ref="panel-check-queue" class="hidden space-y-3">
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span data-ref="cq-count-label" class="font-title-main-mobile text-[15px] font-semibold text-on-surface">— tasks awaiting check</span>
+      <span data-ref="cq-approved-counter" class="hidden px-2 py-0.5 rounded-full bg-primary-container text-primary font-label-bold text-label-bold text-[11px]">0 approved</span>
+    </div>
+    <button data-ref="cq-refresh" type="button"
+      class="w-9 h-9 flex items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all"
+      aria-label="Refresh check queue">
+      <span class="material-symbols-outlined text-[18px]">refresh</span>
+    </button>
+  </div>
+  <!-- Skeleton loading state -->
+  <div data-ref="cq-loading" class="space-y-3">
+    <div class="tf-skeleton h-[96px] w-full"></div>
+    <div class="tf-skeleton h-[96px] w-full opacity-70"></div>
+    <div class="tf-skeleton h-[96px] w-full opacity-40"></div>
+  </div>
+  <!-- Task cards list -->
+  <div data-ref="cq-list" class="hidden space-y-3"></div>
+  <!-- Empty state -->
+  <div data-ref="cq-empty" class="hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col items-center gap-2 text-center">
+    <span class="text-[32px]">🎉</span>
+    <p class="font-body-standard text-body-standard font-semibold text-on-surface">All clear — nothing awaiting check.</p>
+  </div>
+</div>
+
+<!-- Reject Bottom Sheet (shared, used by Check Queue and Task Detail) -->
+<div data-ref="reject-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="reject-sheet-title">
+  <div data-ref="reject-sheet-scrim" class="absolute inset-0 tf-scrim"></div>
+  <div data-ref="reject-sheet-card" class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl shadow-xl flex flex-col max-h-[90dvh] tf-sheet">
+    <div class="flex justify-center pt-3 pb-1"><div class="w-8 h-1 rounded-full bg-outline-variant"></div></div>
+    <div class="flex items-center justify-between px-4 pb-3 pt-1 border-b border-outline-variant">
+      <h2 id="reject-sheet-title" class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Reject task?</h2>
+      <button data-ref="reject-sheet-close" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <div class="overflow-y-auto flex-1 px-4 py-4 space-y-3">
+      <select data-ref="reject-reason-dropdown" data-reject-reason-dropdown
+        class="w-full h-11 bg-surface-container-low border border-outline-variant rounded-lg px-3 font-body-standard text-on-surface focus:ring-2 focus:ring-primary-container focus:outline-none">
+        <option value="">— Select a reason —</option>
+        <option value="Incomplete">Incomplete</option>
+        <option value="Redo needed">Redo needed</option>
+        <option value="Missing photo">Missing photo</option>
+        <option value="Wrong material/SKU">Wrong material/SKU</option>
+        <option value="Quality below standard">Quality below standard</option>
+        <option value="Custom...">Custom...</option>
+      </select>
+      <textarea data-ref="reject-custom-text" rows="3" placeholder="Describe the issue…"
+        class="hidden w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-body-standard text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary-container focus:outline-none resize-none"></textarea>
+    </div>
+    <div class="px-4 py-4 border-t border-outline-variant flex gap-3">
+      <button data-ref="reject-sheet-cancel" class="flex-1 h-11 border border-outline-variant rounded-lg font-label-bold text-label-bold text-on-surface hover:bg-surface-container-low active:scale-95 transition-all">Cancel</button>
+      <button data-ref="reject-sheet-confirm" disabled
+        class="flex-1 h-11 bg-error text-on-error rounded-lg font-label-bold text-label-bold hover:brightness-95 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Reject</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit User Bottom Sheet (shared, hidden by default) -->
 <div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
   <!-- Scrim -->
@@ -465,7 +528,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, calendar: false }; // reports tab removed
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, 'check-queue': false, calendar: false }; // reports tab removed
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
@@ -508,7 +571,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   }
 
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'calendar'];
+    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'check-queue', 'calendar'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -1166,6 +1229,243 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         var _tabCal = qs(screen, 'tab-calendar'); if (_tabCal) _tabCal.classList.add('hidden');
       }
 
+      // ── Check Queue tab: show only when tasks.approve capability is granted ──
+      var _cqApprovedCount = 0;
+
+      APP.call('getMyCapabilities', APP.token)
+        .then(function(caps) {
+          if (caps && caps['tasks.approve']) {
+            var _tabCQ = qs(screen, 'tab-check-queue');
+            if (_tabCQ) _tabCQ.classList.remove('hidden');
+          }
+        })
+        .catch(function() {}); // silently ignore — tab stays hidden
+
+      function relativeTime(isoStr) {
+        if (!isoStr) return '';
+        var diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+        if (diff < 60) return diff + 's ago';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+      }
+
+      function buildCheckQueueCard(screen, task) {
+        var card = document.createElement('div');
+        card.className = 'bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-2 transition-opacity duration-200';
+        card.setAttribute('data-task-id', task.id);
+
+        var completedTs = task.completed_at || task.updated_at || '';
+        var timeLabel = completedTs ? 'Done ' + relativeTime(completedTs) : '';
+
+        var timingChip = '';
+        if (task.estimated_minutes && task.actual_minutes) {
+          timingChip = '<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-[11px]">' +
+            task.estimated_minutes + 'm est &bull; ' + task.actual_minutes + 'm actual</span>';
+        }
+
+        card.innerHTML =
+          '<div class="font-body-standard text-[15px] font-semibold text-on-surface">' + (task.title || 'Untitled') + '</div>' +
+          '<div class="font-label-bold text-label-bold text-on-surface-variant">' +
+            (task.assignee_name || '') +
+            (task.client ? ' &bull; ' + task.client : '') +
+            (task.category ? ' &bull; ' + task.category : '') +
+          '</div>' +
+          (timeLabel ? '<div class="font-label-bold text-label-bold text-on-surface-variant">' + timeLabel + '</div>' : '') +
+          (timingChip ? '<div>' + timingChip + '</div>' : '') +
+          '<div class="flex gap-2 pt-1">' +
+            '<button data-action="approve-task" data-task-id="' + task.id + '"' +
+              ' class="flex-1 h-9 bg-primary text-on-primary rounded-lg font-label-bold text-label-bold flex items-center justify-center gap-1.5 hover:brightness-95 active:scale-[0.98] transition-all">' +
+              '<span class="material-symbols-outlined text-[16px]">check</span>Approve</button>' +
+            '<button data-action="reject-task" data-task-id="' + task.id + '"' +
+              ' class="flex-1 h-9 border-2 border-error text-error rounded-lg font-label-bold text-label-bold flex items-center justify-center gap-1.5 hover:bg-error-container/30 active:scale-[0.98] transition-all">' +
+              '<span class="material-symbols-outlined text-[16px]">close</span>Reject</button>' +
+          '</div>';
+
+        // Wire approve
+        card.querySelector('[data-action="approve-task"]').addEventListener('click', function() {
+          card.style.opacity = '0.4';
+          card.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
+          APP.call('approveTask', APP.token, task.id, '')
+            .then(function(res) {
+              if (res && !res.ok) throw new Error(res.error || 'Approve failed');
+              card.remove();
+              _cqApprovedCount++;
+              var counter = qs(screen, 'cq-approved-counter');
+              if (counter) {
+                counter.textContent = _cqApprovedCount + ' approved';
+                counter.classList.remove('hidden');
+              }
+              updateCQCountLabel(screen);
+              checkCQEmpty(screen);
+            })
+            .catch(function(err) {
+              card.style.opacity = '';
+              card.querySelectorAll('button').forEach(function(b) { b.disabled = false; });
+              APP.showError(err);
+            });
+        });
+
+        // Wire reject — opens shared reject sheet
+        card.querySelector('[data-action="reject-task"]').addEventListener('click', function() {
+          openRejectSheet(screen, task.id, function() {
+            card.style.opacity = '0.4';
+            card.remove();
+            updateCQCountLabel(screen);
+            checkCQEmpty(screen);
+          }, function() {
+            card.style.opacity = '';
+            card.querySelectorAll('button').forEach(function(b) { b.disabled = false; });
+          });
+        });
+
+        return card;
+      }
+
+      function updateCQCountLabel(screen) {
+        var list = qs(screen, 'cq-list');
+        if (!list) return;
+        var n = list.querySelectorAll('[data-task-id]').length;
+        var label = qs(screen, 'cq-count-label');
+        if (label) label.textContent = n + ' task' + (n !== 1 ? 's' : '') + ' awaiting check';
+      }
+
+      function checkCQEmpty(screen) {
+        var list = qs(screen, 'cq-list');
+        var emptyEl = qs(screen, 'cq-empty');
+        if (!list || !emptyEl) return;
+        if (list.querySelectorAll('[data-task-id]').length === 0) {
+          list.classList.add('hidden');
+          emptyEl.classList.remove('hidden');
+        }
+      }
+
+      function loadCheckQueueTab(screen) {
+        var loadingEl = qs(screen, 'cq-loading');
+        var listEl = qs(screen, 'cq-list');
+        var emptyEl = qs(screen, 'cq-empty');
+        var countLabel = qs(screen, 'cq-count-label');
+
+        loadingEl.classList.remove('hidden');
+        listEl.classList.add('hidden');
+        emptyEl.classList.add('hidden');
+        listEl.innerHTML = '';
+
+        APP.call('listTasksAwaitingCheck', APP.token)
+          .then(function(tasks) {
+            loadingEl.classList.add('hidden');
+            tasks = tasks || [];
+            if (countLabel) countLabel.textContent = tasks.length + ' task' + (tasks.length !== 1 ? 's' : '') + ' awaiting check';
+            if (tasks.length === 0) {
+              emptyEl.classList.remove('hidden');
+              return;
+            }
+            tasks.forEach(function(t) {
+              listEl.appendChild(buildCheckQueueCard(screen, t));
+            });
+            listEl.classList.remove('hidden');
+          })
+          .catch(function(err) {
+            loadingEl.classList.add('hidden');
+            APP.showError(err);
+          });
+      }
+
+      // ── Reject sheet logic (shared across Check Queue and Task Detail) ──
+      var _rejectTaskId = null;
+      var _rejectOnSuccess = null;
+      var _rejectOnFail = null;
+
+      function openRejectSheet(screen, taskId, onSuccess, onFail) {
+        _rejectTaskId = taskId;
+        _rejectOnSuccess = onSuccess;
+        _rejectOnFail = onFail;
+
+        var sheet = qs(screen, 'reject-sheet');
+        var dropdown = qs(screen, 'reject-reason-dropdown');
+        var customText = qs(screen, 'reject-custom-text');
+        var confirmBtn = qs(screen, 'reject-sheet-confirm');
+
+        if (dropdown) dropdown.value = '';
+        if (customText) { customText.value = ''; customText.classList.add('hidden'); }
+        if (confirmBtn) confirmBtn.disabled = true;
+
+        sheet.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        var card  = qs(screen, 'reject-sheet-card');
+        var scrim = qs(screen, 'reject-sheet-scrim');
+        if (card) card.offsetHeight;
+        if (card)  card.classList.add('tf-sheet-open');
+        if (scrim) scrim.classList.add('tf-scrim-open');
+      }
+
+      function closeRejectSheet(screen) {
+        var sheet = qs(screen, 'reject-sheet');
+        var card  = qs(screen, 'reject-sheet-card');
+        var scrim = qs(screen, 'reject-sheet-scrim');
+        if (card)  card.classList.remove('tf-sheet-open');
+        if (scrim) scrim.classList.remove('tf-scrim-open');
+        setTimeout(function() {
+          sheet.classList.add('hidden');
+          document.body.style.overflow = '';
+        }, 280);
+        _rejectTaskId = null;
+      }
+
+      // Wire reject sheet controls (done once at mount)
+      (function wireRejectSheet() {
+        var dropdown   = qs(screen, 'reject-reason-dropdown');
+        var customText = qs(screen, 'reject-custom-text');
+        var confirmBtn = qs(screen, 'reject-sheet-confirm');
+        var cancelBtn  = qs(screen, 'reject-sheet-cancel');
+        var closeBtn   = qs(screen, 'reject-sheet-close');
+        var scrim      = qs(screen, 'reject-sheet-scrim');
+
+        function updateConfirmState() {
+          var val = dropdown ? dropdown.value : '';
+          var isCustom = val === 'Custom...';
+          if (customText) customText.classList.toggle('hidden', !isCustom);
+          var hasReason = val && (!isCustom || (customText && customText.value.trim()));
+          if (confirmBtn) confirmBtn.disabled = !hasReason;
+        }
+
+        if (dropdown) dropdown.addEventListener('change', updateConfirmState);
+        if (customText) customText.addEventListener('input', updateConfirmState);
+
+        if (confirmBtn) {
+          confirmBtn.addEventListener('click', function() {
+            if (!_rejectTaskId) return;
+            var val = dropdown ? dropdown.value : '';
+            var reason = (val === 'Custom...' && customText) ? customText.value.trim() : val;
+            if (!reason) return;
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Rejecting…';
+            APP.call('rejectTask', APP.token, _rejectTaskId, reason)
+              .then(function(res) {
+                if (res && !res.ok) throw new Error(res.error || 'Reject failed');
+                var cb = _rejectOnSuccess;
+                closeRejectSheet(screen);
+                if (cb) cb();
+              })
+              .catch(function(err) {
+                APP.showError(err);
+                var cb = _rejectOnFail;
+                closeRejectSheet(screen);
+                if (cb) cb();
+              })
+              .finally(function() {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Reject';
+              });
+          });
+        }
+
+        function doClose() { closeRejectSheet(screen); if (_rejectOnFail) _rejectOnFail(); }
+        if (cancelBtn) cancelBtn.addEventListener('click', doClose);
+        if (closeBtn)  closeBtn.addEventListener('click', doClose);
+        if (scrim)     scrim.addEventListener('click', doClose);
+      })();
+
       // ── Calendar tab logic ──
       function loadCalendarTab(screen) {
         var loadingEl = qs(screen, 'cal-status-loading');
@@ -1291,8 +1591,19 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         }
       }
 
+      // Check Queue refresh button
+      var _cqRefreshBtn = qs(screen, 'cq-refresh');
+      if (_cqRefreshBtn) {
+        _cqRefreshBtn.addEventListener('click', function() {
+          _cqApprovedCount = 0;
+          var counter = qs(screen, 'cq-approved-counter');
+          if (counter) counter.classList.add('hidden');
+          loadCheckQueueTab(screen);
+        });
+      }
+
       // Tab switching
-      ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'calendar'].forEach(function(tab) {
+      ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'check-queue', 'calendar'].forEach(function(tab) {
         var tabEl = qs(screen, 'tab-' + tab);
         if (!tabEl) return;
         tabEl.addEventListener('click', function() {
@@ -1336,6 +1647,11 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
           if (tab === 'roles' && !LOAD_LABELS_PER_TAB.roles) {
             LOAD_LABELS_PER_TAB.roles = true;
             loadRolesTab(screen);
+          }
+
+          if (tab === 'check-queue' && !LOAD_LABELS_PER_TAB['check-queue']) {
+            LOAD_LABELS_PER_TAB['check-queue'] = true;
+            loadCheckQueueTab(screen);
           }
 
           if (tab === 'calendar' && !LOAD_LABELS_PER_TAB.calendar) {
@@ -1472,7 +1788,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
     },
 
     unmount: function() {
-      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, calendar: false }; // reports tab removed
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, 'check-queue': false, calendar: false }; // reports tab removed
       document.body.style.overflow = '';
       _editUserId = null;
     }
