@@ -1293,6 +1293,13 @@
         else if (due) { barStart = due; barEnd = due; }
         else if (start) { barStart = start; barEnd = start; }
         else { barStart = today; barEnd = today; }
+        // Done tasks end at completion, not at their original due date.
+        // Falls back to today (then dueDate) for legacy rows missing completedAt.
+        if (t.status === 'done') {
+          var doneDay = parseDayOrNull(t.completedAt) || (today.getTime() < (due ? due.getTime() : Infinity) ? today : due) || today;
+          if (doneDay.getTime() < barStart.getTime()) barStart = doneDay;
+          barEnd = doneDay;
+        }
 
         var pri = (t.priority || '').toString().toLowerCase();
         var priShort = pri === 'urgent' ? 'U' : pri === 'high' ? 'H' : (pri === 'medium' || pri === 'med') ? 'M' : pri === 'low' ? 'L' : '';

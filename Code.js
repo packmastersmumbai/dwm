@@ -89,7 +89,7 @@ function initializeSheets() {
     tasks: ['id','title','description','client_id','category_id','priority','status',
             'assignee_ids','created_by','created_at','due_date','scheduled_time',
             'is_shared','claimed_by','claimed_at','estimated_minutes','checklist',
-            'recurrence','updated_at','archived_at','requires_photo'],
+            'recurrence','updated_at','archived_at','requires_photo','completed_at'],
     users: ['id','name','pin_hash','salt','role','avatar_color','email',
             'notify_prefs','is_active','last_seen_at','failed_attempts','locked_until'],
     clients: ['id','name','color_hex','is_active'],
@@ -109,15 +109,18 @@ function initializeSheets() {
     }
   });
 
-  // Idempotent backfill: add requires_photo header to existing tasks sheet if missing
+  // Idempotent backfill: add missing trailing columns to existing tasks sheet
   (function() {
     var tasksSheet = ss.getSheetByName('tasks');
     if (!tasksSheet) return;
     var headerRow = tasksSheet.getRange(1, 1, 1, tasksSheet.getLastColumn()).getValues()[0];
-    if (headerRow.indexOf('requires_photo') === -1) {
-      var nextCol = tasksSheet.getLastColumn() + 1;
-      tasksSheet.getRange(1, nextCol).setValue('requires_photo');
-    }
+    ['requires_photo', 'completed_at'].forEach(function(colName) {
+      if (headerRow.indexOf(colName) === -1) {
+        var nextCol = tasksSheet.getLastColumn() + 1;
+        tasksSheet.getRange(1, nextCol).setValue(colName);
+        headerRow.push(colName);
+      }
+    });
   })();
 
   // Default settings
@@ -869,7 +872,7 @@ var Internal = (function() {
         payload.estimatedMinutes || '',
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-        ts, '', payload.requiresPhoto ? true : false
+        ts, '', payload.requiresPhoto ? true : false, ''
       ]);
 
       logActivity(id, payload.createdBy, 'created', payload.title);
@@ -899,7 +902,7 @@ var Internal = (function() {
         payload.isShared ? true : false, '', '', payload.estimatedMinutes || '',
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-        ts, '', payload.requiresPhoto ? true : false
+        ts, '', payload.requiresPhoto ? true : false, ''
       ]));
     } catch(e) {
       throw new Error('Internal.createTask: ' + e.message);
@@ -956,6 +959,12 @@ var Internal = (function() {
             if (fields.status === 'done' && oldRow[17]) {
               scheduleNextRecurrence(taskId);
             }
+            // Stamp / clear completed_at (col 22) on done transitions
+            if (fields.status === 'done') {
+              s.getRange(i + 1, 22).setValue(now());
+            } else if (oldStatus === 'done') {
+              s.getRange(i + 1, 22).setValue('');
+            }
           }
         }
         if (fields.assigneeIds !== undefined) s.getRange(i + 1, 8).setValue(fields.assigneeIds.join(','));
@@ -971,7 +980,7 @@ var Internal = (function() {
 
         s.getRange(i + 1, 19).setValue(now());
 
-        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 21).getValues()[0]));
+        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 22).getValues()[0]));
       }
       throw new Error('Task not found: ' + taskId);
     } catch(e) {
@@ -1585,7 +1594,8 @@ function rowToTask(row) {
     recurrence: safeParseJson(row[17], null),
     updatedAt: row[18] ? row[18].toString() : '',
     archivedAt: row[19] ? row[19].toString() : '',
-    requiresPhoto: row[20] === true || row[20] === 'TRUE'
+    requiresPhoto: row[20] === true || row[20] === 'TRUE',
+    completedAt: row[21] ? (row[21] instanceof Date ? row[21].toISOString() : row[21].toString()) : ''
   };
 }
 
