@@ -4323,3 +4323,229 @@ function migrateExistingUsersAndSeedRoles() {
 
   return 'Migrated. Renamed: ' + renamedCount + '. Created: ' + createdCount + '. Roles assigned: ' + rolesAssigned + '.';
 }
+
+/**
+ * One-time review helper — reads the external DWM operational tracker
+ * spreadsheet, dumps every tab to a JSON file in the script-owner's Drive,
+ * and shares the file as Anyone-with-link Viewer so an external reviewer
+ * can fetch the contents. Safe to re-run — overwrites the previous dump.
+ *
+ * Run from Apps Script editor: select dumpDwmTrackerForReview, press Run,
+ * then read the Execution log for the public file URL.
+ */
+function dumpDwmTrackerForReview() {
+  var DWM_SHEET_ID = '1f1FeTZ6d0N29OPhcWMoOSNUpFx4QeVpt2B3qdI4w2Vk';
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(DWM_SHEET_ID);
+  } catch(e) {
+    throw new Error('Cannot open DWM sheet: ' + e.message + '. Make sure the script owner has at least Viewer access to the sheet.');
+  }
+
+  var out = {
+    sheetName: ss.getName(),
+    sheetId: DWM_SHEET_ID,
+    exportedAt: new Date().toISOString(),
+    tabs: []
+  };
+
+  ss.getSheets().forEach(function(sh) {
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    var data = (lastRow > 0 && lastCol > 0)
+      ? sh.getRange(1, 1, lastRow, lastCol).getValues()
+      : [];
+    out.tabs.push({
+      name: sh.getName(),
+      gid: sh.getSheetId(),
+      rows: data.length,
+      cols: data.length ? data[0].length : 0,
+      data: data
+    });
+  });
+
+  var json = JSON.stringify(out, null, 2);
+
+  // Delete any prior dump with the same name so we keep one canonical copy.
+  var prior = DriveApp.getFilesByName('dwm-tracker-dump.json');
+  while (prior.hasNext()) {
+    try { prior.next().setTrashed(true); } catch(_) {}
+  }
+
+  var blob = Utilities.newBlob(json, 'application/json', 'dwm-tracker-dump.json');
+  var file = DriveApp.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  var publicUrl = file.getUrl();
+  var directDownload = 'https://drive.google.com/uc?export=download&id=' + file.getId();
+
+  Logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  Logger.log('DWM TRACKER DUMP READY');
+  Logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  Logger.log('Tabs dumped: ' + out.tabs.length);
+  out.tabs.forEach(function(t) {
+    Logger.log('  • ' + t.name + ' — ' + t.rows + ' rows × ' + t.cols + ' cols');
+  });
+  Logger.log('');
+  Logger.log('Drive file URL: ' + publicUrl);
+  Logger.log('Direct download: ' + directDownload);
+  Logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  Logger.log('Paste the Direct download URL back to the reviewer.');
+
+  return { url: publicUrl, downloadUrl: directDownload, tabs: out.tabs.length };
+}
+
+/**
+ * One-shot importer — reads dwm-tracker-dump.json (must be in /scripts/dwm-tracker-dump-data
+ * Apps Script project property, or fetched from the dumped Drive file). Creates 5 clients
+ * if missing, then 58 recurring TaskFlow tasks (Daily/Weekly/Monthly) and 7 Instance
+ * tasks (with due_date = today, no recurrence). Idempotent — task description is
+ * prefixed with [dwm:<S.No>] and re-runs skip rows already imported.
+ *
+ * Defaults (override later in the task UI):
+ *   Office     -> Khushi
+ *   Quality    -> Anuj
+ *   Production -> Santosh
+ *   AP         -> BBM
+ *   KP         -> Anuj
+ *   <blank>    -> Khushi
+ *
+ * Run from clasp: `clasp run importDwmActivities`.
+ */
+function importDwmActivities() {
+  // ── 1. Load the dump from Drive (look up by canonical filename) ────────
+  var dumpFiles = DriveApp.getFilesByName('dwm-tracker-dump.json');
+  if (!dumpFiles.hasNext()) {
+    throw new Error('dwm-tracker-dump.json not found in Drive — run dumpDwmTrackerForReview first.');
+  }
+  var dump = JSON.parse(dumpFiles.next().getBlob().getDataAsString());
+  var dwmTab = dump.tabs.filter(function(t) { return t.name === 'DWM'; })[0];
+  if (!dwmTab) throw new Error('DWM tab not found in dump');
+  var rows = dwmTab.data.slice(2); // skip date-header + col-header
+
+  // ── 2. Ensure 5 clients exist ──────────────────────────────────────────
+  var clientNames = ['YARA', 'HENKEL', 'DK', 'APL', 'PM'];
+  var clientsSheet = getSheet('clients');
+  var clientsData = clientsSheet.getDataRange().getValues();
+  var clientByName = {};
+  for (var ci = 1; ci < clientsData.length; ci++) {
+    if (clientsData[ci][0]) clientByName[String(clientsData[ci][1]).trim().toUpperCase()] = clientsData[ci][0];
+  }
+  var clientsCreated = 0;
+  var clientColors = { YARA: '#10B981', HENKEL: '#DC2626', DK: '#4F46E5', APL: '#F59E0B', PM: '#7C3AED' };
+  clientNames.forEach(function(name) {
+    if (!clientByName[name]) {
+      var id = newId();
+      clientsSheet.appendRow([id, name, clientColors[name] || '#4285F4', true]);
+      clientByName[name] = id;
+      clientsCreated++;
+    }
+  });
+  try { cacheBust('clients'); } catch(_) {}
+
+  // ── 3. User lookup by name ─────────────────────────────────────────────
+  var usersSheet = getSheet('users');
+  var usersData = usersSheet.getDataRange().getValues();
+  var userByName = {};
+  for (var ui = 1; ui < usersData.length; ui++) {
+    if (usersData[ui][0]) userByName[String(usersData[ui][1]).trim()] = usersData[ui][0];
+  }
+  function uid(name) { return userByName[name] || null; }
+
+  var RESP_MAP = {
+    'Office':     uid('Khushi'),
+    'Quality':    uid('Anuj'),
+    'Production': uid('Santosh'),
+    'AP':         uid('BBM'),
+    'KP':         uid('Anuj'),
+    '':           uid('Khushi')
+  };
+  // Sanity: ensure no fallback is null — if a user is missing, fall back to Admin.
+  var adminId = uid('Admin') || uid('TBM');
+  Object.keys(RESP_MAP).forEach(function(k) {
+    if (!RESP_MAP[k]) RESP_MAP[k] = adminId;
+  });
+
+  // ── 4. Existing-import index (idempotency) ────────────────────────────
+  var tasksSheet = getSheet('tasks');
+  var tasksData = tasksSheet.getDataRange().getValues();
+  var importedSnos = {};
+  for (var ti = 1; ti < tasksData.length; ti++) {
+    var desc = String(tasksData[ti][2] || '');
+    var m = desc.match(/^\[dwm:(\d+)\]/);
+    if (m) importedSnos[m[1]] = true;
+  }
+
+  // ── 5. Frequency → recurrence ─────────────────────────────────────────
+  function freqToRecurrence(freq) {
+    switch ((freq || '').toString().toLowerCase().trim()) {
+      case 'daily':   return { type: 'daily' };
+      case 'weekly':  return { type: 'weekly', step: 1 };
+      case 'monthly': return { type: 'monthly', step: 1 };
+      case 'instance': return null;
+      default: return null;
+    }
+  }
+
+  // ── 6. Create tasks ───────────────────────────────────────────────────
+  var today = new Date();
+  var todayStr = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var created = 0, skipped = 0, errors = [];
+
+  rows.forEach(function(r) {
+    var sno = r[0];
+    if (!(typeof sno === 'number') || !sno) return; // footer/summary row
+    var snoKey = String(sno);
+    if (importedSnos[snoKey]) { skipped++; return; }
+
+    var clientRaw = String(r[1] || '').trim().toUpperCase();
+    var clientId = clientByName[clientRaw] || '';
+    var title = String(r[2] || '').trim();
+    if (!title) { errors.push('row #' + sno + ': empty title'); return; }
+    var resourcesUrl = String(r[3] || '').trim();
+    var concernedAuthority = String(r[4] || '').trim();
+    var pdca = String(r[5] || '').trim();
+    var minutes = (typeof r[6] === 'number' && r[6] > 0) ? r[6] : 20;
+    var responsibility = String(r[7] || '').trim();
+    var frequency = String(r[8] || '').trim();
+
+    var assigneeId = RESP_MAP[responsibility] || RESP_MAP[''] || adminId;
+    var recurrence = freqToRecurrence(frequency);
+
+    // Build description with PDCA + dwm import key + extras
+    var notes = '[dwm:' + sno + '] [PDCA:' + (pdca || '-') + '] [' + (frequency || 'Once') + ']\n' +
+      (concernedAuthority ? 'Coordinate with: ' + concernedAuthority + '\n' : '') +
+      (resourcesUrl ? 'Resource: ' + resourcesUrl + '\n' : '');
+
+    try {
+      Internal.createTask({
+        title: title,
+        description: notes,
+        clientId: clientId,
+        categoryId: '',
+        priority: 'medium',
+        status: 'todo',
+        assigneeIds: assigneeId ? [assigneeId] : [],
+        createdBy: adminId,
+        dueDate: todayStr,
+        scheduledTime: 'morning',
+        isShared: false,
+        estimatedMinutes: minutes,
+        checklist: null,
+        recurrence: recurrence,
+        requiresPhoto: false
+      });
+      created++;
+    } catch(e) {
+      errors.push('row #' + sno + ': ' + e.message);
+    }
+  });
+
+  var summary = 'DWM import done. Clients created: ' + clientsCreated +
+                '. Tasks created: ' + created +
+                '. Skipped (already imported): ' + skipped +
+                '. Errors: ' + errors.length;
+  Logger.log(summary);
+  errors.slice(0, 10).forEach(function(e) { Logger.log('  ! ' + e); });
+  return summary;
+}
