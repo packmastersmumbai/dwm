@@ -176,7 +176,8 @@ function initializeSheets() {
     tasks: ['id','title','description','client_id','category_id','priority','status',
             'assignee_ids','created_by','created_at','due_date','scheduled_time',
             'is_shared','claimed_by','claimed_at','estimated_minutes','checklist',
-            'recurrence','updated_at','archived_at','requires_photo','completed_at','pdca'],
+            'recurrence','updated_at','archived_at','requires_photo','completed_at','pdca',
+            'calendar_event_id'],
     users: ['id','name','pin_hash','salt','role','avatar_color','email',
             'notify_prefs','is_active','last_seen_at','failed_attempts','locked_until'],
     clients: ['id','name','color_hex','is_active'],
@@ -203,7 +204,7 @@ function initializeSheets() {
     var tasksSheet = ss.getSheetByName('tasks');
     if (!tasksSheet) return;
     var headerRow = tasksSheet.getRange(1, 1, 1, tasksSheet.getLastColumn()).getValues()[0];
-    ['requires_photo', 'completed_at', 'pdca'].forEach(function(colName) {
+    ['requires_photo', 'completed_at', 'pdca', 'calendar_event_id'].forEach(function(colName) {
       if (headerRow.indexOf(colName) === -1) {
         var nextCol = tasksSheet.getLastColumn() + 1;
         tasksSheet.getRange(1, nextCol).setValue(colName);
@@ -2064,7 +2065,9 @@ function createTask(payload, token) {
   var sess = requireSession(token);
   payload = Object.assign({}, payload);
   payload.createdBy = sess.userId;
-  return Internal.createTask(payload);
+  var task = Internal.createTask(payload);
+  try { syncTaskToCalendar(task.id); } catch(e) { Logger.log('calSync createTask: ' + e.message); }
+  return task;
 }
 
 // ── Bulk task import (admin-only) ────────────────────────────
@@ -2269,7 +2272,9 @@ function updateTask(taskId, fields, token) {
         throw new Error('Not authorized to update this task');
       }
 
-      return Internal.updateTaskFields(taskId, fields);
+      var updated = Internal.updateTaskFields(taskId, fields);
+      try { syncTaskToCalendar(taskId); } catch(e) { Logger.log('calSync updateTask: ' + e.message); }
+      return updated;
     }
     throw new Error('Task not found: ' + taskId);
   } catch(e) {
@@ -2314,6 +2319,7 @@ function deleteTask(taskId, token) {
     }
     updateTask(taskId, { status: 'deleted' }, token);
     logActivity(taskId, sess.userId, 'deleted', '');
+    try { syncTaskToCalendar(taskId); } catch(e) { Logger.log('calSync deleteTask: ' + e.message); }
     return { success: true };
   } catch(e) {
     throw new Error('deleteTask: ' + e.message);
@@ -4583,4 +4589,158 @@ function importDwmActivities() {
   Logger.log(summary);
   errors.slice(0, 10).forEach(function(e) { Logger.log('  ! ' + e); });
   return summary;
+}
+
+// ===== CALENDAR SYNC =====
+
+var CAL_PROP_KEY = 'taskflow_calendar_id';
+
+function getOrCreateTaskFlowCalendar() {
+  var props = PropertiesService.getScriptProperties();
+  var calId = props.getProperty(CAL_PROP_KEY);
+  if (calId) {
+    try { CalendarApp.getCalendarById(calId); return calId; } catch(_) { /* stale — recreate */ }
+  }
+  var cal = CalendarApp.createCalendar('TaskFlow', { description: 'Auto-synced from TaskFlow' });
+  calId = cal.getId();
+  props.setProperty(CAL_PROP_KEY, calId);
+  return calId;
+}
+
+function _calEventDescription(task) {
+  var webAppUrl = '';
+  try { webAppUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+  var assigneeName = '';
+  try {
+    var ids = task.assigneeIds || [];
+    if (ids.length) {
+      var u = Internal.getUserById ? Internal.getUserById(ids[0]) : getUserById(ids[0]);
+      if (u) assigneeName = u.name;
+    }
+  } catch(_) {}
+  var clientName = '';
+  try {
+    var clients = Internal.getClients();
+    var cl = clients.filter(function(c) { return c.id === task.clientId; })[0];
+    if (cl) clientName = cl.name;
+  } catch(_) {}
+  var link = webAppUrl ? (webAppUrl + '?task=' + task.id) : '';
+  return 'Status: ' + (task.status || '') +
+    ' | Assignee: ' + assigneeName +
+    ' | Client: ' + clientName +
+    (link ? '\n\nLink: ' + link : '');
+}
+
+function _calEventTimes(task) {
+  var tz = getTimezone();
+  var dateStr = task.dueDate;
+  // Default: if no due_date, use today at 9am
+  if (!dateStr) dateStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var start = new Date(dateStr + 'T09:00:00');
+  var durationMs = ((task.estimatedMinutes && task.estimatedMinutes > 0)
+    ? task.estimatedMinutes : 60) * 60000;
+  var end = new Date(start.getTime() + durationMs);
+  return { start: start, end: end };
+}
+
+function syncTaskToCalendar(taskId) {
+  var s = getSheet('tasks');
+  var data = s.getDataRange().getValues();
+  var header = data[0];
+  var calColIdx = header.indexOf('calendar_event_id');
+  if (calColIdx === -1) return; // column not yet added
+
+  var rowIdx = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === taskId) { rowIdx = i; break; }
+  }
+  if (rowIdx === -1) return;
+
+  var row = data[rowIdx];
+  var task = rowToTask(row);
+  var calEventId = row[calColIdx] ? row[calColIdx].toString() : '';
+  var isDeleted = task.status === 'deleted';
+
+  var calId = getOrCreateTaskFlowCalendar();
+  var cal = CalendarApp.getCalendarById(calId);
+  if (!cal) return;
+
+  if (isDeleted) {
+    if (calEventId) {
+      try { var ev = cal.getEventById(calEventId); if (ev) ev.deleteEvent(); } catch(_) {}
+      s.getRange(rowIdx + 1, calColIdx + 1).setValue('');
+    }
+    return;
+  }
+
+  var times = _calEventTimes(task);
+  var desc = _calEventDescription(task);
+  var title = task.title || '(no title)';
+
+  if (calEventId) {
+    try {
+      var existing = cal.getEventById(calEventId);
+      if (existing) {
+        existing.setTitle(title);
+        existing.setDescription(desc);
+        existing.setTime(times.start, times.end);
+        return;
+      }
+    } catch(_) {}
+    // Event not found (deleted externally) — fall through to create
+  }
+
+  var newEvent = cal.createEvent(title, times.start, times.end, { description: desc });
+  s.getRange(rowIdx + 1, calColIdx + 1).setValue(newEvent.getId());
+}
+
+function syncAllTasksToCalendar(token) {
+  requireCapability(token, 'users.manage');
+  var s = getSheet('tasks');
+  var data = s.getDataRange().getValues();
+  var synced = 0, errors = 0;
+  for (var i = 1; i < data.length; i++) {
+    var status = data[i][6] ? data[i][6].toString() : '';
+    if (status === 'deleted' || status === 'archived') continue;
+    var taskId = data[i][0];
+    if (!taskId) continue;
+    try { syncTaskToCalendar(taskId); synced++; } catch(e) { errors++; Logger.log('syncAll err ' + taskId + ': ' + e.message); }
+  }
+  return { synced: synced, errors: errors };
+}
+
+function getCalendarShareUrl(token) {
+  requireCapability(token, 'users.manage');
+  var calId = getOrCreateTaskFlowCalendar();
+  return 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(calId);
+}
+
+// ===== BULK REASSIGN =====
+function bulkReassignTasks(fromUserId, toUserId, opts) {
+  opts = opts || {};
+  var s = SpreadsheetApp.getActive().getSheetByName('tasks');
+  if (!s) return { reassigned: 0, errors: 0 };
+  var data = s.getDataRange().getValues();
+  var reassigned = 0, errors = 0;
+  for (var i = 1; i < data.length; i++) {
+    try {
+      var taskId = data[i][0];
+      var client = (data[i][2] || '').toString();
+      var category = (data[i][5] || '').toString();
+      var status = (data[i][6] || '').toString();
+      var ids = (data[i][7] || '').toString().split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+      if (opts.client && opts.client !== client) continue;
+      if (opts.category && opts.category !== category) continue;
+      if (opts.status && opts.status !== status) continue;
+      if (status === 'deleted') continue;
+      if (ids.indexOf(fromUserId) === -1) continue;
+      var newIds = ids.map(function(u){ return u === fromUserId ? toUserId : u; });
+      var dedup = [];
+      newIds.forEach(function(u){ if (dedup.indexOf(u) === -1) dedup.push(u); });
+      s.getRange(i + 1, 8).setValue(dedup.join(','));
+      reassigned++;
+      try { syncTaskToCalendar(taskId); } catch(e) {}
+    } catch(e) { errors++; Logger.log('reassign err: ' + e.message); }
+  }
+  return { reassigned: reassigned, errors: errors, fromUserId: fromUserId, toUserId: toUserId };
 }

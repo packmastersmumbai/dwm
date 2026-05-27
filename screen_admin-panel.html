@@ -100,6 +100,7 @@
 <button data-tab="sla" data-ref="tab-sla" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">SLA</button>
 <button data-tab="activity" data-ref="tab-activity" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Activity</button>
 <button data-tab="roles" data-ref="tab-roles" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Roles</button>
+<button data-tab="calendar" data-ref="tab-calendar" class="font-label-bold text-label-bold text-on-surface-variant whitespace-nowrap px-1 pb-2">Calendar</button>
 </div>
 
 <!-- Tab: Workload (default visible) -->
@@ -299,6 +300,71 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   </div>
 </div>
 
+<!-- Tab: Calendar (hidden by default, admin only) -->
+<div data-ref="panel-calendar" class="hidden space-y-4">
+  <!-- Status card -->
+  <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+    <div>
+      <h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">TaskFlow Calendar</h3>
+      <p class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">Shared Google Calendar for all team tasks.</p>
+    </div>
+    <!-- Loading state -->
+    <div data-ref="cal-status-loading" class="space-y-2">
+      <div class="tf-skeleton h-[40px] w-full"></div>
+      <div class="tf-skeleton h-[32px] w-2/3 opacity-70"></div>
+    </div>
+    <!-- Not provisioned -->
+    <div data-ref="cal-status-unprov" class="hidden space-y-3">
+      <p class="font-label-bold text-label-bold text-on-surface-variant">No calendar provisioned yet. Create one to enable task sync.</p>
+      <button data-ref="btn-provision-cal"
+        class="h-10 px-4 bg-primary text-on-primary rounded-lg font-label-bold text-label-bold flex items-center gap-2 active:scale-[0.98] transition-[transform,opacity] duration-160 disabled:opacity-40 disabled:cursor-not-allowed">
+        <span class="material-symbols-outlined text-[16px]">calendar_add_on</span>
+        Provision TaskFlow Calendar
+      </button>
+    </div>
+    <!-- Provisioned -->
+    <div data-ref="cal-status-prov" class="hidden space-y-3">
+      <div class="flex items-start gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+        <span class="material-symbols-outlined text-[20px] text-primary shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1;">event_available</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-label-bold text-label-bold text-on-surface-variant">Share link</div>
+          <div data-ref="cal-share-url" class="font-body-standard text-[12px] text-on-surface break-all mt-0.5"></div>
+        </div>
+        <button data-ref="btn-copy-cal-url"
+          class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all"
+          title="Copy share link">
+          <span class="material-symbols-outlined text-[16px]">content_copy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backfill card -->
+  <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+    <div>
+      <h3 class="font-title-main-mobile text-[15px] font-semibold text-on-surface">Backfill Existing Tasks</h3>
+      <p class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">Push all current tasks to the calendar. May take 30+ seconds for large task counts.</p>
+    </div>
+    <button data-ref="btn-backfill-cal"
+      class="h-10 px-4 bg-secondary-container text-on-secondary-container rounded-lg font-label-bold text-label-bold flex items-center gap-2 active:scale-[0.98] transition-[transform,opacity] duration-160 disabled:opacity-40 disabled:cursor-not-allowed">
+      <span class="material-symbols-outlined text-[16px]">sync</span>
+      Sync All Tasks to Calendar
+    </button>
+    <div data-ref="cal-backfill-result" class="hidden"></div>
+  </div>
+
+  <!-- Help text -->
+  <div class="p-4 bg-surface-container-low rounded-xl border border-outline-variant space-y-1">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="material-symbols-outlined text-[16px] text-on-surface-variant">info</span>
+      <span class="font-label-bold text-label-bold text-on-surface-variant">How it works</span>
+    </div>
+    <p class="font-body-standard text-[13px] text-on-surface-variant">Tasks auto-sync to this shared calendar whenever they are created or edited.</p>
+    <p class="font-body-standard text-[13px] text-on-surface-variant">Team members can subscribe in Google Calendar using the share link above.</p>
+    <p class="font-body-standard text-[13px] text-on-surface-variant">Per-user personal calendars are planned for a future phase.</p>
+  </div>
+</div>
+
 <!-- Edit User Bottom Sheet (shared, hidden by default) -->
 <div data-ref="edit-user-sheet" class="fixed inset-0 z-[200] hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-sheet-title">
   <!-- Scrim -->
@@ -399,7 +465,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
 
 <script>
 (function() {
-  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false }; // reports tab removed
+  var LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, calendar: false }; // reports tab removed
 
   function qs(screen, ref) {
     return screen.querySelector('[data-ref="' + ref + '"]');
@@ -442,7 +508,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
   }
 
   function setActiveTab(screen, activeTab) {
-    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles'];
+    var tabs = ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'calendar'];
     tabs.forEach(function(t) {
       var btn = qs(screen, 'tab-' + t);
       var panel = qs(screen, 'panel-' + t);
@@ -1094,14 +1160,142 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         });
       }
 
-      // Hide Roles tab for non-admins
+      // Hide Roles + Calendar tabs for non-admins
       if (!isAdmin) {
         var _tabRoles = qs(screen, 'tab-roles'); if (_tabRoles) _tabRoles.classList.add('hidden');
+        var _tabCal = qs(screen, 'tab-calendar'); if (_tabCal) _tabCal.classList.add('hidden');
+      }
+
+      // ── Calendar tab logic ──
+      function loadCalendarTab(screen) {
+        var loadingEl = qs(screen, 'cal-status-loading');
+        var unprovEl  = qs(screen, 'cal-status-unprov');
+        var provEl    = qs(screen, 'cal-status-prov');
+        var urlEl     = qs(screen, 'cal-share-url');
+        var copyBtn   = qs(screen, 'btn-copy-cal-url');
+        var provBtn   = qs(screen, 'btn-provision-cal');
+        var backfillBtn = qs(screen, 'btn-backfill-cal');
+        var backfillResult = qs(screen, 'cal-backfill-result');
+
+        function showProvisioned(url) {
+          loadingEl.classList.add('hidden');
+          unprovEl.classList.add('hidden');
+          provEl.classList.remove('hidden');
+          urlEl.textContent = url || '';
+          if (backfillBtn) backfillBtn.disabled = false;
+        }
+
+        function showUnprovisioned() {
+          loadingEl.classList.add('hidden');
+          unprovEl.classList.remove('hidden');
+          provEl.classList.add('hidden');
+          if (backfillBtn) backfillBtn.disabled = true;
+        }
+
+        // Check status
+        APP.call('getCalendarShareUrl', APP.token)
+          .then(function(url) {
+            if (url) {
+              showProvisioned(url);
+            } else {
+              showUnprovisioned();
+            }
+          })
+          .catch(function(err) {
+            loadingEl.classList.add('hidden');
+            showUnprovisioned();
+            APP.showError(err);
+          });
+
+        // Provision button
+        if (provBtn) {
+          provBtn.addEventListener('click', function() {
+            provBtn.disabled = true;
+            provBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Provisioning…';
+            APP.call('getOrCreateTaskFlowCalendar', APP.token)
+              .then(function() {
+                // Fetch share URL after creation
+                return APP.call('getCalendarShareUrl', APP.token);
+              })
+              .then(function(url) {
+                showProvisioned(url);
+                APP.showSuccess('Calendar provisioned successfully.');
+              })
+              .catch(function(err) {
+                provBtn.disabled = false;
+                provBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">calendar_add_on</span> Provision TaskFlow Calendar';
+                APP.showError(err);
+              });
+          });
+        }
+
+        // Copy URL button
+        if (copyBtn) {
+          copyBtn.addEventListener('click', function() {
+            var url = urlEl.textContent || '';
+            if (!url) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).then(function() {
+                APP.showSuccess('Share link copied.');
+              }).catch(function() {
+                APP.showError('Could not copy to clipboard.');
+              });
+            } else {
+              // Fallback
+              var ta = document.createElement('textarea');
+              ta.value = url;
+              ta.style.position = 'fixed'; ta.style.opacity = '0';
+              document.body.appendChild(ta); ta.select();
+              try { document.execCommand('copy'); APP.showSuccess('Share link copied.'); }
+              catch(e) { APP.showError('Could not copy to clipboard.'); }
+              document.body.removeChild(ta);
+            }
+          });
+        }
+
+        // Backfill button (disabled until provisioned)
+        if (backfillBtn) {
+          backfillBtn.disabled = true; // default until status check returns
+          backfillBtn.addEventListener('click', function() {
+            if (!confirm('Sync all existing tasks to the TaskFlow Calendar? This may take 30+ seconds for large task counts.')) return;
+            backfillBtn.disabled = true;
+            backfillBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Syncing…';
+            backfillResult.classList.add('hidden');
+            APP.call('syncAllTasksToCalendar', APP.token)
+              .then(function(res) {
+                var synced = (res && res.synced != null) ? res.synced : '?';
+                var errors = (res && res.errors != null) ? res.errors : '?';
+                backfillResult.innerHTML =
+                  '<div class="flex items-center gap-3">' +
+                    '<span class="px-2 py-0.5 rounded-full bg-primary-container text-primary font-label-bold text-label-bold">' + synced + ' synced</span>' +
+                    (errors > 0
+                      ? '<span class="px-2 py-0.5 rounded-full bg-error-container text-error font-label-bold text-label-bold">' + errors + ' errors</span>'
+                      : '') +
+                  '</div>';
+                backfillResult.classList.remove('hidden');
+                APP.showSuccess('Sync complete: ' + synced + ' tasks synced.');
+              })
+              .catch(function(err) {
+                backfillResult.innerHTML =
+                  '<div class="px-3 py-2 rounded-lg bg-error-container text-error font-label-bold text-label-bold">' +
+                    (err && err.message ? err.message : String(err)) +
+                  '</div>';
+                backfillResult.classList.remove('hidden');
+                APP.showError(err);
+              })
+              .finally(function() {
+                backfillBtn.disabled = false;
+                backfillBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">sync</span> Sync All Tasks to Calendar';
+              });
+          });
+        }
       }
 
       // Tab switching
-      ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles'].forEach(function(tab) {
-        qs(screen, 'tab-' + tab).addEventListener('click', function() {
+      ['tasks', 'workload', 'masters', 'sla', 'activity', 'roles', 'calendar'].forEach(function(tab) {
+        var tabEl = qs(screen, 'tab-' + tab);
+        if (!tabEl) return;
+        tabEl.addEventListener('click', function() {
           setActiveTab(screen, tab);
 
           if (tab === 'tasks' && !LOAD_LABELS_PER_TAB.tasks) {
@@ -1142,6 +1336,11 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
           if (tab === 'roles' && !LOAD_LABELS_PER_TAB.roles) {
             LOAD_LABELS_PER_TAB.roles = true;
             loadRolesTab(screen);
+          }
+
+          if (tab === 'calendar' && !LOAD_LABELS_PER_TAB.calendar) {
+            LOAD_LABELS_PER_TAB.calendar = true;
+            loadCalendarTab(screen);
           }
 
           if (tab === 'sla' && !LOAD_LABELS_PER_TAB.sla) {
@@ -1273,7 +1472,7 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
     },
 
     unmount: function() {
-      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false }; // reports tab removed
+      LOAD_LABELS_PER_TAB = { workload: false, tasks: false, masters: false, sla: false, activity: false, roles: false, calendar: false }; // reports tab removed
       document.body.style.overflow = '';
       _editUserId = null;
     }
