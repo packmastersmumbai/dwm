@@ -218,8 +218,19 @@ function _quickPage(title, icon, color, body, taskId) {
     '<h1>' + title + '</h1>' +
     '<p>' + body + '</p>' +
     (openLink ? '<a class="btn" href="' + openLink + '">Open in TaskFlow</a>' : '') +
-    '<div class="hint">Tap back to return to Calendar</div>' +
-    '</div></div></body></html>';
+    '<div class="hint">Closing automatically&hellip; or tap back to Calendar</div>' +
+    '</div></div>' +
+    '<script>' +
+    'setTimeout(function(){' +
+    '  try{window.close();}catch(e){}' +
+    '  setTimeout(function(){' +
+    '    if(document.hidden)return;' +
+    '    try{if(history.length>1){history.back();return;}}catch(e){}' +
+    '    setTimeout(function(){if(!document.hidden){location.replace("about:blank");}},200);' +
+    '  },250);' +
+    '},1800);' +
+    '</script>' +
+    '</body></html>';
   return HtmlService.createHtmlOutput(html)
     .setTitle(title)
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
