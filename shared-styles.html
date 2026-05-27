@@ -373,7 +373,39 @@ body:not([data-role="admin"]) [data-nav="admin-panel"] {
         }
 [data-screen="kanban-home"] .kanban-col {
             scroll-snap-align: start;
+            width: clamp(280px, 88vw, 320px);
         }
+/* Desktop: stretch columns to use full width, cap on ultra-wide. */
+@media (min-width: 768px) {
+  [data-screen="kanban-home"] [data-view-area="board"] {
+    scroll-snap-type: none;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    gap: 1.25rem;
+  }
+  [data-screen="kanban-home"] .kanban-col {
+    flex: 1 1 0;
+    min-width: 320px;
+    max-width: 480px;
+    scroll-snap-align: none;
+    width: auto;
+  }
+}
+[data-screen="kanban-home"] .kanban-col .kh-card-title {
+  font-size: 15px;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+}
+[data-screen="kanban-home"] .kanban-col .kh-card-meta {
+  font-variant-numeric: tabular-nums;
+}
+[data-screen="kanban-home"] .kanban-col .kh-col-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
 [data-screen="kanban-home"] .hide-scrollbar::-webkit-scrollbar {
             display: none;
         }
