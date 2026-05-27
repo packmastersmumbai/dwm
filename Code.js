@@ -4715,6 +4715,117 @@ function getCalendarShareUrl(token) {
   return 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(calId);
 }
 
+// ===== E2E VERIFY HELPERS =====
+function debugTasksSchema() {
+  var s = getSheet('tasks');
+  var headers = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0];
+  var calIdx = headers.indexOf('calendar_event_id');
+  return JSON.stringify({ headers: headers, calColIdx: calIdx, lastCol: s.getLastColumn() });
+}
+
+function forceInitTasksSchema() {
+  initializeSheets();
+  var s = getSheet('tasks');
+  var headers = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0];
+  return JSON.stringify({ headers: headers, calColIdx: headers.indexOf('calendar_event_id') });
+}
+
+function verifyCalendarEventIds() {
+  var s = getSheet('tasks');
+  var data = s.getDataRange().getValues();
+  var headers = data[0];
+  var titleCol = headers.indexOf('title');
+  var eventIdCol = headers.indexOf('calendar_event_id');
+  var statusCol = headers.indexOf('status');
+  var testTasks = 0, withEventId = 0, samples = [];
+  for (var i = 1; i < data.length; i++) {
+    var title = (data[i][titleCol] || '').toString();
+    var status = (data[i][statusCol] || '').toString();
+    if (status === 'deleted') continue;
+    if (title.indexOf('[TEST]') !== 0) continue;
+    testTasks++;
+    var eid = (data[i][eventIdCol] || '').toString();
+    if (eid) withEventId++;
+    samples.push({ title: title, hasEventId: !!eid });
+  }
+  return JSON.stringify({ testTasks: testTasks, withEventId: withEventId, samples: samples });
+}
+
+// ===== TEST SETUP =====
+function setupCalendarTest() {
+  initializeSheets();
+  var s = getSheet('users');
+  var data = s.getDataRange().getValues();
+  var headers = data[0];
+  var emailCol = headers.indexOf('email');
+  var nameCol = headers.indexOf('name');
+  if (emailCol === -1) return JSON.stringify({ error: 'email column missing' });
+  var tbmId = null, ownerId = null;
+  for (var i = 1; i < data.length; i++) {
+    var nm = (data[i][nameCol] || '').toString();
+    if (nm === 'TBM') { tbmId = data[i][0]; s.getRange(i + 1, emailCol + 1).setValue('tu55h4r@gmail.com'); }
+    if (nm === 'BBM') { ownerId = data[i][0]; }
+  }
+  cacheBust('users');
+  if (!tbmId) return JSON.stringify({ error: 'TBM user not found' });
+
+  // Clean up any prior test rows + their calendar events
+  var ts = getSheet('tasks');
+  var thead = ts.getRange(1, 1, 1, ts.getLastColumn()).getValues()[0];
+  var titleCol = thead.indexOf('title');
+  var statusCol = thead.indexOf('status');
+  var eidCol = thead.indexOf('calendar_event_id');
+  var tdata = ts.getDataRange().getValues();
+  var calId = getOrCreateTaskFlowCalendar();
+  var cal = CalendarApp.getCalendarById(calId);
+  var deletedCount = 0;
+  for (var j = tdata.length - 1; j >= 1; j--) {
+    var ttl = (tdata[j][titleCol] || '').toString();
+    if (ttl.indexOf('[TEST]') !== 0) continue;
+    if (cal && eidCol !== -1) {
+      var eid = (tdata[j][eidCol] || '').toString();
+      if (eid) { try { var ev = cal.getEventById(eid); if (ev) ev.deleteEvent(); } catch(_) {} }
+    }
+    ts.deleteRow(j + 1);
+    deletedCount++;
+  }
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd');
+  var created = [];
+  var tasksToMake = [
+    { title: '[TEST] Individual task for TBM', assignees: [tbmId], shared: false, pdca: 'P', minutes: 30 },
+    { title: '[TEST] Shared task TBM + BBM', assignees: [tbmId, ownerId].filter(Boolean), shared: true, pdca: 'D', minutes: 45 },
+    { title: '[TEST] Shared pool unassigned', assignees: [], shared: true, pdca: 'C', minutes: 60 }
+  ];
+  // Build row aligned to live header so it survives future schema additions
+  tasksToMake.forEach(function(t) {
+    var id = newId();
+    var stamp = now();
+    var fields = {
+      id: id, title: t.title, description: 'Auto-generated calendar sync test',
+      client_id: '', category_id: '', priority: 'medium', status: 'open',
+      assignee_ids: t.assignees.join(','), created_by: tbmId,
+      created_at: stamp, due_date: today, scheduled_time: '09:00',
+      is_shared: t.shared, claimed_by: '', claimed_at: '',
+      estimated_minutes: t.minutes, checklist: '', recurrence: '',
+      updated_at: stamp, archived_at: '', requires_photo: false,
+      completed_at: '', pdca: t.pdca, calendar_event_id: ''
+    };
+    var row = thead.map(function(h){ return fields[h] !== undefined ? fields[h] : ''; });
+    ts.appendRow(row);
+    try { syncTaskToCalendar(id); created.push(id); } catch(e) { Logger.log('sync err ' + id + ': ' + e.message); }
+  });
+
+  return JSON.stringify({
+    tbmEmail: 'tu55h4r@gmail.com',
+    calendarId: calId,
+    shareUrl: 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(calId),
+    deletedPriorTests: deletedCount,
+    tasksCreated: created.length,
+    taskIds: created
+  });
+}
+
 // ===== BULK REASSIGN =====
 function bulkReassignTasks(fromUserId, toUserId, opts) {
   opts = opts || {};
