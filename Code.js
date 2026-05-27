@@ -2278,9 +2278,26 @@ function markTaskDone(taskId, token) {
 }
 
 // Client-facing deleteTask: token in place of userId.
+// Allows: holders of tasks.delete capability, OR the task creator (tasks.edit.own).
 function deleteTask(taskId, token) {
   try {
     var sess = requireSession(token);
+    var canDeleteAny = Internal.hasCapability(sess.userId, 'tasks.delete');
+    if (!canDeleteAny) {
+      // Fall back to creator-or-assignee + edit.own capability
+      var s = getSheet('tasks');
+      var data = s.getDataRange().getValues();
+      var creator = null, assignees = '';
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][0] === taskId) { creator = data[i][8]; assignees = String(data[i][7] || ''); break; }
+      }
+      var isCreator = (creator === sess.userId);
+      var isAssignee = assignees.split(',').indexOf(sess.userId) > -1;
+      var canEditOwn = Internal.hasCapability(sess.userId, 'tasks.edit.own');
+      if (!((isCreator || isAssignee) && canEditOwn)) {
+        throw new Error('Permission denied: tasks.delete');
+      }
+    }
     updateTask(taskId, { status: 'deleted' }, token);
     logActivity(taskId, sess.userId, 'deleted', '');
     return { success: true };

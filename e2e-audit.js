@@ -12,9 +12,9 @@ if (!FS.existsSync(OUT)) FS.mkdirSync(OUT, { recursive: true });
 // Post-resetTestPins() PINs per Code.js:458. (Initial seed differs; reset() in Admin → "Reset test PINs".)
 const USERS = [
   { name: 'Admin', pin: '1234', role: 'admin'  },
-  { name: 'Priya', pin: '1111', role: 'member' },
-  { name: 'Ravi',  pin: '2222', role: 'member' },
-  { name: 'Meena', pin: '3333', role: 'member' }
+  { name: 'Khushi',  pin: '1111', role: 'office'   },
+  { name: 'Anuj',    pin: '2222', role: 'ops'      },
+  { name: 'Santosh', pin: '3333', role: 'ops'      }
 ];
 
 const results = []; // { probe, status: '✓'|'✗'|'⚠', detail }
@@ -128,7 +128,7 @@ async function probe1_loginEachUser(browser) {
 }
 
 async function probe2_scopeFilter(browser) {
-  const { frame, page, ctx } = await loginAs(browser, USERS[1]); // Priya
+  const { frame, page, ctx } = await loginAs(browser, USERS[1]); // Khushi
   if (!frame) { rec('2.scope-mine', '✗', 'login failed'); await closeCtx(ctx); return; }
   await waitForCards(frame, page, 15000);
   // The card avatar image's alt attribute carries the assignee name (renderCard line ~672).
@@ -141,14 +141,14 @@ async function probe2_scopeFilter(browser) {
       return '';
     });
   });
-  const offMine = Array.isArray(mine) ? mine.filter(n => n && n !== 'Priya').length : -1;
+  const offMine = Array.isArray(mine) ? mine.filter(n => n && n !== 'Khushi').length : -1;
   const total = Array.isArray(mine) ? mine.length : 0;
-  // ✓ only when we actually have cards AND none are off-user. ⚠ when 0 cards (Priya may simply have none assigned).
+  // ✓ only when we actually have cards AND none are off-user. ⚠ when 0 cards (Khushi may simply have none assigned).
   let status;
   if (total === 0) status = '⚠';
   else if (offMine === 0) status = '✓';
   else status = '✗';
-  rec('2.scope-mine', status, 'cards=' + total + ' non-Priya=' + offMine);
+  rec('2.scope-mine', status, 'cards=' + total + ' non-Khushi=' + offMine);
   await page.screenshot({ path: PATH.join(OUT, 'scope-priya-mine.png') });
   await closeCtx(ctx);
 }

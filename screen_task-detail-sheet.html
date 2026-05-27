@@ -189,9 +189,33 @@ Share via WhatsApp
 <!-- Populated by JS -->
 </div>
 </div>
+<!-- Danger zone — delete action, kept at the bottom so it's never adjacent to status chips -->
+<div class="mt-6 pt-4 border-t border-outline-variant">
+  <button data-ref="btn-delete" class="w-full h-11 flex items-center justify-center gap-2 rounded-xl text-error hover:bg-error-container/30 active:scale-95 transition-all font-label-bold text-label-bold border border-error/40">
+    <span class="material-symbols-outlined text-[18px]">delete</span>
+    <span>Delete task</span>
+  </button>
+</div>
 <!-- Bottom spacing for fixed input -->
 <div class="h-16"></div>
 </div> <!-- End Scrollable Content -->
+
+<!-- Delete confirm modal -->
+<div data-ref="delete-confirm" class="hidden absolute inset-0 z-[60] flex items-center justify-center bg-black/40 p-6">
+  <div class="bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-5 flex flex-col gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error">
+        <span class="material-symbols-outlined">delete_forever</span>
+      </div>
+      <h3 class="font-title-main-mobile text-[18px] font-semibold text-on-surface">Delete this task?</h3>
+    </div>
+    <p class="text-[14px] text-on-surface-variant">It will be hidden from all lists. The activity log keeps a record so this can be reversed by an admin if needed.</p>
+    <div class="flex gap-2 pt-1">
+      <button data-ref="delete-cancel" class="flex-1 h-11 rounded-xl border border-outline-variant text-on-surface font-label-bold text-label-bold hover:bg-surface-container-low active:scale-95 transition-all">Cancel</button>
+      <button data-ref="delete-confirm-btn" class="flex-1 h-11 rounded-xl bg-error text-on-error font-label-bold text-label-bold hover:brightness-95 active:scale-95 transition-all">Delete</button>
+    </div>
+  </div>
+</div>
 <!-- Pinned Comment Input -->
 <div class="absolute bottom-0 left-0 w-full bg-surface border-t border-outline-variant p-3 z-20">
 <div class="flex items-center gap-3">
@@ -765,6 +789,30 @@ Share via WhatsApp
       // Edit button
       qs(screen, 'btn-edit').addEventListener('click', function() {
         APP.navigate('add-edit-task', { taskId: _taskId });
+      });
+
+      // Delete flow — confirm modal then call backend; backend gates on tasks.delete
+      var _delModal = qs(screen, 'delete-confirm');
+      qs(screen, 'btn-delete').addEventListener('click', function() {
+        if (_delModal) _delModal.classList.remove('hidden');
+      });
+      qs(screen, 'delete-cancel').addEventListener('click', function() {
+        if (_delModal) _delModal.classList.add('hidden');
+      });
+      qs(screen, 'delete-confirm-btn').addEventListener('click', function() {
+        if (!_taskId) return;
+        var btn = qs(screen, 'delete-confirm-btn');
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+        APP.call('deleteTask', _taskId, APP.token).then(function() {
+          if (_delModal) _delModal.classList.add('hidden');
+          APP.showSuccess('Task deleted.');
+          if (screen._closeSheet) screen._closeSheet(); else APP.navigate(_returnTo);
+        }).catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+          APP.showError(err);
+        });
       });
 
       // Checklist — add item
