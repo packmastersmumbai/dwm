@@ -5056,6 +5056,61 @@ function getCalendarShareUrl(token) {
   return 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(calId);
 }
 
+// ===== DEEP-LINK VERIFY =====
+function dumpTestEventLinks() {
+  var s = getSheet('tasks');
+  var headers = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0];
+  var titleCol = headers.indexOf('title');
+  var eidCol = headers.indexOf('calendar_event_id');
+  var statusCol = headers.indexOf('status');
+  var idCol = headers.indexOf('id');
+  var data = s.getDataRange().getValues();
+  var calId = getOrCreateTaskFlowCalendar();
+  var cal = CalendarApp.getCalendarById(calId);
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    var title = (data[i][titleCol] || '').toString();
+    if (title.indexOf('[TEST]') !== 0) continue;
+    var eid = (data[i][eidCol] || '').toString();
+    var taskId = data[i][idCol];
+    var status = data[i][statusCol];
+    var desc = '';
+    var color = '';
+    if (eid && cal) {
+      try { var ev = cal.getEventById(eid); if (ev) { desc = ev.getDescription(); try { color = ev.getColor(); } catch(_){} } } catch(_) {}
+    }
+    out.push({ taskId: taskId, title: title, status: status, eventId: eid, color: color, description: desc });
+  }
+  return JSON.stringify(out);
+}
+
+function resyncTestEvents() {
+  var s = getSheet('tasks');
+  var data = s.getDataRange().getValues();
+  var titleCol = data[0].indexOf('title');
+  var idCol = data[0].indexOf('id');
+  var synced = [];
+  for (var i = 1; i < data.length; i++) {
+    var title = (data[i][titleCol] || '').toString();
+    if (title.indexOf('[TEST]') !== 0) continue;
+    try { syncTaskToCalendar(data[i][idCol]); synced.push(data[i][idCol]); } catch(e) { Logger.log('resync err: ' + e.message); }
+  }
+  return JSON.stringify({ synced: synced.length, ids: synced });
+}
+
+function getTaskStatusById(taskId) {
+  var s = getSheet('tasks');
+  var data = s.getDataRange().getValues();
+  var idCol = data[0].indexOf('id');
+  var statusCol = data[0].indexOf('status');
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][idCol] === taskId) {
+      return JSON.stringify({ taskId: taskId, status: data[i][statusCol] });
+    }
+  }
+  return JSON.stringify({ error: 'not found' });
+}
+
 // ===== E2E VERIFY HELPERS =====
 function debugTasksSchema() {
   var s = getSheet('tasks');
@@ -5144,7 +5199,7 @@ function setupCalendarTest() {
     var stamp = now();
     var fields = {
       id: id, title: t.title, description: 'Auto-generated calendar sync test',
-      client_id: '', category_id: '', priority: 'medium', status: 'open',
+      client_id: '', category_id: '', priority: 'medium', status: 'todo',
       assignee_ids: t.assignees.join(','), created_by: tbmId,
       created_at: stamp, due_date: today, scheduled_time: '09:00',
       is_shared: t.shared, claimed_by: '', claimed_at: '',
