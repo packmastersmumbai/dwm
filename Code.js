@@ -183,6 +183,22 @@ function createTriggers() {
   ScriptApp.newTrigger('checkTimerWarnings').timeBased().everyMinutes(30).create();
   ScriptApp.newTrigger('checkEscalations').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('sendDailyReportEmail').timeBased().everyDays(1).atHour(19).create();
+  ScriptApp.newTrigger('sendUserDailyDigests').timeBased().everyDays(1).atHour(18).create();
+}
+
+// Idempotent installer — add a missing trigger without wiping existing ones.
+// Safe to run repeatedly from the Apps Script editor on a live deployment.
+function installDailyDigestTrigger() {
+  var existing = ScriptApp.getProjectTriggers();
+  var have = {};
+  existing.forEach(function(t) { have[t.getHandlerFunction()] = true; });
+  if (!have['sendUserDailyDigests']) {
+    ScriptApp.newTrigger('sendUserDailyDigests').timeBased().everyDays(1).atHour(18).create();
+  }
+  if (!have['sendDailyReportEmail']) {
+    ScriptApp.newTrigger('sendDailyReportEmail').timeBased().everyDays(1).atHour(19).create();
+  }
+  return 'Daily digest triggers installed (per-user @18:00, admin @19:00).';
 }
 
 // ============================================================
@@ -3241,6 +3257,107 @@ function sendDailyReportEmail() {
   } catch(e) {
     // Never throw from trigger
     try { console.error('sendDailyReportEmail: ' + e.message); } catch(_) {}
+  }
+}
+
+// ── Per-user daily digest email (driven by trigger) ────────
+// Runs once per day at 18:00 server time. Rate-limited to one send per day.
+// Emails every active user with an email address; includes per-user task summary.
+// Never throws — wraps everything for trigger safety.
+function sendUserDailyDigests() {
+  try {
+    if (Internal.triggerRateLimited('sendUserDailyDigests', 12 * 60 * 60 * 1000)) return;
+    var todayKey = todayStr();
+    var users = [];
+    try {
+      users = Internal.getUsers().filter(function(u) { return u.email && u.isActive !== false; });
+    } catch(e) { users = []; }
+    if (!users.length) return;
+
+    // Pull all live tasks once, then bucket per user.
+    var allTasks = [];
+    try {
+      allTasks = Internal.getTasks({ includeArchived: false }) || [];
+    } catch(e) { return; }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function taskList(tasks, emptyMsg) {
+      if (!tasks.length) return '<div style="color:#9CA3AF;font-size:12px;padding:6px 0">' + emptyMsg + '</div>';
+      return '<ul style="margin:4px 0 12px 0;padding-left:18px;font-size:13px;line-height:1.6">' +
+        tasks.map(function(t) {
+          var client = (t.client && t.client.name) ? ' <span style="color:#6B7280">· ' + esc(t.client.name) + '</span>' : '';
+          var due = t.dueDate ? ' <span style="color:#9CA3AF;font-size:11px">(due ' + esc(t.dueDate) + ')</span>' : '';
+          return '<li>' + esc(t.title) + client + due + '</li>';
+        }).join('') +
+        '</ul>';
+    }
+
+    users.forEach(function(u) {
+      try {
+        var mine = allTasks.filter(function(t) {
+          var ids = t.assigneeIds || [];
+          return ids.indexOf(u.id) !== -1 || t.createdBy === u.id;
+        });
+        var completedToday = mine.filter(function(t) {
+          return t.status === 'done' && String(t.completedAt || '').slice(0,10) === todayKey;
+        });
+        var inProgress = mine.filter(function(t) { return t.status === 'in-progress'; });
+        var overdue = mine.filter(function(t) {
+          return t.status !== 'done' && t.status !== 'deleted' && t.status !== 'archived' &&
+                 t.dueDate && String(t.dueDate).slice(0,10) < todayKey;
+        });
+        var tomorrowKey = (function() {
+          var d = new Date(); d.setDate(d.getDate() + 1);
+          return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        })();
+        var dueTomorrow = mine.filter(function(t) {
+          return t.status !== 'done' && t.status !== 'deleted' && t.status !== 'archived' &&
+                 String(t.dueDate || '').slice(0,10) === tomorrowKey;
+        });
+
+        // Skip silent days: user has nothing in any bucket → no email noise.
+        if (!completedToday.length && !inProgress.length && !overdue.length && !dueTomorrow.length) return;
+
+        var html =
+          '<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111827">' +
+            '<h2 style="margin:0 0 4px 0;color:#1A73E8">Hi ' + esc(u.name) + ',</h2>' +
+            '<div style="color:#6B7280;font-size:13px;margin-bottom:16px">Your TaskFlow digest for ' + esc(todayKey) + '</div>' +
+            '<table style="width:100%;border-collapse:collapse;background:#F9FAFB;border-radius:8px;overflow:hidden;margin-bottom:16px;font-size:13px">' +
+              '<tr style="background:#1A73E8;color:#fff">' +
+                '<th style="padding:8px;text-align:left">Completed today</th>' +
+                '<th style="padding:8px;text-align:left">In progress</th>' +
+                '<th style="padding:8px;text-align:left">Overdue</th>' +
+                '<th style="padding:8px;text-align:left">Due tomorrow</th>' +
+              '</tr>' +
+              '<tr>' +
+                '<td style="padding:8px;text-align:center;font-weight:bold;color:#10B981">' + completedToday.length + '</td>' +
+                '<td style="padding:8px;text-align:center;font-weight:bold;color:#4F46E5">' + inProgress.length + '</td>' +
+                '<td style="padding:8px;text-align:center;font-weight:bold;color:#DC2626">' + overdue.length + '</td>' +
+                '<td style="padding:8px;text-align:center;font-weight:bold;color:#F59E0B">' + dueTomorrow.length + '</td>' +
+              '</tr>' +
+            '</table>' +
+            '<h3 style="margin:16px 0 4px 0;font-size:14px;color:#10B981">Completed today</h3>' +
+            taskList(completedToday, 'Nothing completed today.') +
+            '<h3 style="margin:16px 0 4px 0;font-size:14px;color:#DC2626">Overdue</h3>' +
+            taskList(overdue, 'No overdue tasks.') +
+            '<h3 style="margin:16px 0 4px 0;font-size:14px;color:#4F46E5">In progress</h3>' +
+            taskList(inProgress, 'No tasks in progress.') +
+            '<h3 style="margin:16px 0 4px 0;font-size:14px;color:#F59E0B">Due tomorrow</h3>' +
+            taskList(dueTomorrow, 'Nothing due tomorrow.') +
+            '<div style="margin-top:18px;color:#9CA3AF;font-size:11px">Generated by TaskFlow.</div>' +
+          '</div>';
+
+        MailApp.sendEmail({
+          to: u.email,
+          subject: 'TaskFlow Digest — ' + todayKey,
+          htmlBody: html
+        });
+      } catch(perUserErr) { /* silent — one user's failure must not stop the loop */ }
+    });
+  } catch(e) {
+    try { console.error('sendUserDailyDigests: ' + e.message); } catch(_) {}
   }
 }
 
