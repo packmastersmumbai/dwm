@@ -199,6 +199,33 @@ function _verifyActionToken(token) {
   }
 }
 
+function _quickPage(title, icon, color, body, taskId) {
+  var webAppUrl = _getPublishedWebAppUrl();
+  var openLink = (webAppUrl && taskId) ? (webAppUrl + '?task=' + taskId) : '';
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + title + ' — TaskFlow</title>' +
+    '<style>html,body{margin:0;padding:0;height:100%;background:#F3F4F6;font-family:-apple-system,system-ui,Arial,sans-serif}' +
+    '.wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}' +
+    '.card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.08)}' +
+    '.icon{display:inline-flex;width:72px;height:72px;border-radius:50%;background:' + color + ';color:#fff;align-items:center;justify-content:center;font-size:36px;margin-bottom:16px;font-weight:bold}' +
+    'h1{font-size:22px;font-weight:600;color:#111827;margin:0 0 8px}' +
+    'p{font-size:14px;color:#4B5563;margin:0 0 24px;line-height:1.4}' +
+    'a.btn{display:block;text-decoration:none;padding:14px 16px;border-radius:12px;font-weight:600;font-size:15px;background:#111827;color:#fff;margin-bottom:8px}' +
+    '.hint{font-size:12px;color:#9CA3AF;margin-top:8px}</style></head><body>' +
+    '<div class="wrap"><div class="card">' +
+    '<div class="icon">' + icon + '</div>' +
+    '<h1>' + title + '</h1>' +
+    '<p>' + body + '</p>' +
+    (openLink ? '<a class="btn" href="' + openLink + '">Open in TaskFlow</a>' : '') +
+    '<div class="hint">Tap back to return to Calendar</div>' +
+    '</div></div></body></html>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function _renderAppWithToast(taskId, toastMsg, toastKind) {
   var tmpl = HtmlService.createTemplateFromFile('index');
   tmpl.initialTaskId = taskId || '';
@@ -285,13 +312,24 @@ function doGet(e) {
           Internal.updateTaskFields(taskId, { status: 'in-progress', claimedBy: userId, claimedAt: now() });
           try { Internal.startTimerForUser(taskId, userId); } catch(_) {}
           try { syncTaskToCalendar(taskId); } catch(_) {}
-          return _renderAppWithToast(taskId, 'Started — timer running', 'success');
+          return _quickPage('Started', '▶', '#10B981', 'Timer running. Get to it.', taskId);
         }
-        return _renderAppWithToast(taskId, 'Already ' + currentStatus, 'info');
+        return _quickPage('Already ' + currentStatus, '·', '#6B7280', 'No action taken.', taskId);
+      }
+
+      if (action === 'stop') {
+        if (currentStatus === 'in-progress') {
+          try { _stopOpenTimerForTaskUser(taskId, userId); } catch(_) {}
+          Internal.updateTaskFields(taskId, { status: 'todo' });
+          try { syncTaskToCalendar(taskId); } catch(_) {}
+          return _quickPage('Stopped', '⏸', '#F59E0B', 'Timer paused. Task back to To Do.', taskId);
+        }
+        return _quickPage('Not running', '·', '#6B7280', 'Status is ' + currentStatus + '.', taskId);
       }
 
       if (action === 'done') {
         if (currentStatus === 'in-progress') {
+          try { _stopOpenTimerForTaskUser(taskId, userId); } catch(_) {}
           var canApprove = Internal.hasCapability(userId, 'tasks.approve');
           Internal.updateTaskFields(taskId, { status: canApprove ? 'done' : 'awaiting_check' });
           if (!canApprove) {
@@ -308,9 +346,10 @@ function doGet(e) {
             } catch(_) {}
           }
           try { syncTaskToCalendar(taskId); } catch(_) {}
-          return _renderAppWithToast(taskId, canApprove ? 'Task marked complete' : 'Submitted for review', 'success');
+          return _quickPage(canApprove ? 'Done' : 'Submitted', '✓', '#10B981',
+            canApprove ? 'Task marked complete.' : 'Sent to supervisor for check.', taskId);
         }
-        return _renderAppWithToast(taskId, 'Cannot mark done — status is ' + currentStatus, 'info');
+        return _quickPage('Not running', '·', '#6B7280', 'Status is ' + currentStatus + '.', taskId);
       }
 
       if (action === 'claim') {
@@ -319,7 +358,7 @@ function doGet(e) {
         var newStatus = currentStatus === 'todo' ? 'in-progress' : currentStatus;
         Internal.updateTaskFields(taskId, { assigneeIds: ids, status: newStatus, claimedBy: userId, claimedAt: now() });
         try { syncTaskToCalendar(taskId); } catch(_) {}
-        return _renderAppWithToast(taskId, 'Task claimed', 'success');
+        return _quickPage('Claimed', '✋', '#10B981', 'Task claimed.', taskId);
       }
 
       if (action === 'photo') {
@@ -2817,6 +2856,29 @@ function getActiveTimers(userId, token) {
   return out;
 }
 
+// Session-less timer stop for deep-link action handlers. Stops any open log
+// entry for the given (taskId, userId) pair. Idempotent.
+function _stopOpenTimerForTaskUser(taskId, userId) {
+  try {
+    var tl = getSheet('time_log');
+    if (!tl) return false;
+    var tlData = tl.getDataRange().getValues();
+    var stoppedAt = now();
+    var changed = false;
+    for (var i = 1; i < tlData.length; i++) {
+      if (tlData[i][1] !== taskId) continue;
+      if (tlData[i][2] !== userId) continue;
+      if (tlData[i][4]) continue; // already stopped
+      var startedAt = tlData[i][3];
+      var duration = startedAt ? Math.round((new Date(stoppedAt) - new Date(startedAt)) / 1000) : 0;
+      tl.getRange(i + 1, 5).setValue(stoppedAt);
+      tl.getRange(i + 1, 6).setValue(duration);
+      changed = true;
+    }
+    return changed;
+  } catch(e) { Logger.log('_stopOpenTimerForTaskUser: ' + e.message); return false; }
+}
+
 function stopTimer(logId, token, markDone) {
   var lock = LockService.getScriptLock();
   lock.waitLock(5000);
@@ -5044,10 +5106,12 @@ function _calEventDescription(task) {
   if (webAppUrl && assigneeUserId) {
     try {
       var startUrl = webAppUrl + '?act=start&t=' + _makeActionToken(task.id, assigneeUserId, 'start');
+      var stopUrl  = webAppUrl + '?act=stop&t='  + _makeActionToken(task.id, assigneeUserId, 'stop');
       var doneUrl  = webAppUrl + '?act=done&t='  + _makeActionToken(task.id, assigneeUserId, 'done');
       var photoUrl = webAppUrl + '?act=photo&t=' + _makeActionToken(task.id, assigneeUserId, 'photo');
       base += '<br><br>━━━━━━━━━━━━<br>' +
         '<a href="' + startUrl + '">▶ Start</a> &nbsp;·&nbsp; ' +
+        '<a href="' + stopUrl  + '">⏸ Stop</a> &nbsp;·&nbsp; ' +
         '<a href="' + doneUrl  + '">✓ Done</a> &nbsp;·&nbsp; ' +
         '<a href="' + photoUrl + '">📷 Photo</a>';
     } catch(_) {}
