@@ -2147,7 +2147,7 @@ function rowToTask(row) {
     createdBy: row[8],
     createdAt: row[9] ? row[9].toString() : '',
     dueDate: row[10] ? (row[10] instanceof Date ? Utilities.formatDate(row[10], getTimezone(), 'yyyy-MM-dd') : row[10].toString()) : '',
-    scheduledTime: row[11],
+    scheduledTime: (row[11] instanceof Date) ? Utilities.formatDate(row[11], getTimezone(), 'HH:mm') : (row[11] ? row[11].toString() : ''),
     isShared: row[12] === true || row[12] === 'TRUE',
     claimedBy: row[13],
     claimedAt: row[14] ? row[14].toString() : '',
@@ -5082,6 +5082,46 @@ function dumpTestEventLinks() {
     out.push({ taskId: taskId, title: title, status: status, eventId: eid, color: color, description: desc });
   }
   return JSON.stringify(out);
+}
+
+function debugGetTasksRaw(token) {
+  try {
+    var sess = requireSession(token);
+    var tasks = Internal.getTasks({ userId: sess.userId });
+    var sizes = tasks.map(function(t) {
+      var keys = Object.keys(t);
+      var hasDate = keys.filter(function(k){ return t[k] instanceof Date; });
+      var hasUndef = keys.filter(function(k){ return t[k] === undefined; });
+      return { id: t.id.slice(0,8), keys: keys.length, dateFields: hasDate, undefFields: hasUndef, clientType: typeof t.client, assigneesLen: (t.assignees||[]).length };
+    });
+    return JSON.stringify({ ok: true, count: tasks.length, sizes: sizes });
+  } catch(e) { return JSON.stringify({ ok: false, err: e.message }); }
+}
+
+function debugSessTasks(token) {
+  try {
+    var sess = requireSession(token);
+    var tasks = Internal.getTasks({ userId: sess.userId });
+    return { ok: true, sessUserId: sess.userId, taskCount: tasks.length, sample: tasks.slice(0,5).map(function(t){ return { id: t.id.slice(0,8), title: t.title, status: t.status, assigneeIds: t.assigneeIds, createdBy: t.createdBy }; }) };
+  } catch(e) {
+    return { ok: false, err: e.message };
+  }
+}
+
+function debugTbmVisibleTasks() {
+  var s = getSheet('users');
+  var udata = s.getDataRange().getValues();
+  var nameCol = udata[0].indexOf('name');
+  var tbmId = null;
+  for (var i = 1; i < udata.length; i++) {
+    if ((udata[i][nameCol] || '').toString() === 'TBM') { tbmId = udata[i][0]; break; }
+  }
+  if (!tbmId) return JSON.stringify({ error: 'TBM not found' });
+  var tasks = Internal.getTasks({ userId: tbmId });
+  var summary = tasks.map(function(t) {
+    return { id: t.id.slice(0,8), title: t.title, status: t.status, isShared: t.isShared, assignees: (t.assigneeIds||[]).map(function(x){return x.slice(0,4);}), createdBy: (t.createdBy||'').slice(0,4) };
+  });
+  return JSON.stringify({ tbmId: tbmId, count: tasks.length, tasks: summary });
 }
 
 function resyncTestEvents() {
