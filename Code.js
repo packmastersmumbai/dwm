@@ -1040,6 +1040,24 @@ var Internal = (function() {
             // Stamp / clear completed_at (col 22) on done transitions
             if (fields.status === 'done') {
               s.getRange(i + 1, 22).setValue(now());
+              // Auto-close any open time_log entries for this task so elapsed
+              // time is captured. Critical for shared tasks: claim auto-starts
+              // the timer and users typically mark done without explicit stop.
+              try {
+                var _tl = getSheet('time_log');
+                var _tlData = _tl ? _tl.getDataRange().getValues() : [[]];
+                var _stoppedAt = now();
+                for (var _ti = 1; _ti < _tlData.length; _ti++) {
+                  if (_tlData[_ti][1] !== taskId) continue;
+                  if (_tlData[_ti][4]) continue; // already stopped
+                  var _start = _tlData[_ti][3];
+                  var _dur = _start ? Math.round((new Date(_stoppedAt) - new Date(_start)) / 1000) : 0;
+                  _tl.getRange(_ti + 1, 5).setValue(_stoppedAt);
+                  _tl.getRange(_ti + 1, 6).setValue(_dur);
+                  _tl.getRange(_ti + 1, 7).setValue(_stoppedAt);
+                  logActivity(taskId, _tlData[_ti][2] || '', 'timer_stopped', _dur + 's (auto on done)');
+                }
+              } catch(_e) { /* benign — never block done */ }
             } else if (oldStatus === 'done') {
               s.getRange(i + 1, 22).setValue('');
             }
