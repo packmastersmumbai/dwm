@@ -32,7 +32,7 @@
 </nav>
 
 <!-- Overlay Backdrop -->
-<div class="fixed inset-0 bg-black opacity-30 z-[60]"></div>
+<div data-ref="notif-backdrop" class="fixed inset-0 bg-black opacity-30 z-[40] cursor-pointer"></div>
 
 <!-- Notifications Panel -->
 <div class="fixed top-0 left-0 w-full h-[618px] bg-surface rounded-b-[16px] z-[70] shadow-xl flex flex-col overflow-hidden">
@@ -177,10 +177,12 @@
           qs(screen, 'loading-state').remove();
         });
 
-      // Back button
+      // Back button + backdrop tap-to-close
       qs(screen, 'btn-back').addEventListener('click', function() {
         APP.navigate('kanban-home');
       });
+      var _backdrop = qs(screen, 'notif-backdrop');
+      if (_backdrop) _backdrop.addEventListener('click', function() { APP.navigate('kanban-home'); });
 
       // Mark all read
       qs(screen, 'btn-mark-all').addEventListener('click', function() {
