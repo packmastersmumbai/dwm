@@ -4948,10 +4948,63 @@ function _calEventDescription(task) {
     var cl = clients.filter(function(c) { return c.id === task.clientId; })[0];
     if (cl) clientName = cl.name;
   } catch(_) {}
+  // PDCA badge with icon
+  var pdcaMap = {
+    P: { label: 'Plan',  icon: '📋' },
+    D: { label: 'Do',    icon: '🔧' },
+    C: { label: 'Check', icon: '🔍' },
+    A: { label: 'Act',   icon: '🎯' }
+  };
+  var pdcaInfo = pdcaMap[task.pdca] || null;
+  var pdcaChip = pdcaInfo ? (pdcaInfo.icon + ' <b>' + task.pdca + ' — ' + pdcaInfo.label + '</b>') : '';
+
+  // Elapsed vs target — compute totalLoggedMinutes since rowToTask doesn't populate it
+  var elapsed = Number(task.totalLoggedMinutes) || 0;
+  if (!elapsed) {
+    try {
+      var tl = getSheet('time_log');
+      var tlData = tl ? tl.getDataRange().getValues() : [[]];
+      var secs = 0;
+      for (var i = 1; i < tlData.length; i++) {
+        if (tlData[i][1] !== task.id) continue;
+        if (!tlData[i][4]) continue; // still running
+        secs += Number(tlData[i][5]) || 0;
+      }
+      elapsed = Math.floor(secs / 60);
+    } catch(_) {}
+  }
+  var target  = Number(task.estimatedMinutes)   || 0;
+  var timeChip = '';
+  if (elapsed > 0 || target > 0) {
+    var elapsedStr = elapsed > 0 ? elapsed + 'm logged' : '';
+    var targetStr  = target  > 0 ? target  + 'm target' : '';
+    timeChip = '⏱ ' + [elapsedStr, targetStr].filter(Boolean).join(' / ');
+  }
+
+  // Priority chip (skip if low/medium)
+  var priorityChip = '';
+  if (task.priority === 'high')   priorityChip = '🔴 High';
+  if (task.priority === 'urgent') priorityChip = '🚨 Urgent';
+
+  var statusEmoji = {
+    'todo': '⚪',
+    'in-progress': '🔵',
+    'awaiting_check': '🟡',
+    'done': '🟢',
+    'rejected': '🔴'
+  }[task.status] || '⚪';
+
   var link = webAppUrl ? (webAppUrl + '?task=' + task.id) : '';
-  var base = '<b>Status:</b> ' + (task.status || '') +
-    ' &nbsp;·&nbsp; <b>Assignee:</b> ' + assigneeName +
-    ' &nbsp;·&nbsp; <b>Client:</b> ' + clientName +
+  var headerBits = [
+    statusEmoji + ' <b>' + (task.status || '') + '</b>',
+    pdcaChip,
+    priorityChip,
+    timeChip
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
+  var base = headerBits + '<br><br>' +
+    '<b>Assignee:</b> ' + assigneeName +
+    (clientName ? ' &nbsp;·&nbsp; <b>Client:</b> ' + clientName : '') +
     (link ? '<br><br><a href="' + link + '">Open in TaskFlow</a>' : '');
 
   // Append deep-link action buttons if we have a URL and a user to act as
