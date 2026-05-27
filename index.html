@@ -139,7 +139,7 @@ var APP = (function() {
             if (msg.indexOf('Session expired') !== -1) {
               _token = null;
               currentUser = null;
-              try { sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
+              try { localStorage.removeItem('tf_token'); localStorage.removeItem('tf_user'); } catch(se) {}
               navigate('pin-login');
             }
             reject(err && err.message ? err : new Error(msg));
@@ -291,8 +291,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   // Attempt to restore session from sessionStorage (survives accidental reload)
   try {
-    var storedToken = sessionStorage.getItem('tf_token');
-    var storedUser  = sessionStorage.getItem('tf_user');
+    var storedToken = localStorage.getItem('tf_token') || sessionStorage.getItem('tf_token');
+    var storedUser  = localStorage.getItem('tf_user')  || sessionStorage.getItem('tf_user');
     if (storedToken && storedUser) {
       APP.token = storedToken;
       APP.currentUser = JSON.parse(storedUser);

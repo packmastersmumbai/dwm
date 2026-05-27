@@ -250,8 +250,8 @@
       // Persist session so an accidental reload restores state
       try {
         if (APP.token) {
-          sessionStorage.setItem('tf_token', APP.token);
-          sessionStorage.setItem('tf_user', JSON.stringify(APP.currentUser));
+          localStorage.setItem('tf_token', APP.token);
+          localStorage.setItem('tf_user', JSON.stringify(APP.currentUser));
         }
       } catch(se) {}
       _pin = [];

@@ -307,7 +307,7 @@
       APP.call('logout', APP.token).catch(function() {}).then(function() {
         APP.token = null;
         APP.currentUser = null;
-        try { sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
+        try { localStorage.removeItem('tf_token'); localStorage.removeItem('tf_user'); sessionStorage.removeItem('tf_token'); sessionStorage.removeItem('tf_user'); } catch(se) {}
         if (APP.clearGlobalRec) APP.clearGlobalRec();
         APP.navigate('pin-login');
       });
