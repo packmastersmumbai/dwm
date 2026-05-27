@@ -176,7 +176,7 @@ function initializeSheets() {
     tasks: ['id','title','description','client_id','category_id','priority','status',
             'assignee_ids','created_by','created_at','due_date','scheduled_time',
             'is_shared','claimed_by','claimed_at','estimated_minutes','checklist',
-            'recurrence','updated_at','archived_at','requires_photo','completed_at'],
+            'recurrence','updated_at','archived_at','requires_photo','completed_at','pdca'],
     users: ['id','name','pin_hash','salt','role','avatar_color','email',
             'notify_prefs','is_active','last_seen_at','failed_attempts','locked_until'],
     clients: ['id','name','color_hex','is_active'],
@@ -203,7 +203,7 @@ function initializeSheets() {
     var tasksSheet = ss.getSheetByName('tasks');
     if (!tasksSheet) return;
     var headerRow = tasksSheet.getRange(1, 1, 1, tasksSheet.getLastColumn()).getValues()[0];
-    ['requires_photo', 'completed_at'].forEach(function(colName) {
+    ['requires_photo', 'completed_at', 'pdca'].forEach(function(colName) {
       if (headerRow.indexOf(colName) === -1) {
         var nextCol = tasksSheet.getLastColumn() + 1;
         tasksSheet.getRange(1, nextCol).setValue(colName);
@@ -1216,7 +1216,8 @@ var Internal = (function() {
         _estMin,
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-        ts, '', payload.requiresPhoto ? true : false, ''
+        ts, '', payload.requiresPhoto ? true : false, '',
+        payload.pdca || ''
       ]);
 
       logActivity(id, payload.createdBy, 'created', payload.title);
@@ -1246,7 +1247,8 @@ var Internal = (function() {
         payload.isShared ? true : false, '', '', _estMin,
         payload.checklist ? JSON.stringify(payload.checklist) : '',
         payload.recurrence ? JSON.stringify(payload.recurrence) : '',
-        ts, '', payload.requiresPhoto ? true : false, ''
+        ts, '', payload.requiresPhoto ? true : false, '',
+        payload.pdca || ''
       ]));
     } catch(e) {
       throw new Error('Internal.createTask: ' + e.message);
@@ -1339,10 +1341,11 @@ var Internal = (function() {
         if (fields.checklist !== undefined) s.getRange(i + 1, 17).setValue(JSON.stringify(fields.checklist));
         if (fields.recurrence !== undefined) s.getRange(i + 1, 18).setValue(fields.recurrence ? JSON.stringify(fields.recurrence) : '');
         if (fields.requiresPhoto !== undefined) s.getRange(i + 1, 21).setValue(fields.requiresPhoto ? true : false);
+        if (fields.pdca !== undefined) s.getRange(i + 1, 23).setValue(fields.pdca || '');
 
         s.getRange(i + 1, 19).setValue(now());
 
-        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 22).getValues()[0]));
+        return expandTask(rowToTask(s.getRange(i + 1, 1, 1, 23).getValues()[0]));
       }
       throw new Error('Task not found: ' + taskId);
     } catch(e) {
@@ -1938,10 +1941,20 @@ function updateCategory(id, fields, token) {
 //       recurrence(17) updated_at(18) archived_at(19) requires_photo(20)
 
 function rowToTask(row) {
+  var desc = row[2] ? row[2].toString() : '';
+  var pdca = row[22] ? row[22].toString().trim() : '';
+  // Backfill-on-read: if pdca column is empty and description starts with [PDCA:X], parse it out
+  if (!pdca) {
+    var pdcaMatch = desc.match(/^\[PDCA:([PDCA])\]/);
+    if (pdcaMatch) {
+      pdca = pdcaMatch[1];
+      desc = desc.replace(/^\[PDCA:[PDCA]\]\s*/, '');
+    }
+  }
   return {
     id: row[0],
     title: row[1],
-    description: row[2],
+    description: desc,
     clientId: row[3],
     categoryId: row[4],
     priority: row[5],
@@ -1960,7 +1973,8 @@ function rowToTask(row) {
     updatedAt: row[18] ? row[18].toString() : '',
     archivedAt: row[19] ? row[19].toString() : '',
     requiresPhoto: row[20] === true || row[20] === 'TRUE',
-    completedAt: row[21] ? (row[21] instanceof Date ? row[21].toISOString() : row[21].toString()) : ''
+    completedAt: row[21] ? (row[21] instanceof Date ? row[21].toISOString() : row[21].toString()) : '',
+    pdca: pdca
   };
 }
 
@@ -4529,10 +4543,13 @@ function importDwmActivities() {
     var assigneeId = RESP_MAP[responsibility] || RESP_MAP[''] || adminId;
     var recurrence = freqToRecurrence(frequency);
 
-    // Build description with PDCA + dwm import key + extras
-    var notes = '[dwm:' + sno + '] [PDCA:' + (pdca || '-') + '] [' + (frequency || 'Once') + ']\n' +
+    // Build description with dwm import key + extras (PDCA now stored in dedicated column)
+    var notes = '[dwm:' + sno + '] [' + (frequency || 'Once') + ']\n' +
       (concernedAuthority ? 'Coordinate with: ' + concernedAuthority + '\n' : '') +
       (resourcesUrl ? 'Resource: ' + resourcesUrl + '\n' : '');
+
+    var validPdca = ['P', 'D', 'C', 'A'];
+    var pdcaVal = validPdca.indexOf(pdca) !== -1 ? pdca : '';
 
     try {
       Internal.createTask({
@@ -4550,7 +4567,8 @@ function importDwmActivities() {
         estimatedMinutes: minutes,
         checklist: null,
         recurrence: recurrence,
-        requiresPhoto: false
+        requiresPhoto: false,
+        pdca: pdcaVal
       });
       created++;
     } catch(e) {

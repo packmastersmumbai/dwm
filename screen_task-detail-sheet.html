@@ -19,9 +19,22 @@
 <div class="flex items-start justify-between mt-2 mb-6">
 <div class="flex items-start gap-3 flex-1">
 <div data-ref="priority-dot" aria-label="Priority" class="w-2.5 h-2.5 rounded-full bg-[#DC2626] mt-1.5 flex-shrink-0"></div>
+<div class="flex flex-col gap-1 flex-1 min-w-0">
+<div class="flex items-center gap-2">
 <h1 data-ref="task-title" class="font-title-main-mobile text-title-main-mobile text-on-surface line-clamp-2 pr-2">
   Loading...
 </h1>
+<span data-ref="pdca-badge" class="hidden flex-shrink-0 font-bold rounded" style="font-size:11px;padding:2px 7px"></span>
+</div>
+<!-- PDCA segmented control -->
+<div class="flex gap-1 mt-1">
+<button data-pdca="P" data-ref="pdca-btn-P" type="button" class="pdca-btn h-7 px-3 rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface-variant" style="font-size:11px">P</button>
+<button data-pdca="D" data-ref="pdca-btn-D" type="button" class="pdca-btn h-7 px-3 rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface-variant" style="font-size:11px">D</button>
+<button data-pdca="C" data-ref="pdca-btn-C" type="button" class="pdca-btn h-7 px-3 rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface-variant" style="font-size:11px">C</button>
+<button data-pdca="A" data-ref="pdca-btn-A" type="button" class="pdca-btn h-7 px-3 rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface-variant" style="font-size:11px">A</button>
+<button data-pdca="" data-ref="pdca-btn-none" type="button" class="pdca-btn h-7 px-2 rounded-full font-label-bold text-label-bold border border-outline-variant bg-surface-container-lowest text-on-surface-variant" style="font-size:10px">—</button>
+</div>
+</div>
 </div>
 <div class="flex items-center gap-1 flex-shrink-0 text-on-surface-variant">
 <button data-ref="btn-edit" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
@@ -366,6 +379,28 @@ Share via WhatsApp
 
     // Title
     qs(screen, 'task-title').textContent = task.title || 'Untitled Task';
+
+    // PDCA badge + segmented control
+    var pdcaColors = { P: 'background:#EDE9FE;color:#5B21B6', D: 'background:#DCFCE7;color:#166534', C: 'background:#FEF9C3;color:#854D0E', A: 'background:#FFE4E6;color:#9F1239' };
+    var pdcaBadge = qs(screen, 'pdca-badge');
+    var pdcaVal = task.pdca || '';
+    if (pdcaVal && pdcaColors[pdcaVal]) {
+      pdcaBadge.textContent = pdcaVal;
+      pdcaBadge.style.cssText = 'font-size:11px;padding:2px 7px;' + pdcaColors[pdcaVal];
+      pdcaBadge.classList.remove('hidden');
+    } else {
+      pdcaBadge.classList.add('hidden');
+    }
+    ['P','D','C','A',''].forEach(function(v) {
+      var refKey = v ? 'pdca-btn-' + v : 'pdca-btn-none';
+      var btn = qs(screen, refKey);
+      if (!btn) return;
+      if (v === pdcaVal) {
+        btn.style.cssText = (v && pdcaColors[v]) ? pdcaColors[v] + ';font-size:11px;font-weight:700' : 'background:#E5E7EB;color:#374151;font-size:10px';
+      } else {
+        btn.style.cssText = '';
+      }
+    });
 
     // Priority dot
     var priorityColor = PRIORITY_COLORS[(task.priority || '').toLowerCase()] || '#6B7280';
@@ -785,6 +820,17 @@ Share via WhatsApp
       screen._onEsc = _onEsc;
 
       qs(screen, 'btn-close').addEventListener('click', closeSheet);
+
+      // PDCA segmented control
+      screen.querySelectorAll('.pdca-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (!_taskId) return;
+          var newPdca = btn.getAttribute('data-pdca');
+          APP.call('updateTaskFields', _taskId, { pdca: newPdca }, APP.token)
+            .then(function(updated) { if (updated) renderTask(screen, updated); })
+            .catch(function() {});
+        });
+      });
 
       // Edit button
       qs(screen, 'btn-edit').addEventListener('click', function() {

@@ -752,9 +752,16 @@
     // tf-pri-* chip in metaRow, so a second small dot was redundant.
     // (Cards now carry: chip + bg-tint + REC pill instead of 5 status sources.)
 
+    var pdcaBadgeHtml = '';
+    var pdcaColors = { P: 'background:#EDE9FE;color:#5B21B6', D: 'background:#DCFCE7;color:#166534', C: 'background:#FEF9C3;color:#854D0E', A: 'background:#FFE4E6;color:#9F1239' };
+    if (task.pdca && pdcaColors[task.pdca]) {
+      pdcaBadgeHtml = '<span class="flex-shrink-0 font-bold rounded" style="font-size:10px;padding:1px 5px;' + pdcaColors[task.pdca] + '">' + escHtml(task.pdca) + '</span>';
+    }
+
     return '<article class="bg-white rounded-xl p-3 relative flex gap-2 cursor-pointer transition-[transform,box-shadow] duration-160 border border-outline-variant active:scale-[0.98]' + activeClass + '" data-task-id="' + task.id + '" data-action="open-task" style="box-shadow:0 1px 2px rgba(0,0,0,0.04);will-change:transform">' +
       '<div class="flex-1 flex flex-col min-w-0">' +
         '<div class="flex items-start gap-2 min-w-0">' +
+          pdcaBadgeHtml +
           '<h3 class="kh-card-title font-semibold truncate text-on-surface flex-1 min-w-0">' + escHtml(titleStr) + '</h3>' +
           assigneeHtml +
         '</div>' +

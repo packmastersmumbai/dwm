@@ -7,3 +7,5 @@ STATE.md
 creds.json
 *.log
 .DS_Store
+
+dwm-tracker-dump.json

@@ -60,6 +60,21 @@
     </div>
   </div>
 
+  <!-- PDCA -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 text-on-surface-variant">
+      <span class="material-symbols-outlined text-[18px]">cycle</span>
+      <span class="font-label-bold text-label-bold uppercase tracking-wider">PDCA</span>
+    </div>
+    <div class="flex w-full h-[52px] bg-surface-container-low rounded-xl p-1 border border-outline-variant">
+      <button data-pdca="P" data-ref="pdca-P" class="pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Plan</button>
+      <button data-pdca="D" data-ref="pdca-D" class="pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Do</button>
+      <button data-pdca="C" data-ref="pdca-C" class="pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Check</button>
+      <button data-pdca="A" data-ref="pdca-A" class="pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">Act</button>
+      <button data-pdca="" data-ref="pdca-none" class="pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors" type="button">—</button>
+    </div>
+  </div>
+
   <!-- Due Date -->
   <div class="flex flex-col gap-2">
     <div class="flex items-center gap-2 text-on-surface-variant">
@@ -248,6 +263,7 @@
   var _selectedCategoryId = null;
   var _selectedAssignees = [];
   var _selectedPriority = 'medium';
+  var _selectedPdca = '';
   var _selectedSchedule = 'morning';
   var _selectedFrequency = 'daily';
   var _selectedDays = [];
@@ -409,6 +425,27 @@
     });
   }
 
+  /* ── PDCA picker ───────────────────────────────────────── */
+  var _pdcaColors = { P: 'background:#EDE9FE;color:#5B21B6', D: 'background:#DCFCE7;color:#166534', C: 'background:#FEF9C3;color:#854D0E', A: 'background:#FFE4E6;color:#9F1239' };
+  function setPdca(screen, val) {
+    _selectedPdca = val || '';
+    ['P','D','C','A',''].forEach(function(v) {
+      var refKey = v ? 'pdca-' + v : 'pdca-none';
+      var btn = qs(screen, refKey);
+      if (!btn) return;
+      if (v === _selectedPdca && v && _pdcaColors[v]) {
+        btn.className = 'pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold shadow-sm transition-all';
+        btn.style.cssText = _pdcaColors[v];
+      } else if (v === _selectedPdca) {
+        btn.className = 'pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold bg-surface-container-lowest shadow-sm text-on-surface transition-all';
+        btn.style.cssText = '';
+      } else {
+        btn.className = 'pdca-form-btn flex-1 rounded-lg flex items-center justify-center font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-high transition-colors';
+        btn.style.cssText = '';
+      }
+    });
+  }
+
   /* ── Schedule chips ────────────────────────────────────── */
   function setSchedule(screen, schedule) {
     _selectedSchedule = schedule;
@@ -485,6 +522,7 @@
     }
 
     setPriority(screen, task.priority || 'medium');
+    setPdca(screen, task.pdca || '');
     setSchedule(screen, task.schedule || 'morning');
 
     if (task.shared)    qs(screen, 'toggle-shared').checked    = true;
@@ -598,6 +636,7 @@
       clientId:     _selectedClientId,
       categoryId:   _selectedCategoryId,
       priority:     _selectedPriority,
+      pdca:         _selectedPdca || '',
       dueDate:      qs(screen, 'field-due-date').value,
       scheduledTime: _selectedSchedule,
       assigneeIds:  _selectedAssignees.slice(),
@@ -626,6 +665,7 @@
       _selectedCategoryId = null;
       _selectedAssignees  = [];
       _selectedPriority   = 'medium';
+      _selectedPdca       = '';
       _selectedSchedule   = 'morning';
       _selectedFrequency  = 'daily';
       _selectedDays       = [];
@@ -663,6 +703,14 @@
         qs(screen, 'pri-' + p).addEventListener('click', function() { setPriority(screen, p); });
       });
       setPriority(screen, 'medium');
+
+      // PDCA buttons
+      ['P','D','C','A',''].forEach(function(v) {
+        var refKey = v ? 'pdca-' + v : 'pdca-none';
+        var btn = qs(screen, refKey);
+        if (btn) btn.addEventListener('click', function() { setPdca(screen, v); });
+      });
+      setPdca(screen, '');
 
       // Schedule buttons
       ['morning', 'afternoon', 'evening'].forEach(function(s) {
@@ -861,6 +909,7 @@
       _selectedCategoryId = null;
       _selectedAssignees  = [];
       _selectedPriority   = 'medium';
+      _selectedPdca       = '';
       _selectedSchedule   = 'morning';
       _selectedFrequency  = 'daily';
       _selectedDays       = [];
