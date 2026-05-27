@@ -1704,6 +1704,149 @@ function createTask(payload, token) {
   return Internal.createTask(payload);
 }
 
+// ── Bulk task import (admin-only) ────────────────────────────
+// Returns a CSV template string with header + 2 example rows.
+function getImportTemplate(token) {
+  requireAdmin(token);
+  var header = 'title,project,assignee,priority,status,startDate,dueDate,description';
+  var example1 = 'Print PE corrugated dieline,Godrej Consumer,Priya,high,todo,2026-06-01,2026-06-03,"Sample row — replace with your own"';
+  var example2 = 'Client review call,ITC Foods,"Priya,Ravi",medium,todo,,2026-06-04,"Assign to multiple by comma-separating names"';
+  return header + '\n' + example1 + '\n' + example2 + '\n';
+}
+
+// Minimal CSV parser that handles double-quoted fields with embedded commas/newlines/escaped quotes.
+function _parseCsv(text) {
+  var rows = [], row = [], cur = '', inQuotes = false;
+  text = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i);
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text.charAt(i + 1) === '"') { cur += '"'; i++; }
+        else { inQuotes = false; }
+      } else { cur += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else { cur += ch; }
+    }
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(function(r) { return r.length && !(r.length === 1 && r[0] === ''); });
+}
+
+// Imports tasks from CSV. Returns { ok: [...], errors: [{row, reason}] }.
+// Per-row validation; valid rows commit; invalid rows are reported and skipped.
+function importTasks(csvText, token) {
+  var sess = requireSession(token);
+  requireAdmin(token);
+
+  var rows = _parseCsv(csvText);
+  if (rows.length < 2) {
+    return { ok: [], errors: [{ row: 0, reason: 'CSV needs a header row and at least one data row.' }] };
+  }
+
+  var headerRow = rows[0].map(function(h) { return String(h || '').trim().toLowerCase(); });
+  var REQUIRED = ['title','project','assignee','priority','status','startdate','duedate','description'];
+  var missing = REQUIRED.filter(function(h) { return headerRow.indexOf(h) === -1; });
+  if (missing.length) {
+    return { ok: [], errors: [{ row: 0, reason: 'Missing header columns: ' + missing.join(', ') }] };
+  }
+  var idx = {};
+  REQUIRED.forEach(function(h) { idx[h] = headerRow.indexOf(h); });
+
+  var clients = Internal.getClients() || [];
+  var users   = Internal.getUsers() || [];
+  function findClient(name) {
+    var n = String(name || '').trim().toLowerCase();
+    if (!n) return null;
+    return clients.find(function(c) { return String(c.name || '').toLowerCase() === n; }) || null;
+  }
+  function findUser(name) {
+    var n = String(name || '').trim().toLowerCase();
+    if (!n) return null;
+    return users.find(function(u) { return String(u.name || '').toLowerCase() === n; }) || null;
+  }
+
+  var VALID_PRIORITY = ['low','medium','high','urgent'];
+  var VALID_STATUS = ['todo','in-progress','done','blocked'];
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  var ok = [], errors = [];
+  for (var r = 1; r < rows.length; r++) {
+    var rowArr = rows[r];
+    var get = function(key) { return String(rowArr[idx[key]] == null ? '' : rowArr[idx[key]]).trim(); };
+    try {
+      var title = get('title');
+      if (!title) { errors.push({ row: r + 1, reason: 'title is required' }); continue; }
+
+      var projectName = get('project');
+      var clientId = '';
+      if (projectName) {
+        var cli = findClient(projectName);
+        if (!cli) { errors.push({ row: r + 1, reason: 'Unknown project: "' + projectName + '"' }); continue; }
+        clientId = cli.id;
+      }
+
+      var assigneeRaw = get('assignee');
+      var assigneeIds = [];
+      if (assigneeRaw) {
+        var names = assigneeRaw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+        var unknown = [];
+        names.forEach(function(n) {
+          var u = findUser(n);
+          if (u) assigneeIds.push(u.id);
+          else unknown.push(n);
+        });
+        if (unknown.length) { errors.push({ row: r + 1, reason: 'Unknown assignee(s): ' + unknown.join(', ') }); continue; }
+      }
+
+      var priority = (get('priority') || 'medium').toLowerCase();
+      if (VALID_PRIORITY.indexOf(priority) === -1) {
+        errors.push({ row: r + 1, reason: 'Invalid priority: "' + priority + '" (use ' + VALID_PRIORITY.join('/') + ')' });
+        continue;
+      }
+
+      var status = (get('status') || 'todo').toLowerCase();
+      if (VALID_STATUS.indexOf(status) === -1) {
+        errors.push({ row: r + 1, reason: 'Invalid status: "' + status + '" (use ' + VALID_STATUS.join('/') + ')' });
+        continue;
+      }
+
+      var startDate = get('startdate');
+      if (startDate && !DATE_RE.test(startDate)) {
+        errors.push({ row: r + 1, reason: 'Invalid startDate (need yyyy-MM-dd): "' + startDate + '"' });
+        continue;
+      }
+      var dueDate = get('duedate');
+      if (dueDate && !DATE_RE.test(dueDate)) {
+        errors.push({ row: r + 1, reason: 'Invalid dueDate (need yyyy-MM-dd): "' + dueDate + '"' });
+        continue;
+      }
+
+      var payload = {
+        title: title,
+        description: get('description'),
+        clientId: clientId,
+        priority: priority,
+        status: status,
+        assigneeIds: assigneeIds,
+        dueDate: dueDate,
+        startDate: startDate,
+        createdBy: sess.userId
+      };
+
+      var created = Internal.createTask(payload);
+      ok.push({ row: r + 1, id: created.id, title: created.title });
+    } catch(rowErr) {
+      errors.push({ row: r + 1, reason: rowErr.message || String(rowErr) });
+    }
+  }
+
+  return { ok: ok, errors: errors, totalRows: rows.length - 1 };
+}
+
 function saveTask(taskData, token) {
   try {
     if (taskData.id) {

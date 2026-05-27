@@ -103,6 +103,28 @@
 
 <!-- Tab: Tasks (hidden by default) -->
 <div data-ref="panel-tasks" class="space-y-3 hidden">
+<!-- Bulk import card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 space-y-3">
+  <div class="flex items-center justify-between">
+    <div>
+      <h3 class="font-title-main-mobile text-[14px] font-semibold text-on-surface">Bulk import</h3>
+      <p class="font-label-bold text-label-bold text-on-surface-variant mt-0.5">CSV template with eight columns. Unknown projects or assignees are rejected per-row.</p>
+    </div>
+    <button data-ref="bulk-template-btn" type="button"
+      class="shrink-0 px-3 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface font-label-bold text-label-bold flex items-center gap-1.5 active:scale-[0.98] transition-[transform,background-color] duration-160">
+      <span class="material-symbols-outlined text-[16px]">download</span>Template
+    </button>
+  </div>
+  <input data-ref="bulk-file-input" type="file" accept=".csv,text/csv" class="block w-full text-[12px] text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-surface-container-high file:text-on-surface file:font-label-bold file:cursor-pointer"/>
+  <div class="flex items-center gap-2">
+    <button data-ref="bulk-import-btn" type="button" disabled
+      class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-bold text-label-bold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-[transform,opacity] duration-160">
+      <span class="material-symbols-outlined text-[16px]">upload</span>Import
+    </button>
+    <span data-ref="bulk-file-name" class="font-label-bold text-label-bold text-on-surface-variant truncate"></span>
+  </div>
+  <div data-ref="bulk-result" class="hidden text-[12px]"></div>
+</div>
 <div data-ref="tasks-list" class="space-y-2">
 <div class="space-y-2"><div class="tf-skeleton h-[56px] w-full"></div><div class="tf-skeleton h-[56px] w-full opacity-80"></div><div class="tf-skeleton h-[56px] w-full opacity-60"></div></div>
 </div>
@@ -596,6 +618,83 @@ class="w-full bg-surface-container-low border border-outline-variant rounded-lg 
         _shCard.addEventListener('click', function() {
           APP.navigate('shift-handover');
         });
+      }
+
+      // ── Bulk import wiring (admin-only — UI is inside the Tasks tab which non-admins can't see) ──
+      if (isAdmin) {
+        var _bulkPickedCsv = null;
+        var _bulkBtn = qs(screen, 'bulk-import-btn');
+        var _bulkInput = qs(screen, 'bulk-file-input');
+        var _bulkTpl = qs(screen, 'bulk-template-btn');
+        var _bulkFileName = qs(screen, 'bulk-file-name');
+        var _bulkResult = qs(screen, 'bulk-result');
+
+        if (_bulkTpl) {
+          _bulkTpl.addEventListener('click', function() {
+            APP.call('getImportTemplate', APP.token).then(function(csv) {
+              var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url; a.download = 'taskflow-import-template.csv';
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+            }).catch(function(err) { APP.showError(err); });
+          });
+        }
+
+        if (_bulkInput) {
+          _bulkInput.addEventListener('change', function(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) { _bulkPickedCsv = null; _bulkBtn.disabled = true; _bulkFileName.textContent = ''; return; }
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+              _bulkPickedCsv = String(ev.target.result || '');
+              _bulkBtn.disabled = false;
+              _bulkFileName.textContent = file.name;
+            };
+            reader.onerror = function() { APP.showError('Could not read file.'); };
+            reader.readAsText(file);
+          });
+        }
+
+        if (_bulkBtn) {
+          _bulkBtn.addEventListener('click', function() {
+            if (!_bulkPickedCsv) return;
+            _bulkBtn.disabled = true;
+            _bulkResult.classList.remove('hidden');
+            _bulkResult.innerHTML = '<div class="text-on-surface-variant">Importing…</div>';
+            APP.call('importTasks', _bulkPickedCsv, APP.token).then(function(res) {
+              var okCount = (res && res.ok) ? res.ok.length : 0;
+              var errCount = (res && res.errors) ? res.errors.length : 0;
+              var html =
+                '<div class="flex items-center gap-3 mb-2">' +
+                  '<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-label-bold">' + okCount + ' imported</span>' +
+                  (errCount
+                    ? '<span class="px-2 py-0.5 rounded-full bg-error-container text-error font-label-bold">' + errCount + ' skipped</span>'
+                    : '') +
+                '</div>';
+              if (errCount) {
+                html += '<div class="mt-2 max-h-48 overflow-y-auto border border-outline-variant rounded-lg p-2 bg-surface-container-low">';
+                html += res.errors.map(function(e) {
+                  return '<div class="py-1 border-b border-outline-variant/40 last:border-b-0"><span class="font-mono text-on-surface-variant mr-2">Row ' + e.row + '</span>' +
+                    '<span class="text-on-surface">' + (e.reason || 'Unknown error') + '</span></div>';
+                }).join('');
+                html += '</div>';
+              }
+              _bulkResult.innerHTML = html;
+              _bulkBtn.disabled = false;
+              // Refresh tasks list if any landed
+              if (okCount > 0) {
+                APP.call('getTasks', {}, APP.token)
+                  .then(function(tasks) { renderTasks(screen, tasks); })
+                  .catch(function(){});
+              }
+            }).catch(function(err) {
+              _bulkResult.innerHTML = '<div class="px-2 py-1 rounded-lg bg-error-container text-error">' + (err && err.message ? err.message : String(err)) + '</div>';
+              _bulkBtn.disabled = false;
+            });
+          });
+        }
       }
 
       // Tab switching
