@@ -201,16 +201,32 @@ function _verifyActionToken(token) {
 
 function _actionResultPage(title, body, isError) {
   var color = isError ? '#DC2626' : '#10B981';
+  var icon = isError ? '&#x26A0;&#xFE0F;' : '&#x2705;';
+  // Browsers block window.close() on tabs not opened by JS (most calendar deep-links).
+  // Use multiple fallbacks: window.close, history.back, and an explicit Close button.
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>' + title + '</title>' +
-    '<style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F9FAFB}' +
-    '.card{background:#fff;border-radius:12px;padding:32px 24px;max-width:360px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.1)}' +
-    'h2{color:' + color + ';margin:0 0 12px}p{color:#374151;margin:0 0 16px;font-size:14px}' +
-    '.close{color:#6B7280;font-size:12px}</style></head><body>' +
-    '<div class="card"><h2>' + title + '</h2><p>' + body + '</p>' +
-    '<div class="close">This tab will close automatically&hellip;</div></div>' +
-    '<script>setTimeout(function(){window.close();},2000);</script>' +
+    '<style>body{font-family:-apple-system,Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F9FAFB;padding:16px}' +
+    '.card{background:#fff;border-radius:16px;padding:28px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.08)}' +
+    '.icon{font-size:48px;line-height:1;margin-bottom:8px}' +
+    'h2{color:' + color + ';margin:0 0 8px;font-size:22px;font-weight:600}p{color:#374151;margin:0 0 20px;font-size:15px;line-height:1.4}' +
+    '.btn{display:inline-block;background:' + color + ';color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:15px;border:none;cursor:pointer;margin:4px}' +
+    '.btn-ghost{background:transparent;color:#6B7280;border:1px solid #E5E7EB}' +
+    '.hint{color:#9CA3AF;font-size:12px;margin-top:16px}</style></head><body>' +
+    '<div class="card"><div class="icon">' + icon + '</div><h2>' + title + '</h2><p>' + body + '</p>' +
+    '<button class="btn" onclick="closeTab()">Close</button>' +
+    '<div class="hint">You can return to your Calendar</div></div>' +
+    '<script>function closeTab(){' +
+    'try{window.close();}catch(e){}' +
+    'setTimeout(function(){' +
+    '  if(!document.hidden){' +
+    '    try{window.location.href="about:blank";}catch(e){}' +
+    '  }' +
+    '},150);' +
+    '}' +
+    'setTimeout(closeTab,1500);' +
+    '</script>' +
     '</body></html>';
   return HtmlService.createHtmlOutput(html)
     .setTitle(title)
